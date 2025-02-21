@@ -50,17 +50,18 @@
 
         <!-- Desktop Menu Items -->
         <div class="hidden sm:flex items-center space-x-6">
-            @if (!empty($caraKerjaFiles))
-                <a href="{{ Storage::url($caraKerjaFiles[0]) }}" download class="text-xs text-green-600 hover:underline">
-                    Cara Kerja Dokumen
-                </a>
-            @endif
+        @if (!empty($caraKerjaFiles) && isset($caraKerjaFiles[0]))
+    <a href="{{ Storage::url($caraKerjaFiles[0]) }}" download class="text-xs text-green-600 hover:underline">
+        Cara Kerja Dokumen
+    </a>
+@endif
 
-            @if (!empty($flowchartFiles))
-                <a href="{{ Storage::url($flowchartFiles[0]) }}" download class="text-xs text-blue-600 hover:underline">
-                    Flowchart Aplikasi
-                </a>
-            @endif
+@if (!empty($flowchartFiles) && isset($flowchartFiles[0]))
+    <a href="{{ Storage::url($flowchartFiles[0]) }}" download class="text-xs text-blue-600 hover:underline">
+        Flowchart Aplikasi
+    </a>
+@endif
+
             <a href="https://www.appsheet.com/start/..." class="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 text-sm">
                 E-Report
             </a>
@@ -72,12 +73,18 @@
 
     <!-- Mobile Menu -->
     <div x-show="isOpen" x-transition class="sm:hidden bg-white shadow-lg px-4 py-2 space-y-2">
-        <a href="{{ Storage::url($caraKerjaFiles[0]) }}" download class="block text-green-500 hover:underline py-2 text-sm">
-            Cara Kerja Aplikasi
-        </a>
-        <a href="{{ Storage::url($flowchartFiles[0]) }}" download class="block text-blue-500 hover:underline py-2 text-sm">
-            Flowchart Aplikasi
-        </a>
+    @if (!empty($caraKerjaFiles) && isset($caraKerjaFiles[0]))
+    <a href="{{ Storage::url($caraKerjaFiles[0]) }}" download class="block text-green-500 hover:underline py-2 text-sm">
+        Cara Kerja Aplikasi
+    </a>
+@endif
+
+@if (!empty($flowchartFiles) && isset($flowchartFiles[0]))
+    <a href="{{ Storage::url($flowchartFiles[0]) }}" download class="block text-blue-500 hover:underline py-2 text-sm">
+        Flowchart Aplikasi
+    </a>
+@endif
+
         <a href="https://www.appsheet.com/start/..." class="block bg-orange-500 text-white px-3 py-2 rounded-lg hover:bg-orange-600 text-sm">
             E-Report
         </a>

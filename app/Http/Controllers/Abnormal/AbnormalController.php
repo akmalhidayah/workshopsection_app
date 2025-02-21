@@ -115,25 +115,28 @@ public function store(Request $request)
         return redirect()->route('abnormalitas.index')->with('success', 'Form berhasil disimpan dan cek silahkan cek dokumen.');
         }
 
-public function edit($notificationNumber)
-{
-    $abnormal = Abnormal::where('notification_number', $notificationNumber)->firstOrFail();
-    $notification = Notification::where('notification_number', $abnormal->notification_number)->first();
-
-    // Decode the JSON fields back into arrays
-    $abnormal->actions = json_decode($abnormal->actions, true);
-    $abnormal->risks = json_decode($abnormal->risks, true);
-    $abnormal->files = json_decode($abnormal->files, true);
-
-    if (!$notification) {
-        return redirect()->route('abnormalitas.index')->with('error', 'Notifikasi terkait tidak ditemukan.');
-    }
-
-    return view('abnormal.edit', compact('abnormal', 'notification'));
-}
-
-
-
+        public function edit($notificationNumber)
+        {
+            $abnormal = Abnormal::where('notification_number', $notificationNumber)->firstOrFail();
+            $notification = Notification::where('notification_number', $abnormal->notification_number)->first();
+        
+            // Decode the JSON fields back into arrays, pastikan nilai default jika null
+            $abnormal->actions = is_string($abnormal->actions) ? json_decode($abnormal->actions, true) : $abnormal->actions;
+            $abnormal->risks = is_string($abnormal->risks) ? json_decode($abnormal->risks, true) : $abnormal->risks;
+            $abnormal->files = is_string($abnormal->files) ? json_decode($abnormal->files, true) : $abnormal->files;
+        
+            // Pastikan nilai tidak null agar tidak error di view
+            $abnormal->actions = is_array($abnormal->actions) ? $abnormal->actions : [];
+            $abnormal->risks = is_array($abnormal->risks) ? $abnormal->risks : [];
+            $abnormal->files = is_array($abnormal->files) ? $abnormal->files : [];
+        
+            if (!$notification) {
+                return redirect()->route('abnormalitas.index')->with('error', 'Notifikasi terkait tidak ditemukan.');
+            }
+        
+            return view('abnormal.edit', compact('abnormal', 'notification'));
+        }
+        
 public function update(Request $request, $notificationNumber)
 {
     $abnormal = Abnormal::where('notification_number', $notificationNumber)->firstOrFail();
