@@ -192,7 +192,7 @@
                 @foreach($abnormal->files as $file)
                 <tr>
                     <td style="text-align: center; padding: 10px;">
-                        <img src="{{ public_path('storage/abnormalitas/' . $file['file_path']) }}" style="width: 150px; height: auto;">
+                    <img src="{{ public_path('storage/abnormalitas/' . $file['file_path']) }}">
                     </td>
                     <td style="padding: 10px;">{{ $file['keterangan'] }}</td>
                 </tr>
