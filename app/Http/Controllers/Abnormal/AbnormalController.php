@@ -227,7 +227,7 @@ public function downloadPDF($notificationNumber)
     // Pastikan folder tanda tangan abnormalitas ada
     $signaturePath = public_path("storage/signatures/abnormalitas/");
     if (!file_exists($signaturePath)) {
-        mkdir($signaturePath, 0777, true, true);
+        mkdir($signaturePath, 0777, true);
     }
 
     // Daftar tanda tangan yang akan diproses
