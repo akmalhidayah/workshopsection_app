@@ -16,7 +16,9 @@
         <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <!-- @vite(['resources/css/app.css', 'resources/js/app.js']) -->
+        <link rel="stylesheet" href="{{ asset('build/assets/app-ZZBB8zCG.css') }}">
+        <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script>
     </head>
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100 dark:bg-gray-900">

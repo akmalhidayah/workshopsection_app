@@ -14,7 +14,9 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <!-- @vite(['resources/css/app.css', 'resources/js/app.js']) -->
+    <link rel="stylesheet" href="{{ asset('build/assets/app-ZZBB8zCG.css') }}">
+    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script>
 
     <!-- Alpine.js -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
