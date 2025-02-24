@@ -193,7 +193,7 @@
                 <tr>
                     <td style="text-align: center; padding: 10px;">
                     <img src="{{ public_path('storage/abnormalitas/' . $file['file_path']) }}" 
-                    style="width: 500px; height: auto; display: block; margin: auto;">
+                    style="max-width: 200px; height: auto; display: block; margin: auto;">
                     </td>
                     <td style="padding: 10px;">{{ $file['keterangan'] }}</td>
                 </tr>
