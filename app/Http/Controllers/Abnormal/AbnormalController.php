@@ -209,10 +209,19 @@ public function show($notificationNumber)
     // Ambil data notifikasi terkait berdasarkan notification_number
     $notification = Notification::where('notification_number', $notificationNumber)->firstOrFail();
 
+    // Pastikan fields JSON didecode menjadi array
+    $abnormal->actions = is_string($abnormal->actions) ? json_decode($abnormal->actions, true) : $abnormal->actions;
+    $abnormal->risks = is_string($abnormal->risks) ? json_decode($abnormal->risks, true) : $abnormal->risks;
+    $abnormal->files = is_string($abnormal->files) ? json_decode($abnormal->files, true) : $abnormal->files;
 
-    // Kirim data ke view
+    // Pastikan nilai tidak null agar tidak error di view
+    $abnormal->actions = is_array($abnormal->actions) ? $abnormal->actions : [];
+    $abnormal->risks = is_array($abnormal->risks) ? $abnormal->risks : [];
+    $abnormal->files = is_array($abnormal->files) ? $abnormal->files : [];
+
     return view('abnormal.view', compact('abnormal', 'notification'));
 }
+
 
 public function downloadPDF($notificationNumber)
 {
