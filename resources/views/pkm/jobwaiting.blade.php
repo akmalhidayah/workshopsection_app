@@ -55,86 +55,74 @@
                                     @endif
                                 </div>
 
+                                    <!-- Grid dengan 2 kolom untuk mengatur tampilan dokumen lebih rapi -->
+                                <div class="grid grid-cols-2 gap-2 mt-3">
                                     <!-- Abnormalitas -->
-                                    <div class="mt-4 text-xs flex items-center space-x-2">
-                                    <i class="fas fa-exclamation-circle text-red-500"></i>
-                                    @if($notification->isAbnormalAvailable)
-                                        <a href="{{ route('abnormal.download_pdf', ['notificationNumber' => $notification->notification_number]) }}" class="text-red-500 font-semibold" target="_blank">Abnormalitas</a>
-                                    @else
-                                        <span class="text-gray-500">Abnormalitas: Tidak Tersedia</span>
-                                    @endif
-                                </div>
-                                <!-- Scope of Work -->
-                                <div class="mt-2 text-xs flex items-center space-x-2">
-                                    <i class="fas fa-tasks text-green-500"></i>
-                                    @if($notification->isScopeOfWorkAvailable)
-                                        <a href="{{ route('scopeofwork.view', ['notificationNumber' => $notification->notification_number]) }}" class="text-green-500 font-semibold" target="_blank">Scope of Work</a>
-                                    @else
-                                        <span class="text-gray-500">Scope of Work: Tidak Tersedia</span>
-                                    @endif
-                                </div>
-                                <!-- Gambar Teknik -->
-                                <div class="mt-2 text-xs flex items-center space-x-2">
-                                    <i class="fas fa-image text-blue-500"></i>
-                                    @if($notification->isGambarTeknikAvailable)
-                                        <a href="{{ route('view-dokumen', ['notificationNumber' => $notification->notification_number]) }}" 
-                                        class="text-blue-500 font-semibold" 
-                                        target="_blank">
-                                        Gambar Teknik
-                                        </a>
-                                    @else
-                                        <span class="text-gray-500">Gambar Teknik: Tidak Tersedia</span>
-                                    @endif
-                                </div>
-                            <!-- Dokumen HPP -->
-                            <div class="mt-2 flex text-xs items-center space-x-2">
-                                <i class="fas fa-file-alt text-purple-500"></i>
-                                @if($notification->isHppAvailable)
-                                    @if($notification->source_form === 'createhpp1')
-                                        <a href="{{ route('pkm.inputhpp.download_hpp1', ['notification_number' => $notification->notification_number]) }}" 
-                                        class="text-red-500 font-semibold hover:underline" target="_blank">
-                                            Dokumen HPP
-                                        </a>
-                                    @elseif($notification->source_form === 'createhpp2')
-                                        <a href="{{ route('pkm.inputhpp.download_hpp2', ['notification_number' => $notification->notification_number]) }}" 
-                                        class="text-blue-500 font-semibold hover:underline" target="_blank">
-                                            Dokumen HPP
-                                        </a>
-                                    @elseif($notification->source_form === 'createhpp3')
-                                        <a href="{{ route('pkm.inputhpp.download_hpp3', ['notification_number' => $notification->notification_number]) }}" 
-                                        class="text-green-500 font-semibold hover:underline" target="_blank">
-                                            Dokumen HPP
-                                        </a>
-                                    @endif
-                                @else
-                                    <span class="text-gray-500">Dokumen HPP: Tidak Tersedia</span>
-                                @endif
-                            </div>
-                                <!-- Dokumen PO -->
-                                <div class="mt-2 text-xs flex items-center space-x-2">
-                                    <i class="fas fa-receipt text-blue-400"></i>
-                                    @if($notification->purchaseOrder && $notification->purchaseOrder->po_document_path)
-                                        <a href="{{ Storage::url($notification->purchaseOrder->po_document_path) }}" target="_blank" class="text-blue-500 font-semibold">Dokumen PO/PR</a>
-                                    @else
-                                        <span class="text-gray-500">Dokumen PO/PR: Tidak Tersedia</span>
-                                    @endif
-                                </div>
+                                    <div class="text-xs flex items-center space-x-2">
+                                        <i class="fas fa-exclamation-circle text-red-500"></i>
+                                        @if($notification->isAbnormalAvailable)
+                                            <a href="{{ route('abnormal.download_pdf', ['notificationNumber' => $notification->notification_number]) }}" class="text-red-500 font-semibold" target="_blank">Abnormalitas</a>
+                                        @else
+                                            <span class="text-gray-500">Abnormalitas: Tidak Tersedia</span>
+                                        @endif
+                                    </div>
 
-                                <!-- Dokumen SPK -->
-                                <div class="mt-2 text-xs flex items-center space-x-2">
-                                    <i class="fas fa-file-contract text-indigo-500"></i>
-                                    @if($notification->isSpkAvailable)
-                                        <a href="{{ route('spk.show', ['notification_number' => $notification->notification_number]) }}" 
-                                        class="text-indigo-500 font-semibold" 
-                                        target="_blank">
-                                            Lihat Initial Work
-                                        </a>
-                                    @else
-                                        <span class="text-gray-500">Initial Work: Tidak Tersedia</span>
-                                    @endif
+                                    <!-- Scope of Work -->
+                                    <div class="text-xs flex items-center space-x-2">
+                                        <i class="fas fa-tasks text-green-500"></i>
+                                        @if($notification->isScopeOfWorkAvailable)
+                                            <a href="{{ route('scopeofwork.view', ['notificationNumber' => $notification->notification_number]) }}" class="text-green-500 font-semibold" target="_blank">Scope of Work</a>
+                                        @else
+                                            <span class="text-gray-500">Scope of Work: Tidak Tersedia</span>
+                                        @endif
+                                    </div>
+
+                                    <!-- Gambar Teknik -->
+                                    <div class="text-xs flex items-center space-x-2">
+                                        <i class="fas fa-image text-blue-500"></i>
+                                        @if($notification->isGambarTeknikAvailable)
+                                            <a href="{{ route('view-dokumen', ['notificationNumber' => $notification->notification_number]) }}" class="text-blue-500 font-semibold" target="_blank">Gambar Teknik</a>
+                                        @else
+                                            <span class="text-gray-500">Gambar Teknik: Tidak Tersedia</span>
+                                        @endif
+                                    </div>
+
+                                    <!-- Dokumen HPP -->
+                                    <div class="text-xs flex items-center space-x-2">
+                                        <i class="fas fa-file-alt text-purple-500"></i>
+                                        @if($notification->isHppAvailable)
+                                            @if($notification->source_form === 'createhpp1')
+                                                <a href="{{ route('pkm.inputhpp.download_hpp1', ['notification_number' => $notification->notification_number]) }}" class="text-red-500 font-semibold hover:underline" target="_blank">Dokumen HPP</a>
+                                            @elseif($notification->source_form === 'createhpp2')
+                                                <a href="{{ route('pkm.inputhpp.download_hpp2', ['notification_number' => $notification->notification_number]) }}" class="text-blue-500 font-semibold hover:underline" target="_blank">Dokumen HPP</a>
+                                            @elseif($notification->source_form === 'createhpp3')
+                                                <a href="{{ route('pkm.inputhpp.download_hpp3', ['notification_number' => $notification->notification_number]) }}" class="text-green-500 font-semibold hover:underline" target="_blank">Dokumen HPP</a>
+                                            @endif
+                                        @else
+                                            <span class="text-gray-500">Dokumen HPP: Tidak Tersedia</span>
+                                        @endif
+                                    </div>
+
+                                    <!-- Dokumen PO -->
+                                    <div class="text-xs flex items-center space-x-2">
+                                        <i class="fas fa-receipt text-blue-400"></i>
+                                        @if($notification->purchaseOrder && $notification->purchaseOrder->po_document_path)
+                                            <a href="{{ Storage::url($notification->purchaseOrder->po_document_path) }}" target="_blank" class="text-blue-500 font-semibold">Dokumen PO/PR</a>
+                                        @else
+                                            <span class="text-gray-500">Dokumen PO/PR: Tidak Tersedia</span>
+                                        @endif
+                                    </div>
+
+                                    <!-- Dokumen SPK -->
+                                    <div class="text-xs flex items-center space-x-2">
+                                        <i class="fas fa-file-contract text-indigo-500"></i>
+                                        @if($notification->isSpkAvailable)
+                                            <a href="{{ route('spk.show', ['notification_number' => $notification->notification_number]) }}" class="text-indigo-500 font-semibold" target="_blank">Lihat Initial Work</a>
+                                        @else
+                                            <span class="text-gray-500">Initial Work: Tidak Tersedia</span>
+                                        @endif
+                                    </div>
                                 </div>
-
-
                                 <!-- Form untuk Update Progress -->
                                 <form method="POST" action="{{ route('pkm.jobwaiting.updateProgress', $notification->notification_number) }}">
                                     @csrf
