@@ -152,7 +152,7 @@
                         <!-- Tanda Tangan SM -->
                         <td style="border-right: 1px solid black; padding: 4px; text-align: center; vertical-align: bottom; height: 70px;">
                             @if(!empty($hpp->senior_manager_signature_requesting_unit) && file_exists(public_path(str_replace(asset('/'), '', $hpp->senior_manager_signature_requesting_unit))))
-                                <img src="file://{{ public_path(str_replace(asset('/'), '', $hpp->senior_manager_signature_requesting_unit)) }}" 
+                            <img src="{{ asset('storage/signatures/hpp/manager_signature_' . $hpp->notification_number . '.png') }}" 
                                     alt="TTD SM" 
                                     style="width: 150px; height: 70px; object-fit: contain;">
                             @else
@@ -163,7 +163,7 @@
                         <!-- Tanda Tangan MGR -->
                         <td style="padding: 4px; text-align: center; vertical-align: bottom; height: 70px;">
                             @if(!empty($hpp->manager_signature_requesting_unit) && file_exists(public_path(str_replace(asset('/'), '', $hpp->manager_signature_requesting_unit))))
-                                <img src="file://{{ public_path(str_replace(asset('/'), '', $hpp->manager_signature_requesting_unit)) }}" 
+                            <img src="{{ asset('storage/signatures/hpp/senior_manager_signature_' . $hpp->notification_number . '.png') }}" 
                                     alt="TTD MGR" 
                                     style="width: 150px; height: 70px; object-fit: contain;">
                             @else
@@ -382,7 +382,7 @@
                         <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 90px; min-height: 90px;">
                             @if(!empty($hpp->general_manager_signature) && file_exists(public_path(str_replace(asset('/'), '', $hpp->general_manager_signature))))
                                 <div style="display: inline-block; width: 160px; height: 80px;">
-                                    <img src="file://{{ public_path(str_replace(asset('/'), '', $hpp->general_manager_signature)) }}" 
+                                <img src="{{ asset('storage/signatures/hpp/general_manager_signature_' . $hpp->notification_number . '.png') }}" 
                                         alt="GM Signature" 
                                         style="width: 180px; height: 100px; object-fit: contain; filter: drop-shadow(3px 3px 5px black);">
                                 </div>

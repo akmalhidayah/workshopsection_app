@@ -9,7 +9,7 @@
         <div class="max-w-7xl mx-auto">
             <!-- Input Pencarian -->
             <div class="mb-4 relative">
-                <input type="text" id="search" placeholder="Cari Nomor Notifikasi..." 
+                <input type="text" id="search" placeholder="Cari Nomor Order..." 
                     class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500 text-sm w-full sm:w-1/3">
                 <i class="fas fa-search absolute left-3 top-3 text-gray-500"></i>
             </div>
@@ -19,7 +19,7 @@
                 <table class="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
                     <thead>
                         <tr class="bg-orange-500 text-white">
-                            <th class="px-6 py-3 text-sm font-semibold border-b">Nomor Notifikasi</th>
+                            <th class="px-6 py-3 text-sm font-semibold border-b">Nomor Order</th>
                             <th class="px-6 py-3 text-sm font-semibold border-b">Dokumen LHPP</th>
                             <th class="px-6 py-3 text-sm font-semibold border-b">Dokumen LPJ</th>
                             <th class="px-6 py-3 text-sm font-semibold border-b">Dokumen PPL</th>

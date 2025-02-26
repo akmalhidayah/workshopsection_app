@@ -34,42 +34,63 @@
                             <td class="px-3 py-2 text-xs font-medium text-gray-600 notification-number">
                                 {{ $notification->notification_number }}
                             </td>
+                        <!-- Detail Pekerjaan -->
+                        <td class="px-3 py-2">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div class="col-span-2 font-semibold text-gray-700">📌 {{ $notification->job_name }}</div>
+                                <div>🏢 <span class="font-medium">Unit:</span> {{ $notification->unit_work }}</div>
+                                <div>📅 <span class="font-medium">Tanggal:</span> {{ $notification->input_date }}</div>
 
-                            <!-- Detail Pekerjaan -->
-                            <td class="px-3 py-2">
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    <div class="col-span-2 font-semibold text-gray-700">📌 {{ $notification->job_name }}</div>
-                                    <div>🏢 <span class="font-medium">Unit:</span> {{ $notification->unit_work }}</div>
-                                    <div>📅 <span class="font-medium">Tanggal:</span> {{ $notification->input_date }}</div>
-                                    
-                                    <!-- Priority Selection -->
-                                    <div class="col-span-2 mt-1">
-                                        <form action="{{ route('notifications.updatePriority', $notification->notification_number) }}" method="POST">
-                                            @csrf @method('PATCH')
-                                            <div class="flex items-center gap-2">
-                                                <select name="priority" class="px-2 py-1 rounded bg-gray-100 border-gray-300 text-xs w-28">
-                                                    <option value="Urgently" {{ $notification->priority == 'Urgently' ? 'selected' : '' }}>Urgently</option>
-                                                    <option value="Hard" {{ $notification->priority == 'Hard' ? 'selected' : '' }}>Hard</option>
-                                                    <option value="Medium" {{ $notification->priority == 'Medium' ? 'selected' : '' }}>Medium</option>
-                                                    <option value="Low" {{ $notification->priority == 'Low' ? 'selected' : '' }}>Low</option>
-                                                </select>
-                                                <button type="submit" class="bg-gray-500 text-white px-3 py-1 rounded text-xs hover:bg-gray-600 transition">Update</button>
-                                            </div>
-                                        </form>
-                                    </div>
-
-                                    <!-- Dokumen -->
-                                    <div class="col-span-2 flex flex-wrap gap-2 mt-2">
-                                        <a href="{{ route('admin.abnormal.download_pdf', $notification->notification_number) }}" 
-                                           class="bg-red-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-red-600 transition">📄 Abnormalitas</a>
-                                        <a href="{{ route('scopeofwork.view', $notification->notification_number) }}" 
-                                           class="bg-green-400 text-white px-3 py-1 rounded-lg text-xs hover:bg-green-500 transition">📄 Scope</a>
-                                        <a href="{{ route('view-dokumen', $notification->notification_number) }}" 
-                                           class="bg-blue-400 text-white px-3 py-1 rounded-lg text-xs hover:bg-blue-500 transition">📄 Gambar</a>
-                                    </div>
+                                <!-- Priority Selection -->
+                                <div class="col-span-2 mt-1">
+                                    <form action="{{ route('notifications.updatePriority', $notification->notification_number) }}" method="POST">
+                                        @csrf @method('PATCH')
+                                        <div class="flex items-center gap-2">
+                                            <select name="priority" class="px-2 py-1 rounded bg-gray-100 border-gray-300 text-xs w-28">
+                                                <option value="Urgently" {{ $notification->priority == 'Urgently' ? 'selected' : '' }}>Urgently</option>
+                                                <option value="Hard" {{ $notification->priority == 'Hard' ? 'selected' : '' }}>Hard</option>
+                                                <option value="Medium" {{ $notification->priority == 'Medium' ? 'selected' : '' }}>Medium</option>
+                                                <option value="Low" {{ $notification->priority == 'Low' ? 'selected' : '' }}>Low</option>
+                                            </select>
+                                            <button type="submit" class="bg-gray-500 text-white px-3 py-1 rounded text-xs hover:bg-gray-600 transition">Update</button>
+                                        </div>
+                                    </form>
                                 </div>
-                            </td>
 
+                                <!-- Dokumen -->
+                                <div class="col-span-2 flex flex-wrap gap-2 mt-2">
+                                    <a href="{{ route('admin.abnormal.download_pdf', $notification->notification_number) }}" 
+                                    class="bg-red-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-red-600 transition">📄 Abnormalitas</a>
+                                    <a href="{{ route('scopeofwork.view', $notification->notification_number) }}" 
+                                    class="bg-green-400 text-white px-3 py-1 rounded-lg text-xs hover:bg-green-500 transition">📄 Scope</a>
+                                    <a href="{{ route('view-dokumen', $notification->notification_number) }}" 
+                                    class="bg-blue-400 text-white px-3 py-1 rounded-lg text-xs hover:bg-blue-500 transition">📄 Gambar</a>
+                                </div>
+
+                                <!-- Kondisi untuk Tombol Lihat/Buat SPK -->
+                                @if($notification->priority == 'Urgently')
+                                    <div class="mt-2 flex space-x-2">
+                                        @php
+                                            $spk = \App\Models\SPK::where('notification_number', $notification->notification_number)->first();
+                                        @endphp
+
+                                        @if ($spk)
+                                            <a href="{{ route('spk.show', ['notification_number' => $notification->notification_number]) }}" 
+                                            class="bg-yellow-400 text-white px-3 py-1 rounded text-xs hover:bg-yellow-500 transition duration-150 flex items-center space-x-1" target="_blank">
+                                                <i class="fas fa-eye"></i>
+                                                <span>Lihat Initial Work</span>
+                                            </a>
+                                        @else
+                                            <a href="{{ route('spk.create', ['notificationNumber' => $notification->notification_number]) }}" 
+                                            class="bg-yellow-400 text-white px-3 py-1 rounded text-xs hover:bg-orange-500 transition duration-150 flex items-center space-x-1">
+                                                <i class="fas fa-file-alt"></i>
+                                                <span>Buat Initial Work</span>
+                                            </a>
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
+                        </td>
                             <!-- Catatan -->
                             <td class="px-3 py-2 text-right">
                                 <form action="{{ route('notifications.update', $notification->notification_number) }}" method="POST">

@@ -17,7 +17,7 @@
             </select>
 
             <!-- Pencarian Berdasarkan Nomor Notifikasi -->
-            <input type="text" name="search" class="px-2 py-1 rounded border-gray-300 text-sm" placeholder="Cari Nomor Notifikasi" value="{{ request('search') }}" oninput="this.form.submit()">
+            <input type="text" name="search" class="px-2 py-1 rounded border-gray-300 text-sm" placeholder="Cari Nomor Order" value="{{ request('search') }}" oninput="this.form.submit()">
         </form>
     </div>
 
@@ -36,9 +36,10 @@
                             <div class="bg-gray-50 shadow-md rounded-lg p-4 border border-gray-200 hover:shadow-lg transition duration-200">
                                 <h4 class="text-xs font-bold text-gray-800 mb-2 flex items-center space-x-1">
                                     <i class="fas fa-bell text-blue-500"></i>
-                                    <span>Nomor Notifikasi:</span>
+                                    <span>Nomor Order:</span>
                                 </h4>
                                 <p class="text-blue-600 text-sm font-semibold">{{ $notification->notification_number }}</p>
+                                <div class="mt-2 text-xs flex items-center space-x-2 font-bold">📌 {{ $notification->abnormal->abnormal_title }}</div>
                                 <!-- Display Priority Status -->
                                 <div class="mt-2 text-xs">
                                     @if($notification->priority == 'Urgently')
@@ -63,7 +64,6 @@
                                         <span class="text-gray-500">Abnormalitas: Tidak Tersedia</span>
                                     @endif
                                 </div>
-
                                 <!-- Scope of Work -->
                                 <div class="mt-2 text-xs flex items-center space-x-2">
                                     <i class="fas fa-tasks text-green-500"></i>

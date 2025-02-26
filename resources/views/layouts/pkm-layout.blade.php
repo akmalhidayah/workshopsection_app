@@ -71,6 +71,12 @@
                         <i class="fa fa-bell icon mr-2"></i>
                         <span class="nav-text">List Pekerjaan</span>
                     </a>
+                    <a href="#" 
+                    class="block px-4 py-2 mt-2 text-sm font-semibold rounded-lg flex items-center 
+                    {{ request()->routeIs('#') ? 'bg-white text-orange-600' : 'text-white hover:bg-orange-600' }}">
+                        <i class="fa fa-bell icon mr-2"></i>
+                        <span class="nav-text">Pengadaan & Kebutuhan Material</span>
+                    </a>
 
                     <a href="{{ route('pkm.lhpp.index') }}" 
                     class="block px-4 py-2 mt-2 text-sm font-semibold rounded-lg flex items-center 
