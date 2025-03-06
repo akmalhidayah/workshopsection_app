@@ -354,6 +354,4 @@ protected function notifyNextRole($role, $unitWork, $hpp)
         }
     }
     
-    
-
 }

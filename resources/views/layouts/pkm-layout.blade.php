@@ -14,9 +14,11 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <!-- @vite(['resources/css/app.css', 'resources/js/app.js']) -->
-    <link rel="stylesheet" href="{{ asset('build/assets/app-ZZBB8zCG.css') }}">
-    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <!-- <link rel="stylesheet" href="{{ asset('build/assets/app-ZZBB8zCG.css') }}">
+    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script> -->
 
     <!-- Alpine.js -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -71,13 +73,12 @@
                         <i class="fa fa-bell icon mr-2"></i>
                         <span class="nav-text">List Pekerjaan</span>
                     </a>
-                    <a href="#" 
+                    <a href="{{ route('pkm.items.index') }}" 
                     class="block px-4 py-2 mt-2 text-sm font-semibold rounded-lg flex items-center 
-                    {{ request()->routeIs('#') ? 'bg-white text-orange-600' : 'text-white hover:bg-orange-600' }}">
-                        <i class="fa fa-boxes icon mr-2"></i>
-                        <span class="nav-text">Pengadaan & Kebutuhan Material</span>
-                    </a>
-
+                    {{ request()->routeIs('pkm.items.index') ? 'bg-white text-orange-600' : 'text-white hover:bg-orange-600' }}">
+                    <i class="fa fa-boxes icon mr-2"></i>
+                    <span class="nav-text">Item Kebutuhan Kerjaan</span>
+                </a>
                     <a href="{{ route('pkm.lhpp.index') }}" 
                     class="block px-4 py-2 mt-2 text-sm font-semibold rounded-lg flex items-center 
                     {{ request()->routeIs('pkm.lhpp.index') ? 'bg-white text-orange-600' : 'text-white hover:bg-orange-600' }}">

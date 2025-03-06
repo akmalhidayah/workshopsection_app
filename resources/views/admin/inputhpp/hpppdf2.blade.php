@@ -154,29 +154,25 @@
                     <tr>
                     <td style="border-right: 1px solid black; padding: 4px; text-align: center; vertical-align: bottom; position: relative;">
                         <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 70px; min-height: 70px;  position: relative; overflow: hidden;">
-                            @if(!empty($hpp->general_manager_signature_requesting_unit) && file_exists(public_path(str_replace(asset('/'), '', $hpp->general_manager_signature_requesting_unit))))
-                                <div style="display: inline-block; width: 120px; height: 60px;  position: relative;">
-                                    <img src="file://{{ public_path(str_replace(asset('/'), '', $hpp->general_manager_signature_requesting_unit)) }}" 
-                                        alt="TTD" 
-                                        style="width: 150px; height: 80px; object-fit: contain; position: absolute; top: -10px; left: -15px; z-index: 5; filter: drop-shadow(3px 3px 4px black);">
-                                </div>
-                            @else
-                                <strong style="font-size: 20px; font-weight: bold;">TTD</strong>
-                            @endif
+                        @if(!empty($hpp->general_manager_signature_requesting_unit) && file_exists(storage_path("app/public/signatures/hpp/general_manager_signature_requesting_unit_{$hpp->notification_number}.png")))
+                            <img src="{{ storage_path("app/public/signatures/hpp/general_manager_signature_requesting_unit_{$hpp->notification_number}.png") }}" 
+                                alt="TTD" 
+                                style="width: 150px; height: 80px; object-fit: contain;">
+                        @else
+                            <strong style="font-size: 20px; font-weight: bold;">TTD</strong>
+                        @endif
                         </div>
                     </td>
 
                     <td style="padding: 4px; text-align: center; vertical-align: bottom; position: relative;">
                         <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 70px; min-height: 70px; position: relative; overflow: hidden;">
-                            @if(!empty($hpp->senior_manager_signature_requesting_unit) && file_exists(public_path(str_replace(asset('/'), '', $hpp->senior_manager_signature_requesting_unit))))
-                                <div style="display: inline-block; width: 120px; height: 60px;  position: relative;">
-                                    <img src="file://{{ public_path(str_replace(asset('/'), '', $hpp->senior_manager_signature_requesting_unit)) }}" 
-                                        alt="TTD" 
-                                        style="width: 150px; height: 80px; object-fit: contain; position: absolute; top: -10px; left: -15px; z-index: 5; filter: drop-shadow(3px 3px 4px black);">
-                                </div>
-                            @else
-                                <strong style="font-size: 20px; font-weight: bold;">TTD</strong>
-                            @endif
+                        @if(!empty($hpp->senior_manager_signature_requesting_unit) && file_exists(storage_path("app/public/signatures/hpp/senior_manager_signature_requesting_unit_{$hpp->notification_number}.png")))
+                            <img src="{{ storage_path("app/public/signatures/hpp/senior_manager_signature_requesting_unit_{$hpp->notification_number}.png") }}" 
+                                alt="TTD" 
+                                style="width: 150px; height: 80px; object-fit: contain;">
+                        @else
+                            <strong style="font-size: 20px; font-weight: bold;">TTD</strong>
+                        @endif
                         </div>
                     </td>
                     </tr>
@@ -190,18 +186,15 @@
                     </tr>
                     <tr>
                     <td colspan="3" class="px-2 py-2 text-right" style="border-top: 1px solid black; border-bottom: 1px solid black; text-align: right; padding-right: 10px;">
-    <strong style="font-size: 9px;">{{ $hpp->managerSignatureUser ? $hpp->managerSignatureUser->initials : 'N/A' }}</strong> /
-    @if(!empty($hpp->manager_signature) && file_exists(public_path(str_replace(asset('/'), '', $hpp->manager_signature))))
-        <img src="file://{{ public_path(str_replace(asset('/'), '', $hpp->manager_signature)) }}" 
-            alt="Manager Signature" 
-            style="width: 60px; height: 20px; object-fit: contain; filter: drop-shadow(2px 2px 3px black); vertical-align: middle;">
-    @else
-        <strong style="font-size: 9px;">TTD</strong> <!-- TTD tetap ditampilkan jika tidak ada tanda tangan -->
-    @endif
-</td>
-
-
-
+                        <strong style="font-size: 9px;">{{ $hpp->managerSignatureUser ? $hpp->managerSignatureUser->initials : 'N/A' }}</strong> /
+                        @if(!empty($hpp->manager_signature) && file_exists(storage_path("app/public/signatures/hpp/manager_signature_{$hpp->notification_number}.png")))
+                            <img src="{{ storage_path("app/public/signatures/hpp/manager_signature_{$hpp->notification_number}.png") }}" 
+                                alt="Manager Signature" 
+                                style="width: 60px; height: 20px; object-fit: contain;">
+                        @else
+                            <strong style="font-size: 9px;">TTD</strong> <!-- TTD tetap ditampilkan jika tidak ada tanda tangan -->
+                        @endif
+                    </td>
                     </tr>
                 </table>
             </div>
@@ -400,29 +393,28 @@
                     </td>
                 </tr>
                 <tr>
-                    <!-- Tanda tangan GM -->
+                  <!-- Tanda tangan GM -->
                     <td class="px-2 py-3 text-center" style="width: 50%; border-right: 1px solid black; vertical-align: bottom;">
                         <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 90px; min-height: 90px;">
-                            @if(!empty($hpp->general_manager_signature) && file_exists(public_path(str_replace(asset('/'), '', $hpp->general_manager_signature))))
+                            @if(!empty($hpp->general_manager_signature) && file_exists(storage_path("app/public/signatures/hpp/general_manager_signature_{$hpp->notification_number}.png")))
                                 <div style="display: inline-block; width: 160px; height: 80px;">
-                                    <img src="file://{{ public_path(str_replace(asset('/'), '', $hpp->general_manager_signature)) }}" 
+                                    <img src="{{ storage_path("app/public/signatures/hpp/general_manager_signature_{$hpp->notification_number}.png") }}" 
                                         alt="GM Signature" 
-                                        style="width: 180px; height: 100px; object-fit: contain; filter: drop-shadow(3px 3px 5px black);">
+                                        style="width: 180px; height: 100px; object-fit: contain;">
                                 </div>
                             @else
                                 <strong style="font-size: 22px; font-weight: bold;">TTD</strong>
                             @endif
                         </div>
                     </td>
-
                     <!-- Tanda tangan SM -->
                     <td class="px-2 py-3 text-center" style="width: 50%; vertical-align: bottom;">
                         <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 90px; min-height: 90px;">
-                            @if(!empty($hpp->senior_manager_signature) && file_exists(public_path(str_replace(asset('/'), '', $hpp->senior_manager_signature))))
+                            @if(!empty($hpp->senior_manager_signature) && file_exists(storage_path("app/public/signatures/hpp/senior_manager_signature_{$hpp->notification_number}.png")))
                                 <div style="display: inline-block; width: 160px; height: 80px;">
-                                    <img src="file://{{ public_path(str_replace(asset('/'), '', $hpp->senior_manager_signature)) }}" 
+                                    <img src="{{ storage_path("app/public/signatures/hpp/senior_manager_signature_{$hpp->notification_number}.png") }}" 
                                         alt="Senior Manager Signature" 
-                                        style="width: 180px; height: 100px; object-fit: contain; filter: drop-shadow(3px 3px 5px black);">
+                                        style="width: 180px; height: 100px; object-fit: contain;">
                                 </div>
                             @else
                                 <strong style="font-size: 22px; font-weight: bold;">TTD</strong>
@@ -439,14 +431,14 @@
                     </td>
                 </tr>
                 <tr>
-                    <td colspan="2" class="px-2 py-2 text-right" style="border-top: 1px solid black; border-bottom: 1px solid black; text-align: right;">
-                        <strong>{{ $hpp->managerSignatureUser ? $hpp->managerSignatureUser->initials : 'N/A' }}</strong> /
-                        @if(!empty($hpp->manager_signature) && file_exists(public_path(str_replace(asset('/'), '', $hpp->manager_signature))))
-                            <img src="file://{{ public_path(str_replace(asset('/'), '', $hpp->manager_signature)) }}" 
-                                alt="Manager Signature" 
-                                style="width: 80px; height: 30px; object-fit: contain; filter: drop-shadow(2px 2px 3px black);">
-                        @endif
-                    </td>
+                <td colspan="2" class="px-2 py-2 text-right" style="border-top: 1px solid black; border-bottom: 1px solid black; text-align: right;">
+                    <strong>{{ $hpp->managerSignatureUser ? $hpp->managerSignatureUser->initials : 'N/A' }}</strong> /
+                    @if(!empty($hpp->manager_signature) && file_exists(storage_path("app/public/signatures/hpp/manager_signature_{$hpp->notification_number}.png")))
+                        <img src="{{ storage_path("app/public/signatures/hpp/manager_signature_{$hpp->notification_number}.png") }}" 
+                            alt="Manager Signature" 
+                            style="width: 80px; height: 30px; object-fit: contain; filter: drop-shadow(2px 2px 3px black);">
+                    @endif
+                </td>
                 </tr>
             </table>
         </td>

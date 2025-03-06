@@ -251,28 +251,36 @@ class LHPPController extends Controller
     {
         $lhpp = LHPP::where('notification_number', $notification_number)->firstOrFail();
     
-        
-        // Cek apakah field adalah string sebelum json_decode
-        $lhpp->material_description = is_string($lhpp->material_description) ? json_decode($lhpp->material_description) : $lhpp->material_description;
-        $lhpp->material_volume = is_string($lhpp->material_volume) ? json_decode($lhpp->material_volume) : $lhpp->material_volume;
-        $lhpp->material_harga_satuan = is_string($lhpp->material_harga_satuan) ? json_decode($lhpp->material_harga_satuan) : $lhpp->material_harga_satuan;
-        $lhpp->material_jumlah = is_string($lhpp->material_jumlah) ? json_decode($lhpp->material_jumlah) : $lhpp->material_jumlah;
+        // Decode JSON jika masih dalam bentuk string
+        $lhpp->material_description = is_string($lhpp->material_description) ? json_decode($lhpp->material_description, true) : $lhpp->material_description;
+        $lhpp->material_volume = is_string($lhpp->material_volume) ? json_decode($lhpp->material_volume, true) : $lhpp->material_volume;
+        $lhpp->material_harga_satuan = is_string($lhpp->material_harga_satuan) ? json_decode($lhpp->material_harga_satuan, true) : $lhpp->material_harga_satuan;
+        $lhpp->material_jumlah = is_string($lhpp->material_jumlah) ? json_decode($lhpp->material_jumlah, true) : $lhpp->material_jumlah;
     
-        $lhpp->consumable_description = is_string($lhpp->consumable_description) ? json_decode($lhpp->consumable_description) : $lhpp->consumable_description;
-        $lhpp->consumable_volume = is_string($lhpp->consumable_volume) ? json_decode($lhpp->consumable_volume) : $lhpp->consumable_volume;
-        $lhpp->consumable_harga_satuan = is_string($lhpp->consumable_harga_satuan) ? json_decode($lhpp->consumable_harga_satuan) : $lhpp->consumable_harga_satuan;
-        $lhpp->consumable_jumlah = is_string($lhpp->consumable_jumlah) ? json_decode($lhpp->consumable_jumlah) : $lhpp->consumable_jumlah;
+        $lhpp->consumable_description = is_string($lhpp->consumable_description) ? json_decode($lhpp->consumable_description, true) : $lhpp->consumable_description;
+        $lhpp->consumable_volume = is_string($lhpp->consumable_volume) ? json_decode($lhpp->consumable_volume, true) : $lhpp->consumable_volume;
+        $lhpp->consumable_harga_satuan = is_string($lhpp->consumable_harga_satuan) ? json_decode($lhpp->consumable_harga_satuan, true) : $lhpp->consumable_harga_satuan;
+        $lhpp->consumable_jumlah = is_string($lhpp->consumable_jumlah) ? json_decode($lhpp->consumable_jumlah, true) : $lhpp->consumable_jumlah;
     
-        $lhpp->upah_description = is_string($lhpp->upah_description) ? json_decode($lhpp->upah_description) : $lhpp->upah_description;
-        $lhpp->upah_volume = is_string($lhpp->upah_volume) ? json_decode($lhpp->upah_volume) : $lhpp->upah_volume;
-        $lhpp->upah_harga_satuan = is_string($lhpp->upah_harga_satuan) ? json_decode($lhpp->upah_harga_satuan) : $lhpp->upah_harga_satuan;
-        $lhpp->upah_jumlah = is_string($lhpp->upah_jumlah) ? json_decode($lhpp->upah_jumlah) : $lhpp->upah_jumlah;
-
+        $lhpp->upah_description = is_string($lhpp->upah_description) ? json_decode($lhpp->upah_description, true) : $lhpp->upah_description;
+        $lhpp->upah_volume = is_string($lhpp->upah_volume) ? json_decode($lhpp->upah_volume, true) : $lhpp->upah_volume;
+        $lhpp->upah_harga_satuan = is_string($lhpp->upah_harga_satuan) ? json_decode($lhpp->upah_harga_satuan, true) : $lhpp->upah_harga_satuan;
+        $lhpp->upah_jumlah = is_string($lhpp->upah_jumlah) ? json_decode($lhpp->upah_jumlah, true) : $lhpp->upah_jumlah;
+    
+        // ✅ Pastikan semua nilai harga dan jumlah dikonversi ke float agar tidak error saat number_format()
+        $lhpp->material_harga_satuan = array_map('floatval', $lhpp->material_harga_satuan);
+        $lhpp->material_jumlah = array_map('floatval', $lhpp->material_jumlah);
+        $lhpp->consumable_harga_satuan = array_map('floatval', $lhpp->consumable_harga_satuan);
+        $lhpp->consumable_jumlah = array_map('floatval', $lhpp->consumable_jumlah);
+        $lhpp->upah_harga_satuan = array_map('floatval', $lhpp->upah_harga_satuan);
+        $lhpp->upah_jumlah = array_map('floatval', $lhpp->upah_jumlah);
+    
         // ✅ Decode JSON untuk `images`
         $lhpp->images = is_string($lhpp->images) ? json_decode($lhpp->images, true) : $lhpp->images;
     
         return view('pkm.lhpp.show', compact('lhpp'));
     }
+    
     public function edit($id)
     {
         // Ambil data LHPP berdasarkan id/notification_number

@@ -4,7 +4,8 @@
             {{ __('Job Waiting') }}
         </h2>
     </x-slot>
-   <!-- Filter Prioritas dan Pencarian -->
+
+    <!-- Filter Prioritas dan Pencarian -->
     <div class="mb-4">
         <form method="GET" action="{{ route('pkm.jobwaiting') }}" class="flex flex-wrap gap-2">
             <!-- Filter Prioritas -->
@@ -25,7 +26,8 @@
         <div class="max-w-7xl mx-auto sm:px-4 lg:px-6">
             <div class="bg-white overflow-hidden sm:rounded-lg p-3">
                 <h3 class="text-sm font-semibold mb-3">Pekerjaan yang Menunggu</h3>
-                <!-- Pagination Bagian Bawah -->
+
+                <!-- Pagination -->
                 <div class="mt-3">
                     {{ $notifications->links() }}
                 </div>
@@ -39,7 +41,9 @@
                                     <span>Nomor Order:</span>
                                 </h4>
                                 <p class="text-blue-600 text-sm font-semibold">{{ $notification->notification_number }}</p>
+                                
                                 <div class="mt-2 text-xs flex items-center space-x-2 font-bold">📌 {{ $notification->abnormal->abnormal_title }}</div>
+
                                 <!-- Display Priority Status -->
                                 <div class="mt-2 text-xs">
                                     @if($notification->priority == 'Urgently')
@@ -54,9 +58,8 @@
                                         <span class="text-gray-500">Priority: Not Set</span>
                                     @endif
                                 </div>
-
-                                    <!-- Grid dengan 2 kolom untuk mengatur tampilan dokumen lebih rapi -->
-                                <div class="grid grid-cols-2 gap-2 mt-3">
+                                 <!-- Grid dengan 2 kolom untuk mengatur tampilan dokumen lebih rapi -->
+                                 <div class="grid grid-cols-2 gap-2 mt-3">
                                     <!-- Abnormalitas -->
                                     <div class="text-xs flex items-center space-x-2">
                                         <i class="fas fa-exclamation-circle text-red-500"></i>
@@ -120,48 +123,67 @@
                                             <a href="{{ route('spk.show', ['notification_number' => $notification->notification_number]) }}" class="text-indigo-500 font-semibold" target="_blank">Lihat Initial Work</a>
                                         @else
                                             <span class="text-gray-500">Initial Work: Tidak Tersedia</span>
-                                        @endif
+                                         @endif
                                     </div>
                                 </div>
-                                <!-- Form untuk Update Progress -->
-                                <form method="POST" action="{{ route('pkm.jobwaiting.updateProgress', $notification->notification_number) }}">
-                                    @csrf
-                                    <div class="mt-3">
-                                        <label for="progress_pekerjaan" class="text-xs font-medium text-gray-700">Progress Pekerjaan</label>
-                                        <div class="flex items-center space-x-2">
-                                            <input type="range" min="0" max="100" 
-                                                value="{{ $notification->purchaseOrder->progress_pekerjaan ?? 0 }}" 
-                                                name="progress_pekerjaan" 
-                                                class="slider w-full" 
-                                                oninput="updateProgressValue(this, '{{ $notification->notification_number }}')">
-                                            <span id="progress_value_{{ $notification->notification_number }}" class="text-xs font-medium">
-                                                {{ $notification->purchaseOrder->progress_pekerjaan ?? 0 }}%
-                                            </span>
-                                        </div>
-                                    </div>
+                                <!-- Wrapper untuk Tombol -->
+                                <div class="flex space-x-2">
+                                    <!-- Tombol Pengadaan Material -->
+                                    <a href="{{ route('pkm.items.index') }}"
+                                        id="material-btn-{{ $notification->notification_number }}"
+                                        class="progress-button px-3 py-1 text-xs rounded bg-gray-500 hover:bg-gray-700 text-white w-full
+                                        {{ $notification->purchaseOrder->progress_pekerjaan >= 11 ? 'disabled-btn' : '' }}">
+                                        Pengadaan Kebutuhan Item
+                                    </a>
 
-                                    <!-- Target Penyelesaian -->
+                                    <!-- Tombol Start Pekerjaan -->
+                                    <button id="progress-btn-{{ $notification->notification_number }}-11"
+                                        type="button"
+                                        onclick="updateProgress('{{ $notification->notification_number }}', 11, false)"
+                                        class="progress-button px-3 py-1 text-xs rounded bg-yellow-500 hover:bg-yellow-700 text-white w-full
+                                        {{ $notification->purchaseOrder->progress_pekerjaan >= 11 ? 'disabled-btn' : '' }}"
+                                        data-progress="{{ $notification->purchaseOrder->progress_pekerjaan }}"
+                                        {{ $notification->purchaseOrder->progress_pekerjaan >= 11 ? 'disabled' : '' }}>
+                                        Start Pekerjaan
+                                    </button>
+                                </div>
+                           <!-- Wrapper untuk Slider & Persentase -->
+                            <div class="mt-2 flex items-center w-full space-x-2">
+                                <!-- Slider Progress -->
+                                <input type="range" min="11" max="100" step="1" 
+                                    value="{{ $notification->purchaseOrder->progress_pekerjaan }}" 
+                                    class="w-full cursor-pointer"
+                                    id="progress-slider-{{ $notification->notification_number }}"
+                                    onchange="updateSlider('{{ $notification->notification_number }}', this.value)"
+                                    {{ $notification->purchaseOrder->progress_pekerjaan < 11 ? 'disabled' : '' }}>
+
+                                <!-- Menampilkan Nilai Slider di Samping -->
+                                <span id="slider-value-{{ $notification->notification_number }}" 
+                                    class="text-xs font-semibold text-gray-700 w-10 text-right">
+                                    {{ $notification->purchaseOrder->progress_pekerjaan }}%
+                                </span>
+                            </div>
+                                <!-- Form Update Progress -->
+                                <form method="POST" action="{{ route('pkm.jobwaiting.updateProgress', ['notification_number' => $notification->notification_number]) }}">
+                                    @csrf
                                     <div class="mt-2 text-xs">
-                                        <label for="target_penyelesaian" class="font-medium text-gray-700">Target Penyelesaian</label>
-                                        <input type="date" name="target_penyelesaian" id="target_penyelesaian" 
+                                        <label for="target_penyelesaian-{{ $notification->notification_number }}" class="font-medium text-gray-700">Target Penyelesaian</label>
+                                        <input type="date" name="target_penyelesaian" 
+                                            id="target_penyelesaian-{{ $notification->notification_number }}"
                                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-xs"
                                             value="{{ $notification->purchaseOrder->target_penyelesaian ?? '' }}">
                                     </div>
-                                     <!-- Approval Target Penyelesaian  -->
-                                    <div class="mt-2 flex items-center space-x-1 text-xs">
-                                        <i class="fas fa-check-circle {{ $notification->purchaseOrder->approval_target === 'setuju' ? 'text-green-500' : 'text-red-500' }}"></i>
-                                        <span class="font-semibold">
-                                            {{ ucfirst($notification->purchaseOrder->approval_target) ?? 'Belum Ditentukan' }}
-                                        </span>
-                                    </div>
-                                    <!-- Catatan -->
-                                    <textarea name="catatan" rows="2" class="w-full mt-2 px-2 py-1 border border-gray-300 rounded-lg text-xs" placeholder="Catatan">{{ $notification->purchaseOrder->catatan ?? '' }}</textarea>
-                                <!-- Tombol Submit dengan Konfirmasi -->
-                                <button type="button" class="mt-3 bg-blue-500 text-white px-3 py-1 text-xs rounded hover:bg-blue-600 transition-colors update-progress-btn" 
-                                    data-form-id="progress-form-{{ $notification->notification_number }}">
-                                    Update Progress
-                                </button>
 
+                                    <!-- Catatan -->
+                                    <textarea name="catatan" rows="2"
+                                        id="catatan-{{ $notification->notification_number }}"
+                                        class="w-full mt-2 px-2 py-1 border border-gray-300 rounded-lg text-xs"
+                                        placeholder="Catatan">{{ $notification->purchaseOrder->catatan ?? '' }}</textarea>
+
+                                    <!-- Tombol Submit -->
+                                    <button type="submit" class="mt-3 bg-blue-500 text-white px-3 py-1 text-xs rounded hover:bg-blue-600 transition-colors">
+                                        Update
+                                    </button>
                                 </form>
                             </div>
                         @endforeach
@@ -170,84 +192,93 @@
                     <p class="text-center text-gray-500 mt-3">Tidak ada pekerjaan yang menunggu saat ini.</p>
                 @endif
 
-            </div>
         </div>
     </div>
-
     <style>
-        .slider {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 100%;
-            height: 8px;
-            background: #d3d3d3;
-            outline: none;
-            opacity: 0.9;
-            transition: opacity .2s;
-            border-radius: 10px;
-        }
-        .slider:hover {
-            opacity: 1;
-        }
-        .slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #4caf50;
-            cursor: pointer;
-        }
-        .slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #4caf50;
-            cursor: pointer;
-        }
-    </style>
+    .disabled-btn {
+        background-color: #d1d5db !important; /* Warna abu-abu */
+        color: #6b7280 !important; /* Warna teks lebih gelap */
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+    }
+</style>
+
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
-        function updateProgressValue(input, notificationNumber) {
-            const progressValue = document.getElementById(`progress_value_${notificationNumber}`);
-            progressValue.textContent = `${input.value}%`;
+  function updateProgress(notificationNumber, progressValue, isSlider = false) {
+    let button = document.querySelector(`#progress-btn-${notificationNumber}-${progressValue}`);
+    let materialButton = document.querySelector(`#material-btn-${notificationNumber}`);
+    let slider = document.getElementById(`progress-slider-${notificationNumber}`);
+    let sliderValueElement = document.getElementById(`slider-value-${notificationNumber}`);
+
+    // Cegah update ganda jika tombol sudah disabled
+    if (button && button.disabled && !isSlider) return;
+
+    // Nonaktifkan tombol "Start" dan "Material" setelah diklik
+    if (button && !isSlider) {
+        button.disabled = true;
+        button.classList.add('disabled-btn'); // Tambahkan class abu-abu
+        button.classList.remove('hover:bg-gray-700', 'hover:bg-yellow-700');
+    }
+
+    if (materialButton) {
+        materialButton.disabled = true;
+        materialButton.classList.add('disabled-btn'); // Tambahkan class abu-abu
+        materialButton.classList.remove('hover:bg-gray-700');
+    }
+
+    fetch(`/pkm/jobwaiting/update-progress/${notificationNumber}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ progress_pekerjaan: progressValue })
+    })
+    .then(response => {
+        if (!response.ok) throw new Error("Gagal memperbarui progress");
+        return response.json();
+    })
+    .then(data => {
+        // Update tampilan slider & nilai progress
+        if (slider) {
+            slider.value = data.new_progress;
+            updateSliderValue(data.new_progress, notificationNumber);
         }
-    </script>
-  <!-- SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<script>
-    document.querySelectorAll('.update-progress-btn').forEach(button => {
-        button.addEventListener('click', function () {
-            let form = this.closest('form'); // Ambil form terdekat
-
-            Swal.fire({
-                title: 'Konfirmasi Update Progress',
-                text: "Apakah Anda yakin ingin memperbarui progress pekerjaan ini?",
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Ya, Update!',
-                cancelButtonText: 'Batal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit(); // Kirim form jika dikonfirmasi
-                }
-            });
-        });
+        if (sliderValueElement) {
+            sliderValueElement.innerText = `${data.new_progress}%`;
+        }
+    })
+    .catch(error => {
+        console.error("Error:", error);
     });
-</script>
+}
 
+// Fungsi Update Nilai Slider
+function updateSlider(notificationNumber, value) {
+    updateProgress(notificationNumber, value, true);
+}
+
+// Fungsi menampilkan nilai slider saat digeser
+function updateSliderValue(value, notificationNumber) {
+    let sliderValueElement = document.getElementById(`slider-value-${notificationNumber}`);
+    if (sliderValueElement) {
+        sliderValueElement.innerText = `${value}%`;
+    }
+}
+
+
+// Alert hanya untuk Update Target & Catatan
 @if(session('success'))
-    <script>
-        Swal.fire({
-            title: "Berhasil!",
-            text: "{{ session('success') }}",
-            icon: "success",
-            confirmButtonText: "OK"
-        });
-    </script>
+    Swal.fire({
+        title: "Berhasil!",
+        text: "{{ session('success') }}",
+        icon: "success",
+        confirmButtonText: "OK"
+    });
 @endif
 
+</script>
 </x-pkm-layout>

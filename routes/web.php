@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\InputHPPController3;
 use App\Http\Controllers\Admin\SPKController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\LHPPController;
+use App\Http\Controllers\ItemsController;
 use App\Http\Controllers\PKMDashboardController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Approval\SPKApprovalController;
@@ -153,24 +154,6 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(fun
     Route::get('inputhpp/{notification_number}/download-hpp3', [InputHPPController3::class, 'downloadPDFHpp3'])->name('inputhpp.download_hpp3');
 });
 
-// Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(function () {
-//     Route::get('hpp/{notification_number}/pdf', [InputHPPController::class, 'generatePdf'])->name('inputhpp.generate_pdf');
-// });
-
-
-// Routes untuk LHPP
-// Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
-//     Route::get('lhpp', [App\Http\Controllers\Admin\LHPPController::class, 'index'])->name('lhpp.index');
-//     Route::get('lhpp/create', [App\Http\Controllers\Admin\LHPPController::class, 'create'])->name('lhpp.create');
-//     Route::post('lhpp', [App\Http\Controllers\Admin\LHPPController::class, 'store'])->name('lhpp.store');
-//     Route::get('lhpp/get-purchase-order/{notificationNumber}', [App\Http\Controllers\Admin\LHPPController::class, 'getPurchaseOrder'])->name('lhpp.get-purchase-order');
-//     Route::get('lhpp/get-work-duration/{notificationNumber}', [App\Http\Controllers\Admin\LHPPController::class, 'getWorkDuration'])->name('lhpp.get-work-duration');
-//     Route::get('lhpp/{notification_number}', [App\Http\Controllers\Admin\LHPPController::class, 'show'])->name('admin.lhpp.show');  // Nama route diubah
-//     Route::get('lhpp/{id}/edit', [App\Http\Controllers\Admin\LHPPController::class, 'edit'])->name('lhpp.edit');
-//     Route::put('lhpp/{id}', [App\Http\Controllers\Admin\LHPPController::class, 'update'])->name('lhpp.update');
-//     Route::delete('lhpp/{notification_number}', [App\Http\Controllers\Admin\LHPPController::class, 'destroy'])->name('lhpp.destroy');
-// });
-
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/lpj', [HomeController::class, 'lpj'])->name('admin.lpj');
     Route::post('/admin/lpj/{notification_number}', [HomeController::class, 'updateLpj'])->name('lpj.update');
@@ -234,6 +217,14 @@ Route::middleware(['auth', PkmMiddleware::class])
 
         // Route untuk kalkulasi durasi kerja dalam LHPP
         Route::get('calculate-work-duration/{notificationNumber}/{tanggalSelesai}', [LHPPController::class, 'calculateWorkDuration'])->name('lhpp.calculate-work-duration');
+
+            Route::prefix('items')->name('items.')->group(function () {
+                Route::get('/', [ItemsController::class, 'index'])->name('index'); // ✅ pkm.items.index
+                Route::get('/create', [ItemsController::class, 'create'])->name('create'); // ✅ pkm.items.create
+                Route::get('/{nomor_order}', [ItemsController::class, 'show'])->name('show'); // ✅ pkm.items.show
+                Route::get('/{nomor_order}/edit', [ItemsController::class, 'edit'])->name('edit'); // ✅ pkm.items.edit
+                Route::delete('/{nomor_order}', [ItemsController::class, 'destroy'])->name('destroy'); // ✅ pkm.items.destroy
+            }); 
     });
 
 // Routes for Abnormal Approval

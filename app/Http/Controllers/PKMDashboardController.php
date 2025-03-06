@@ -139,14 +139,13 @@ class PKMDashboardController extends Controller
         // Kirim data ke view
         return view('pkm.jobwaiting', ['notifications' => $paginatedNotifications]);
     }
-
     public function updateProgress(Request $request, $notification_number)
     {
-        // Validasi inputan progress, catatan, dan target penyelesaian
+        // Validasi input progress yang diperbolehkan
         $request->validate([
-            'progress_pekerjaan' => 'required|integer|min:0|max:100',
-            'catatan_pekerjaan' => 'nullable|string|max:1000',
-            'target_penyelesaian' => 'nullable|date', // Validasi untuk target penyelesaian
+            'progress_pekerjaan' => 'nullable|integer|min:10|max:100',
+            'catatan' => 'nullable|string|max:1000',
+            'target_penyelesaian' => 'nullable|date',
         ]);
     
         // Cari atau buat PurchaseOrder berdasarkan notification_number
@@ -155,18 +154,46 @@ class PKMDashboardController extends Controller
             ['purchase_order_number' => null]
         );
     
-        // Update progress pekerjaan, catatan pekerjaan, dan target penyelesaian
-        $purchaseOrder->progress_pekerjaan = $request->input('progress_pekerjaan');
-        $purchaseOrder->catatan = $request->input('catatan');
-        $purchaseOrder->target_penyelesaian = $request->input('target_penyelesaian'); // Simpan target penyelesaian
+        // Perbarui catatan dan target penyelesaian jika ada input
+        if ($request->filled('catatan')) {
+            $purchaseOrder->catatan = $request->input('catatan');
+        }
+    
+        if ($request->filled('target_penyelesaian')) {
+            $purchaseOrder->target_penyelesaian = $request->input('target_penyelesaian');
+        }
+    
+        // Periksa apakah progress diubah
+        if ($request->filled('progress_pekerjaan')) {
+            $newProgress = $request->input('progress_pekerjaan');
+    
+            // Pastikan update hanya untuk progress yang lebih tinggi
+            if ($newProgress > $purchaseOrder->progress_pekerjaan) {
+                $purchaseOrder->progress_pekerjaan = $newProgress;
+            }
+        }
+    
+        // Simpan perubahan
         $purchaseOrder->save();
     
-        return redirect()->back()->with('success', 'Progress, catatan, dan target penyelesaian berhasil diperbarui.');
+        // Periksa apakah request datang dari AJAX atau form biasa
+        if ($request->ajax()) {
+            return response()->json([
+                'message' => 'Progress pekerjaan berhasil diperbarui.',
+                'new_progress' => $purchaseOrder->progress_pekerjaan,
+                'catatan' => $purchaseOrder->catatan,
+                'target_penyelesaian' => $purchaseOrder->target_penyelesaian
+            ]);
+        }
+    
+        // Jika request berasal dari form biasa (bukan AJAX), kembalikan redirect dengan session flash
+        return back()->with('success', 'Progress pekerjaan berhasil diperbarui.');
     }
-
+    
+    
     public function laporan(Request $request)
     {
-        $query = Notification::with(['lhpp', 'lpj']);
+        $query = Notification::with(['lhpp', 'lpj', 'abnormal', 'hpp1']); // Tambahkan relasi abnormal dan hpp
     
         if ($request->has('notification_number')) {
             $query->where('notification_number', 'like', '%' . $request->input('notification_number') . '%');
@@ -176,6 +203,7 @@ class PKMDashboardController extends Controller
     
         return view('pkm.laporan', compact('notifications'));
     }
+    
     
 
     public function showLHPP($notification_number)
