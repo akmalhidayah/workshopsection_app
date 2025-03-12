@@ -10,7 +10,7 @@ class CreateLhppsTable extends Migration
     {
         Schema::create('lhpp', function (Blueprint $table) {
             $table->string('notification_number')->primary(); // Primary Key
-            $table->string('nomor_order'); // Nomor Order
+            $table->string('nomor_order')->nullable();
             $table->text('description_notifikasi')->nullable(); // Deskripsi Notifikasi
             $table->string('purchase_order_number'); // Purchasing Order
             $table->string('unit_kerja'); // Unit Kerja Peminta

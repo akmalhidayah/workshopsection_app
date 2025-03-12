@@ -152,7 +152,7 @@ public function downloadPDF($notification_number)
     // Load view untuk PDF
     $pdf = Pdf::loadView('pkm.lhpp.lhpppdf', compact('lhpp'));
 
-    return $pdf->download("LHPP_{$notification_number}.pdf");
+    return $pdf->stream("LHPP_{$notification_number}.pdf");
 }
 
 

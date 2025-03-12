@@ -28,9 +28,8 @@
                         </select>
                     </div>
                         <div>
-                            <label for="nomor_order" class="block text-sm font-medium text-gray-700">Nomor Order</label>
-                            <input type="text" name="nomor_order" id="nomor_order" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                        </div>
+                            <input type="hidden" name="nomor_order" id="nomor_order" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        </div> 
                     </div>
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
@@ -203,6 +202,17 @@
                     <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Simpan</button>
                     </div>
                 </form>
+                @if ($errors->any())
+    <script>
+        Swal.fire({
+            title: 'Gagal!',
+            html: `{!! implode('<br>', $errors->all()) !!}`,
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+    </script>
+@endif
+
             </div>
         </div>
     </div>
@@ -231,59 +241,12 @@ document.getElementById('notifikasi').addEventListener('change', function () {
     const selectedNotification = this.value; // Ambil notification_number yang dipilih
 
     if (selectedNotification) {
-        // 🔹 Ambil Purchase Order berdasarkan notification_number
-        fetch(`/pkm/lhpp/get-purchase-order/${selectedNotification}`)
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('purchase_order_number').value = data.purchase_order_number || '-';
-            });
-
-        // 🔹 Ambil Nomor Order berdasarkan notification_number
-        fetch(`/pkm/lhpp/get-nomor-order/${selectedNotification}`)
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('nomor_order').value = data.nomor_order || '-';
-            });
-
-        // 🔹 Isi otomatis Unit Kerja berdasarkan data `data-unit-work` di `<option>`
         const selectedOption = this.options[this.selectedIndex];
         const unitWork = selectedOption.getAttribute('data-unit-work');
-        document.getElementById('unit_kerja').value = unitWork ? unitWork : '';
-    }
-});
 
-document.getElementById('notifikasi').addEventListener('change', function () {
-    const selectedNotification = this.value; // Ambil notification_number yang dipilih
-
-    if (selectedNotification) {
-        // 🔹 Ambil Purchase Order berdasarkan notification_number
-        fetch(`/pkm/lhpp/get-purchase-order/${selectedNotification}`)
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('purchase_order_number').value = data.purchase_order_number || '-';
-            });
-
-        // 🔹 Ambil Nomor Order berdasarkan notification_number
-        fetch(`/pkm/lhpp/get-nomor-order/${selectedNotification}`)
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('nomor_order').value = data.nomor_order || '-';
-            });
-
-        // 🔹 Isi otomatis Unit Kerja berdasarkan data `data-unit-work` di `<option>`
-        const selectedOption = this.options[this.selectedIndex];
-        const unitWork = selectedOption.getAttribute('data-unit-work');
+        // 🔹 Isi otomatis Unit Kerja berdasarkan data `data-unit-work`
         document.getElementById('unit_kerja').value = unitWork ? unitWork : '';
 
-        // 🔹 Coba hitung durasi pekerjaan setelah order dipilih (jika tanggal sudah dipilih)
-        calculateWorkDuration();
-    }
-});
-
-document.getElementById('notifikasi').addEventListener('change', function () {
-    const selectedNotification = this.value; // Ambil notification_number yang dipilih
-
-    if (selectedNotification) {
         // 🔹 Ambil Deskripsi Notifikasi (Abnormal Title)
         fetch(`/pkm/lhpp/get-abnormal-description/${selectedNotification}`)
             .then(response => response.json())
@@ -308,11 +271,6 @@ document.getElementById('notifikasi').addEventListener('change', function () {
             })
             .catch(error => console.error('Error fetching nomor order:', error));
 
-        // 🔹 Isi otomatis Unit Kerja berdasarkan data `data-unit-work` di `<option>`
-        const selectedOption = this.options[this.selectedIndex];
-        const unitWork = selectedOption.getAttribute('data-unit-work');
-        document.getElementById('unit_kerja').value = unitWork ? unitWork : '';
-
         // 🔹 Coba hitung durasi pekerjaan setelah order dipilih (jika tanggal sudah dipilih)
         calculateWorkDuration();
     }
@@ -334,6 +292,7 @@ function calculateWorkDuration() {
 
 // 🔹 Pastikan hitungan berjalan setiap kali tanggal selesai berubah
 document.getElementById('tanggal_selesai').addEventListener('change', calculateWorkDuration);
+
 
 </script>
     <script src="{{ asset('js/lhpp.js') }}"></script>

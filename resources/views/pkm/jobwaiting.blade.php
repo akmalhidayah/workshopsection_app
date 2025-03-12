@@ -35,7 +35,7 @@
                 @if(count($notifications) > 0)
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         @foreach($notifications as $notification)
-                            <div class="bg-gray-50 shadow-md rounded-lg p-4 border border-gray-200 hover:shadow-lg transition duration-200">
+                            <div class="bg-gray-50 shadow-md rounded-lg p-4 border border-gray-900 hover:shadow-lg transition duration-200">
                                 <h4 class="text-xs font-bold text-gray-800 mb-2 flex items-center space-x-1">
                                     <i class="fas fa-bell text-blue-500"></i>
                                     <span>Nomor Order:</span>
@@ -151,11 +151,12 @@
                             <div class="mt-2 flex items-center w-full space-x-2">
                                 <!-- Slider Progress -->
                                 <input type="range" min="11" max="100" step="1" 
-                                    value="{{ $notification->purchaseOrder->progress_pekerjaan }}" 
-                                    class="w-full cursor-pointer"
-                                    id="progress-slider-{{ $notification->notification_number }}"
-                                    onchange="updateSlider('{{ $notification->notification_number }}', this.value)"
-                                    {{ $notification->purchaseOrder->progress_pekerjaan < 11 ? 'disabled' : '' }}>
+                                value="{{ $notification->purchaseOrder->progress_pekerjaan }}" 
+                                class="w-full cursor-pointer"
+                                id="progress-slider-{{ $notification->notification_number }}"
+                                oninput="updateSliderValue(this.value, '{{ $notification->notification_number }}')" 
+                                onchange="updateProgress('{{ $notification->notification_number }}', this.value, true)"
+                                {{ $notification->purchaseOrder->progress_pekerjaan < 11 ? 'disabled' : '' }}>
 
                                 <!-- Menampilkan Nilai Slider di Samping -->
                                 <span id="slider-value-{{ $notification->notification_number }}" 
@@ -191,7 +192,6 @@
                 @else
                     <p class="text-center text-gray-500 mt-3">Tidak ada pekerjaan yang menunggu saat ini.</p>
                 @endif
-
         </div>
     </div>
     <style>
@@ -206,28 +206,42 @@
     <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
-  function updateProgress(notificationNumber, progressValue, isSlider = false) {
-    let button = document.querySelector(`#progress-btn-${notificationNumber}-${progressValue}`);
+// Fungsi untuk menampilkan nilai slider secara real-time saat digeser
+function updateSliderValue(value, notificationNumber) {
+    let sliderValueElement = document.getElementById(`slider-value-${notificationNumber}`);
+    if (sliderValueElement) {
+        sliderValueElement.innerText = `${value}%`; // Menampilkan angka persen saat slider bergerak
+    }
+}
+
+// Fungsi untuk menangani perubahan slider dan mengupdate backend setelah lepas slider
+function updateProgress(notificationNumber, progressValue, isSlider = false) {
+    let button = document.querySelector(`#progress-btn-${notificationNumber}-11`);
     let materialButton = document.querySelector(`#material-btn-${notificationNumber}`);
     let slider = document.getElementById(`progress-slider-${notificationNumber}`);
     let sliderValueElement = document.getElementById(`slider-value-${notificationNumber}`);
 
+    // Update angka persen di UI saat slider digeser (tanpa backend)
+    updateSliderValue(progressValue, notificationNumber);
+
     // Cegah update ganda jika tombol sudah disabled
     if (button && button.disabled && !isSlider) return;
 
-    // Nonaktifkan tombol "Start" dan "Material" setelah diklik
+    // Nonaktifkan tombol "Start Pekerjaan" setelah diklik
     if (button && !isSlider) {
         button.disabled = true;
-        button.classList.add('disabled-btn'); // Tambahkan class abu-abu
+        button.classList.add('disabled-btn'); // Tambah class abu-abu
         button.classList.remove('hover:bg-gray-700', 'hover:bg-yellow-700');
     }
 
+    // Nonaktifkan tombol "Pengadaan Kebutuhan" setelah progress berjalan
     if (materialButton) {
         materialButton.disabled = true;
-        materialButton.classList.add('disabled-btn'); // Tambahkan class abu-abu
+        materialButton.classList.add('disabled-btn'); // Tambah class abu-abu
         materialButton.classList.remove('hover:bg-gray-700');
     }
 
+    // Kirim update progress ke backend setelah slider dilepas
     fetch(`/pkm/jobwaiting/update-progress/${notificationNumber}`, {
         method: "POST",
         headers: {
@@ -241,34 +255,16 @@
         return response.json();
     })
     .then(data => {
-        // Update tampilan slider & nilai progress
+        // Update nilai slider dan teks persen setelah sukses update ke backend
         if (slider) {
             slider.value = data.new_progress;
             updateSliderValue(data.new_progress, notificationNumber);
         }
-
-        if (sliderValueElement) {
-            sliderValueElement.innerText = `${data.new_progress}%`;
-        }
     })
     .catch(error => {
-        console.error("Error:", error);
+        console.error("Error saat update progress:", error);
     });
 }
-
-// Fungsi Update Nilai Slider
-function updateSlider(notificationNumber, value) {
-    updateProgress(notificationNumber, value, true);
-}
-
-// Fungsi menampilkan nilai slider saat digeser
-function updateSliderValue(value, notificationNumber) {
-    let sliderValueElement = document.getElementById(`slider-value-${notificationNumber}`);
-    if (sliderValueElement) {
-        sliderValueElement.innerText = `${value}%`;
-    }
-}
-
 
 // Alert hanya untuk Update Target & Catatan
 @if(session('success'))
@@ -279,6 +275,5 @@ function updateSliderValue(value, notificationNumber) {
         confirmButtonText: "OK"
     });
 @endif
-
 </script>
 </x-pkm-layout>

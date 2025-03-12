@@ -42,11 +42,11 @@
                                 <td class="px-4 py-3">{{ $lhpp->waktu_pengerjaan }} Hari</td>
                                 <td class="px-4 py-3">Rp{{ number_format($lhpp->total_biaya, 2, ',', '.') }}</td>
                                 <td class="px-4 py-3 text-center flex justify-center space-x-2">
-                                    <!-- Tombol Lihat -->
+                                    <!-- Tombol Lihat
                                     <a href="{{ route('admin.lhpp.show', ['notification_number' => $lhpp->notification_number]) }}" 
                                        class="bg-blue-500 text-white px-2 py-1 rounded-lg hover:bg-blue-700 transition">
                                         <i class="fas fa-eye"></i>
-                                    </a>
+                                    </a> -->
 
                                     <!-- Tombol Approve / Reject -->
                                     @if ($lhpp->status_approve === 'Pending')
@@ -65,8 +65,13 @@
 
                                     <!-- Tombol Download PDF -->
                                     <a href="{{ route('admin.lhpp.download_pdf', ['notification_number' => $lhpp->notification_number]) }}" 
-                                        class="bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-700 transition flex items-center">
-                                        <i class="fas fa-file-pdf"></i>
+                                        class="bg-blue-500 text-white px-2 py-1 rounded-lg hover:bg-blue-700 transition flex items-center">
+                                        <i class="fas fa-file-pdf"></i>LHPP
+                                    </a>
+                                     <!-- Tombol Download PDF -->
+                                     <a href="#" 
+                                        class="bg-yellow-500 text-white px-2 py-1 rounded-lg hover:bg-yellow-700 transition flex items-center">
+                                        <i class="fas fa-file-pdf"></i>HPP
                                     </a>
                                 </td>
                             </tr>

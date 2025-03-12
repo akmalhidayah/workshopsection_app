@@ -218,14 +218,19 @@ Route::middleware(['auth', PkmMiddleware::class])
         // Route untuk kalkulasi durasi kerja dalam LHPP
         Route::get('calculate-work-duration/{notificationNumber}/{tanggalSelesai}', [LHPPController::class, 'calculateWorkDuration'])->name('lhpp.calculate-work-duration');
 
-            Route::prefix('items')->name('items.')->group(function () {
-                Route::get('/', [ItemsController::class, 'index'])->name('index'); // ✅ pkm.items.index
-                Route::get('/create', [ItemsController::class, 'create'])->name('create'); // ✅ pkm.items.create
-                Route::get('/{nomor_order}', [ItemsController::class, 'show'])->name('show'); // ✅ pkm.items.show
-                Route::get('/{nomor_order}/edit', [ItemsController::class, 'edit'])->name('edit'); // ✅ pkm.items.edit
-                Route::delete('/{nomor_order}', [ItemsController::class, 'destroy'])->name('destroy'); // ✅ pkm.items.destroy
-            }); 
+        // Route untuk Item Kebutuhan
+        Route::prefix('items')->name('items.')->group(function () {
+            Route::get('/', [ItemsController::class, 'index'])->name('index'); // ✅ Menampilkan daftar item
+            Route::get('/create', [ItemsController::class, 'create'])->name('create'); // ✅ Form tambah item
+            Route::post('/store', [ItemsController::class, 'store'])->name('store'); // ✅ Simpan item ke DB
+            Route::get('/{notification_number}', [ItemsController::class, 'show'])->name('show'); // ✅ Detail item
+            Route::get('/{notification_number}/edit', [ItemsController::class, 'edit'])->name('edit'); // ✅ Form edit item
+            Route::put('/{notification_number}', [ItemsController::class, 'update'])->name('update'); // ✅ Simpan perubahan
+            Route::post('/{notification_number}/update-approval', [ItemsController::class, 'updateApproval'])->name('update-approval');
+            Route::delete('/{notification_number}', [ItemsController::class, 'destroy'])->name('destroy'); // ✅ Hapus item
+        }); 
     });
+    Route::get('/get-item-data/{notification_number}', [ItemsController::class, 'getItemData'])->name('getItemData');
 
 // Routes for Abnormal Approval
 Route::middleware(['auth'])->group(function () {

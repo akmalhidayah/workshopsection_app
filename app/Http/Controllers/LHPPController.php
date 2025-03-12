@@ -49,36 +49,37 @@ class LHPPController extends Controller
         // Validasi input form
         $validated = $request->validate([
             'notification_number' => 'required|string|max:255',
-            'nomor_order' => 'required|string|max:255',
+            'nomor_order' => 'nullable|string|max:255',
             'description_notifikasi' => 'nullable|string',
             'purchase_order_number' => 'required|string|max:255',
             'unit_kerja' => 'required|string|max:255',
             'tanggal_selesai' => 'required|date',
             'waktu_pengerjaan' => 'required|integer',
 
-            // Validasi array untuk material
-            'material_description' => 'required|array',
-            'material_volume' => 'required|array',
-            'material_harga_satuan' => 'required|array',
-            'material_jumlah' => 'required|array',
+             // Validasi array untuk material
+        'material_description' => 'nullable|array',
+        'material_volume' => 'nullable|array',
+        'material_harga_satuan' => 'nullable|array',
+        'material_jumlah' => 'nullable|array',
 
-            // Validasi array untuk consumable
-            'consumable_description' => 'required|array',
-            'consumable_volume' => 'required|array',
-            'consumable_harga_satuan' => 'required|array',
-            'consumable_jumlah' => 'required|array',
+        // Validasi array untuk consumable
+        'consumable_description' => 'nullable|array',
+        'consumable_volume' => 'nullable|array',
+        'consumable_harga_satuan' => 'nullable|array',
+        'consumable_jumlah' => 'nullable|array',
 
-            // Validasi array untuk upah kerja
-            'upah_description' => 'required|array',
-            'upah_volume' => 'required|array',
-            'upah_harga_satuan' => 'required|array',
-            'upah_jumlah' => 'required|array',
+        // Validasi array untuk upah kerja
+        'upah_description' => 'nullable|array',
+        'upah_volume' => 'nullable|array',
+        'upah_harga_satuan' => 'nullable|array',
+        'upah_jumlah' => 'nullable|array',
 
-            // Subtotal dan total
-            'material_subtotal' => 'required|numeric',
-            'consumable_subtotal' => 'required|numeric',
-            'upah_subtotal' => 'required|numeric',
-            'total_biaya' => 'required|numeric',
+        // Subtotal dan total
+        'material_subtotal' => 'nullable|numeric',
+        'consumable_subtotal' => 'nullable|numeric',
+        'upah_subtotal' => 'nullable|numeric',
+        'total_biaya' => 'nullable|numeric',
+
 
             // Kontrak PKM
             'kontrak_pkm' => 'required|string|in:Fabrikasi,Konstruksi,Pengerjaan Mesin',
@@ -181,7 +182,7 @@ class LHPPController extends Controller
             return redirect()->route('pkm.lhpp.index')->with('success', 'Data LHPP berhasil disimpan.');
         } catch (\Exception $e) {
             \Log::error("Error saving LHPP: " . $e->getMessage());
-            return redirect()->back()->with('error', 'Terjadi kesalahan saat menyimpan data LHPP.')->withInput();
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat menyimpan data LHPP Harap Mengisi dengan Benar.')->withInput();
         }
     }
     private function sendWhatsAppToAdmin($lhpp)
@@ -206,27 +207,65 @@ class LHPPController extends Controller
     }
 }
 
-
-    public function getPurchaseOrder($notificationNumber)
-    {
+public function getPurchaseOrder($notificationNumber)
+{
+    try {
         $notification = Notification::with('purchaseOrder')
             ->where('notification_number', $notificationNumber)
             ->first();
-    
+
+        if (!$notification || !$notification->purchaseOrder) {
+            \Log::error("Purchase Order tidak ditemukan untuk notification_number: $notificationNumber");
+            return response()->json(['error' => 'Purchase Order tidak ditemukan'], 404);
+        }
+
         return response()->json([
             'purchase_order_number' => $notification->purchaseOrder->purchase_order_number ?? null
         ]);
+    } catch (\Exception $e) {
+        \Log::error("Error fetching purchase order: " . $e->getMessage());
+        return response()->json(['error' => 'Terjadi kesalahan di server'], 500);
     }
-    public function getAbnormalDescription($notificationNumber)
-{
-    $abnormal = Abnormal::where('notification_number', $notificationNumber)->first();
-
-    return response()->json([
-        'description_notifikasi' => $abnormal->abnormal_title ?? null
-    ]);
 }
 
-    
+public function getNomorOrder($notificationNumber)
+{
+    try {
+        $nomorOrder = Notification::where('notification_number', $notificationNumber)->first();
+
+        if (!$nomorOrder) {
+            \Log::error("Nomor Order tidak ditemukan untuk notification_number: $notificationNumber");
+            return response()->json(['error' => 'Nomor Order tidak ditemukan'], 404);
+        }
+
+        return response()->json([
+            'nomor_order' => $nomorOrder->nomor_order ?? null
+        ]);
+    } catch (\Exception $e) {
+        \Log::error("Error fetching nomor order: " . $e->getMessage());
+        return response()->json(['error' => 'Terjadi kesalahan di server'], 500);
+    }
+}
+
+public function getAbnormalDescription($notificationNumber)
+{
+    try {
+        $abnormal = Abnormal::where('notification_number', $notificationNumber)->first();
+
+        if (!$abnormal) {
+            \Log::error("Deskripsi abnormalitas tidak ditemukan untuk notification_number: $notificationNumber");
+            return response()->json(['error' => 'Deskripsi abnormalitas tidak ditemukan'], 404);
+        }
+
+        return response()->json([
+            'description_notifikasi' => $abnormal->abnormal_title ?? null
+        ]);
+    } catch (\Exception $e) {
+        \Log::error("Error fetching abnormal description: " . $e->getMessage());
+        return response()->json(['error' => 'Terjadi kesalahan di server'], 500);
+    }
+}
+
     public function calculateWorkDuration($notificationNumber, $tanggalSelesai)
     {
         $notification = Notification::where('notification_number', $notificationNumber)
@@ -310,28 +349,28 @@ class LHPPController extends Controller
         'waktu_pengerjaan' => 'required|integer',
 
         // Validasi array untuk material
-        'material_description' => 'required|array',
-        'material_volume' => 'required|array',
-        'material_harga_satuan' => 'required|array',
-        'material_jumlah' => 'required|array',
+        'material_description' => 'nullable|array',
+        'material_volume' => 'nullable|array',
+        'material_harga_satuan' => 'nullable|array',
+        'material_jumlah' => 'nullable|array',
 
         // Validasi array untuk consumable
-        'consumable_description' => 'required|array',
-        'consumable_volume' => 'required|array',
-        'consumable_harga_satuan' => 'required|array',
-        'consumable_jumlah' => 'required|array',
+        'consumable_description' => 'nullable|array',
+        'consumable_volume' => 'nullable|array',
+        'consumable_harga_satuan' => 'nullable|array',
+        'consumable_jumlah' => 'nullable|array',
 
         // Validasi array untuk upah kerja
-        'upah_description' => 'required|array',
-        'upah_volume' => 'required|array',
-        'upah_harga_satuan' => 'required|array',
-        'upah_jumlah' => 'required|array',
+        'upah_description' => 'nullable|array',
+        'upah_volume' => 'nullable|array',
+        'upah_harga_satuan' => 'nullable|array',
+        'upah_jumlah' => 'nullable|array',
 
         // Subtotal dan total
-        'material_subtotal' => 'required|numeric',
-        'consumable_subtotal' => 'required|numeric',
-        'upah_subtotal' => 'required|numeric',
-        'total_biaya' => 'required|numeric',
+        'material_subtotal' => 'nullable|numeric',
+        'consumable_subtotal' => 'nullable|numeric',
+        'upah_subtotal' => 'nullable|numeric',
+        'total_biaya' => 'nullable|numeric',
 
         // Validasi gambar baru (opsional)
         'new_images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -421,17 +460,18 @@ public function destroy($notification_number)
     // Redirect kembali ke halaman index dengan pesan sukses
     return redirect()->route('pkm.lhpp.index')->with('success', 'Data berhasil dihapus.');
 }
+
 public function downloadPDF($notification_number)
 {
     $lhpp = LHPP::where('notification_number', $notification_number)->firstOrFail();
 
-    // Pastikan direktori signatures ada
-    $signaturePath = storage_path("app/public/signatures/");
+    // Pastikan direktori signatures/lhpp ada
+    $signaturePath = storage_path("app/public/signatures/lhpp/");
     if (!file_exists($signaturePath)) {
         mkdir($signaturePath, 0777, true); // Buat direktori jika belum ada
     }
 
-    // Konversi tanda tangan dari Base64 ke file sementara
+    // Konversi tanda tangan dari Base64 ke file sementara di dalam folder /lhpp/
     $signatures = [
         'manager_signature' => $lhpp->manager_signature,
         'manager_signature_requesting' => $lhpp->manager_signature_requesting,
@@ -447,7 +487,7 @@ public function downloadPDF($notification_number)
             file_put_contents($imagePath, base64_decode($imageData));
 
             // Update path untuk digunakan dalam Blade
-            $lhpp->$key = $imagePath;
+            $lhpp->$key = asset("storage/signatures/lhpp/{$key}_{$notification_number}.png");
         }
     }
 
@@ -457,5 +497,4 @@ public function downloadPDF($notification_number)
     return $pdf->stream("LHPP_{$notification_number}.pdf");
 }
 
-
-}
+    }

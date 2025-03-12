@@ -189,9 +189,9 @@
                     </tr>
                     <tr>
                     <td colspan="3" class="px-2 py-2 text-right" style="border-top: 1px solid black; border-bottom: 1px solid black; text-align: right; padding-right: 10px;">
-                        <strong style="font-size: 9px;">{{ $hpp->managerSignatureUser ? $hpp->managerSignatureUser->initials : 'N/A' }}</strong> /
-                        @if(!empty($hpp->manager_signature) && file_exists(storage_path("app/public/signatures/hpp/manager_signature_{$hpp->notification_number}.png")))
-                            <img src="{{ asset("storage/signatures/hpp/manager_signature_{$hpp->notification_number}.png") }}" 
+                        <strong style="font-size: 9px;">{{ $hpp->managerSignatureRequestingUser ? $hpp->managerSignatureRequestingUser->initials : 'N/A' }}</strong> /
+                        @if(!empty($hpp->manager_signature) && file_exists(storage_path("app/public/signatures/hpp/manager_signature_requesting_unit_{$hpp->notification_number}.png")))
+                        <img src="{{ storage_path("app/public/signatures/hpp/manager_signature_requesting_unit_{$hpp->notification_number}.png") }}" 
                                 alt="Manager Signature" 
                                 style="width: 60px; height: 20px; object-fit: contain; filter: drop-shadow(2px 2px 3px black); vertical-align: middle;">
                         @else
@@ -396,7 +396,7 @@
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 90px; min-height: 90px;">
         @if(!empty($hpp->director_signature) && file_exists(storage_path("app/public/signatures/hpp/director_signature_{$hpp->notification_number}.png")))
             <div style="display: inline-block; width: 160px; height: 80px; position: relative;">
-                <img src="{{ asset("storage/signatures/hpp/director_signature_{$hpp->notification_number}.png") }}" 
+            <img src="{{ storage_path("app/public/signatures/hpp/director_signature_{$hpp->notification_number}.png") }}" 
                     alt="Director Signature" 
                     style="width: 180px; height: 100px; object-fit: contain; filter: drop-shadow(3px 3px 5px black); font-weight: bolder;">
             </div>
@@ -410,7 +410,7 @@
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 90px; min-height: 90px;">
         @if(!empty($hpp->general_manager_signature) && file_exists(storage_path("app/public/signatures/hpp/general_manager_signature_{$hpp->notification_number}.png")))
             <div style="display: inline-block; width: 160px; height: 80px; position: relative;">
-                <img src="{{ asset("storage/signatures/hpp/general_manager_signature_{$hpp->notification_number}.png") }}" 
+            <img src="{{ storage_path("app/public/signatures/hpp/general_manager_signature_{$hpp->notification_number}.png") }}" 
                     alt="GM Signature" 
                     style="width: 180px; height: 100px; object-fit: contain; filter: drop-shadow(3px 3px 5px black); font-weight: bolder;">
             </div>
@@ -424,7 +424,7 @@
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 90px; min-height: 90px;">
         @if(!empty($hpp->senior_manager_signature) && file_exists(storage_path("app/public/signatures/hpp/senior_manager_signature_{$hpp->notification_number}.png")))
             <div style="display: inline-block; width: 160px; height: 80px; position: relative;">
-                <img src="{{ asset("storage/signatures/hpp/senior_manager_signature_{$hpp->notification_number}.png") }}" 
+            <img src="{{ storage_path("app/public/signatures/hpp/senior_manager_signature_{$hpp->notification_number}.png") }}" 
                     alt="Senior Manager Signature" 
                     style="width: 180px; height: 100px; object-fit: contain; filter: drop-shadow(3px 3px 5px black); font-weight: bolder;">
             </div>
@@ -450,7 +450,7 @@
         <td colspan="3" class="px-2 py-2 text-right" style="border-top: 1px solid black; border-bottom: 1px solid black; text-align: right;">
             <strong>{{ $hpp->managerSignatureUser ? $hpp->managerSignatureUser->initials : 'N/A' }}</strong> /
             @if(!empty($hpp->manager_signature) && file_exists(storage_path("app/public/signatures/hpp/manager_signature_{$hpp->notification_number}.png")))
-                <img src="{{ asset("storage/signatures/hpp/manager_signature_{$hpp->notification_number}.png") }}" 
+            <img src="{{ storage_path("app/public/signatures/hpp/manager_signature_{$hpp->notification_number}.png") }}" 
                     alt="Manager Signature" 
                     style="width: 80px; height: 30px; object-fit: contain; filter: drop-shadow(2px 2px 3px black);">
             @endif

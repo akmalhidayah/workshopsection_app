@@ -186,9 +186,9 @@
                     </tr>
                     <tr>
                     <td colspan="3" class="px-2 py-2 text-right" style="border-top: 1px solid black; border-bottom: 1px solid black; text-align: right; padding-right: 10px;">
-                        <strong style="font-size: 9px;">{{ $hpp->managerSignatureUser ? $hpp->managerSignatureUser->initials : 'N/A' }}</strong> /
-                        @if(!empty($hpp->manager_signature) && file_exists(storage_path("app/public/signatures/hpp/manager_signature_{$hpp->notification_number}.png")))
-                            <img src="{{ storage_path("app/public/signatures/hpp/manager_signature_{$hpp->notification_number}.png") }}" 
+                        <strong style="font-size: 9px;">{{ $hpp->managerSignatureRequestingUser ? $hpp->managerSignatureRequestingUser->initials : 'N/A' }}</strong> /
+                        @if(!empty($hpp->manager_signature) && file_exists(storage_path("app/public/signatures/hpp/manager_signature_requesting_unit_{$hpp->notification_number}.png")))
+                            <img src="{{ storage_path("app/public/signatures/hpp/manager_signature_requesting_unit_{$hpp->notification_number}.png") }}" 
                                 alt="Manager Signature" 
                                 style="width: 60px; height: 20px; object-fit: contain;">
                         @else

@@ -318,14 +318,14 @@ public function createHpp1()
         );
     
         // Direktori penyimpanan tanda tangan
-        $signaturePath = storage_path("app/public/signatures/");
+        $signaturePath = storage_path("app/public/signatures/hpp/");
         if (!file_exists($signaturePath)) {
             mkdir($signaturePath, 0777, true);
         }
+        
     
         // Daftar tanda tangan yang akan diproses
         $signatures = [
-            'director_signature' => $hpp->director_signature,
             'general_manager_signature' => $hpp->general_manager_signature,
             'senior_manager_signature' => $hpp->senior_manager_signature,
             'manager_signature' => $hpp->manager_signature,
@@ -339,13 +339,13 @@ public function createHpp1()
             if (!empty($signature) && str_starts_with($signature, 'data:image')) {
                 // Ambil data Base64 tanpa header
                 $imageData = substr($signature, strpos($signature, ',') + 1);
-                $imagePath = public_path("storage/signatures/{$key}_{$notification_number}.png");
+                $imagePath = public_path("storage/signatures/hpp/{$key}_{$notification_number}.png");
     
                 // Simpan gambar Base64 ke file
                 file_put_contents($imagePath, base64_decode($imageData));
     
                 // Simpan path gambar agar bisa digunakan di Blade
-                $hpp->$key = asset("storage/signatures/{$key}_{$notification_number}.png");
+                $hpp->$key = "storage/signatures/hpp/{$key}_{$notification_number}.png";
             }
         }
     

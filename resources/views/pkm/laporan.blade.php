@@ -41,9 +41,9 @@
                                     @if($notification->hpp1)
                                         @php
                                             $hppRoutes = [
-                                                'createhpp1' => ['route' => 'pkm.inputhpp.download_hpp1', 'color' => 'bg-red-500 hover:bg-red-700', 'label' => 'HPP'],
+                                                'createhpp1' => ['route' => 'pkm.inputhpp.download_hpp1', 'color' => 'bg-blue-500 hover:bg-red-700', 'label' => 'HPP'],
                                                 'createhpp2' => ['route' => 'pkm.inputhpp.download_hpp2', 'color' => 'bg-blue-500 hover:bg-blue-700', 'label' => 'HPP'],
-                                                'createhpp3' => ['route' => 'pkm.inputhpp.download_hpp3', 'color' => 'bg-green-500 hover:bg-green-700', 'label' => 'HPP'],
+                                                'createhpp3' => ['route' => 'pkm.inputhpp.download_hpp3', 'color' => 'bg-blue-500 hover:bg-green-700', 'label' => 'HPP'],
                                             ];
                                         @endphp
 

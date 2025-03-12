@@ -4,36 +4,45 @@
             {{ __('Tambah Item Kebutuhan Kerjaan') }}
         </h2>
     </x-slot>
-  <!-- Tombol Kembali -->
-  <div class="mt-6">
-                    <a href="{{ route('pkm.items.index') }}" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
-                        Kembali
-                    </a>
-                </div>
+
+    <!-- Tombol Kembali -->
+    <div class="mt-6">
+        <a href="{{ route('pkm.items.index') }}" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+            Kembali
+        </a>
+    </div>
+
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white shadow-md rounded-lg p-6">
-                <form action="#" method="POST">
+                <form action="{{ route('pkm.items.store') }}" method="POST">
                     @csrf
 
-                    <!-- Nomor Order -->
+                    <!-- Pilih Nomor Order -->
                     <div class="mb-4">
-                        <label for="nomor_order" class="block text-sm font-medium text-gray-700">Nomor Order</label>
-                        <input type="text" name="nomor_order" id="nomor_order" value="001" readonly
-                               class="mt-1 p-2 w-full border rounded-lg bg-gray-200">
+                        <label for="nomor_order" class="block text-sm font-medium text-gray-700">Nomor Notification</label>
+                        <select name="notification_number" id="nomor_order" required
+                                class="mt-1 p-2 w-full border rounded-lg">
+                            <option value="">Pilih Nomor Notification</option>
+                            @foreach($notifications as $notification)
+                                <option value="{{ $notification->notification_number }}">
+                                    {{ $notification->notification_number }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
 
                     <!-- Deskripsi Pekerjaan -->
                     <div class="mb-4">
                         <label for="deskripsi_pekerjaan" class="block text-sm font-medium text-gray-700">Deskripsi Pekerjaan</label>
-                        <input type="text" name="deskripsi_pekerjaan" id="deskripsi_pekerjaan" value="Pekerjaan Fabrikasi" readonly
+                        <input type="text" name="deskripsi_pekerjaan" id="deskripsi_pekerjaan" readonly
                                class="mt-1 p-2 w-full border rounded-lg bg-gray-200">
                     </div>
 
                     <!-- Total HPP -->
                     <div class="mb-4">
                         <label for="total_hpp" class="block text-sm font-medium text-gray-700">Total HPP</label>
-                        <input type="number" name="total_hpp" id="total_hpp" value="1729483" readonly
+                        <input type="number" name="total_hpp" id="total_hpp" readonly
                                class="mt-1 p-2 w-full border rounded-lg bg-gray-200">
                     </div>
 
@@ -85,6 +94,25 @@
     </div>
 
     <script>
+        // Event listener untuk mengisi otomatis deskripsi pekerjaan dan total HPP
+        document.getElementById('nomor_order').addEventListener('change', function() {
+            let notificationNumber = this.value;
+            if (notificationNumber) {
+                fetch(`{{ route('getItemData', '') }}/${notificationNumber}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Data tidak ditemukan');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        document.getElementById('deskripsi_pekerjaan').value = data.deskripsi_pekerjaan || 'Tidak tersedia';
+                        document.getElementById('total_hpp').value = data.total_hpp || 0;
+                    })
+                    .catch(error => console.error('Error fetching data:', error));
+            }
+        });
+
         function tambahMaterial() {
             let container = document.getElementById('material-container');
             let div = document.createElement('div');
@@ -110,16 +138,62 @@
         }
 
         function hitungTotal() {
-            let hargaInputs = document.querySelectorAll('.harga-input');
-            let total = 0;
+    let hargaInputs = document.querySelectorAll('.harga-input');
+    let total = 0;
 
-            hargaInputs.forEach(input => {
-                total += parseFloat(input.value) || 0;
+    hargaInputs.forEach(input => {
+        total += parseFloat(input.value) || 0;
+    });
+
+    document.getElementById('total').value = total;
+
+    let totalHpp = parseFloat(document.getElementById('total_hpp').value) || 0;
+
+    // Perbaiki rumus total_margin
+    let totalMargin = totalHpp - total;
+
+    document.getElementById('total_margin').value = totalMargin;
+
+    // Debugging log untuk memastikan nilai yang dihitung benar
+    console.log("Total:", total, "Total HPP:", totalHpp, "Total Margin:", totalMargin);
+}
+document.querySelector("form").addEventListener("submit", function(event) {
+    // Daftar field yang wajib diisi sesuai validasi di controller
+    let requiredFields = [
+        { id: "notifikasi", message: "Nomor Order harus dipilih!" },
+        { id: "purchase_order_number", message: "Purchasing Order harus diisi!" },
+        { id: "unit_kerja", message: "Unit Kerja Peminta harus diisi!" },
+        { id: "tanggal_selesai", message: "Tanggal Selesai Pekerjaan harus diisi!" },
+        { id: "waktu_pengerjaan", message: "Waktu Pengerjaan harus diisi!" },
+        { id: "kontrak_pkm", message: "Kontrak PKM harus dipilih!" }
+    ];
+
+    let isValid = true;
+    let firstErrorField = null;
+
+    requiredFields.forEach(field => {
+        let element = document.getElementById(field.id);
+        if (!element || element.value.trim() === "") {
+            isValid = false;
+            if (!firstErrorField) firstErrorField = element;
+            
+            // Tampilkan pesan error menggunakan SweetAlert2
+            Swal.fire({
+                title: "Gagal!",
+                text: field.message,
+                icon: "error",
+                confirmButtonText: "OK"
             });
 
-            document.getElementById('total').value = total;
-            let totalHpp = parseFloat(document.getElementById('total_hpp').value) || 0;
-            document.getElementById('total_margin').value = total - totalHpp;
+            return;
         }
+    });
+
+    // Jika ada field wajib yang kosong, hentikan form submission
+    if (!isValid) {
+        event.preventDefault();
+        if (firstErrorField) firstErrorField.focus();
+    }
+});
     </script>
 </x-pkm-layout>

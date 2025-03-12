@@ -32,6 +32,7 @@
                                 <th class="px-6 py-3 text-left font-semibold">Tanggal Selesai</th>
                                 <th class="px-6 py-3 text-left font-semibold">Waktu Pengerjaan (Hari)</th>
                                 <th class="px-6 py-3 text-left font-semibold">Total Biaya</th>
+                                <th class="px-6 py-3 text-left font-semibold">Status Approval</th>
                                 <th class="px-6 py-3 text-left font-semibold">Action</th>
                             </tr>
                         </thead>
@@ -45,14 +46,26 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $lhpp->tanggal_selesai }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $lhpp->waktu_pengerjaan }} Hari</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($lhpp->total_biaya, 2, ',', '.') }}</td>
+                                <td class="px-6 py-4 whitespace-normal text-sm text-gray-900 break-words">
+                                    <div class="text-red-500">
+                                        @if (is_null($lhpp->manager_signature))
+                                            <span>Menunggu Tanda Tangan dari Manager Bengkel Mesin</span>
+                                        @elseif (is_null($lhpp->manager_signature_requesting))
+                                            <span>Menunggu Tanda Tangan dari Manager User</span>
+                                        @elseif (is_null($lhpp->manager_pkm_signature))
+                                            <span>Menunggu Tanda Tangan dari Manager PKM</span>
+                                        @else
+                                            <span class="text-green-500">Telah Ditandatangani</span>
+                                        @endif
+                                    </div>
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium flex justify-center space-x-2">
-                        <!-- Tombol Lihat -->
+                        <!-- Tombol 
                         <a href="{{ route('pkm.lhpp.show', $lhpp->notification_number) }}" 
                         class="bg-blue-500 text-white px-2 py-1 rounded-lg hover:bg-blue-700 text-xs flex items-center justify-center" 
                         target="_blank">
                             <i class="fas fa-eye"></i> 
-                        </a>
-                        
+                        </a>Lihat -->
                         <!-- Tombol Edit -->
                         <a href="{{ route('pkm.lhpp.edit', $lhpp->notification_number) }}" class="bg-green-500 text-white px-3 py-2 rounded-md hover:bg-green-600">
                         <i class="fas fa-edit"></i>
@@ -69,12 +82,11 @@
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         </form> 
-<!-- Tombol Download PDF -->
-<a href="{{ route('pkm.lhpp.download_pdf', $lhpp->notification_number) }}" 
-   class="bg-gray-700 text-white px-3 py-2 rounded-md hover:bg-gray-900 transition duration-300 flex items-center justify-center">
-    <i class="fas fa-file-pdf mr-1"></i> PDF
-</a>
-
+                    <!-- Tombol Download PDF -->
+                    <a href="{{ route('pkm.lhpp.download_pdf', $lhpp->notification_number) }}" 
+                    class="bg-gray-700 text-white px-3 py-2 rounded-md hover:bg-gray-900 transition duration-300 flex items-center justify-center">
+                        <i class="fas fa-file-pdf mr-1"></i>
+                    </a>
                     </td>
                     </tr>
                     <!-- Baris Kedua: Pemberitahuan Penolakan -->
@@ -107,7 +119,6 @@
                     </table>
                 </div>
             </div>
-
             <!-- Bagian Pagination -->
             <div class="mt-4">
                 {{ $lhpps->links() }} <!-- Menambahkan pagination -->

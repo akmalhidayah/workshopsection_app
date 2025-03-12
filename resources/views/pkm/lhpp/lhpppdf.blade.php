@@ -253,8 +253,13 @@
 
 <!-- Kolom Tanda Tangan Manager User -->
 <td style="border: 1px solid black; text-align: center; padding: 8px;">
-    @if(!empty($lhpp->manager_signature_requesting) && file_exists($lhpp->manager_signature_requesting))
-        <img src="{{ $lhpp->manager_signature_requesting }}" style="width: 80px; height: auto; margin-bottom: 5px;">
+    @php
+        $signaturePathRequesting = public_path("storage/signatures/lhpp/manager_signature_requesting_{$lhpp->notification_number}.png");
+    @endphp
+
+    @if(!empty($lhpp->manager_signature_requesting) && file_exists($signaturePathRequesting))
+        <img src="{{ asset("storage/signatures/lhpp/manager_signature_requesting_{$lhpp->notification_number}.png") }}" 
+             style="width: 80px; height: auto; margin-bottom: 5px;">
     @else
         <span>Manager User</span>
     @endif
@@ -264,8 +269,13 @@
 
 <!-- Kolom Tanda Tangan Manager Workshop -->
 <td style="border: 1px solid black; text-align: center; padding: 8px;">
-    @if(!empty($lhpp->manager_signature) && file_exists($lhpp->manager_signature))
-        <img src="{{ $lhpp->manager_signature }}" style="width: 80px; height: auto; margin-bottom: 5px;">
+    @php
+        $signaturePathWorkshop = public_path("storage/signatures/lhpp/manager_signature_{$lhpp->notification_number}.png");
+    @endphp
+
+    @if(!empty($lhpp->manager_signature) && file_exists($signaturePathWorkshop))
+        <img src="{{ asset("storage/signatures/lhpp/manager_signature_{$lhpp->notification_number}.png") }}" 
+             style="width: 80px; height: auto; margin-bottom: 5px;">
     @else
         <span>Herwanto S</span>
     @endif
@@ -275,8 +285,13 @@
 
 <!-- Kolom Tanda Tangan Manager PKM -->
 <td style="border: 1px solid black; text-align: center; padding: 8px;">
-    @if(!empty($lhpp->manager_pkm_signature) && file_exists($lhpp->manager_pkm_signature))
-        <img src="{{ $lhpp->manager_pkm_signature }}" style="width: 80px; height: auto; margin-bottom: 5px;">
+    @php
+        $signaturePathPKM = public_path("storage/signatures/lhpp/manager_pkm_signature_{$lhpp->notification_number}.png");
+    @endphp
+
+    @if(!empty($lhpp->manager_pkm_signature) && file_exists($signaturePathPKM))
+        <img src="{{ asset("storage/signatures/lhpp/manager_pkm_signature_{$lhpp->notification_number}.png") }}" 
+             style="width: 80px; height: auto; margin-bottom: 5px;">
     @else
         <span>MANAGER PT. Prima Karya Manunggal</span>
     @endif
