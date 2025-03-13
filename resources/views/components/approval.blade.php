@@ -12,8 +12,9 @@
 
     <!-- Scripts -->
     <!-- @vite(['resources/css/app.css', 'resources/js/app.js']) -->
-    <link rel="stylesheet" href="{{ asset('build/assets/app-ZZBB8zCG.css') }}">
+    <link rel="stylesheet" href="{{ asset('build/assets/app-CmMamunY.css') }}">
     <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Custom Tailwind Styles -->

@@ -17,7 +17,7 @@
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <!-- @vite(['resources/css/app.css', 'resources/js/app.js']) -->
-        <link rel="stylesheet" href="{{ asset('build/assets/app-ZZBB8zCG.css') }}">
+        <link rel="stylesheet" href="{{ asset('build/assets/app-CmMamunY.css') }}">
         <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script>
     </head>
     <body class="font-sans antialiased">

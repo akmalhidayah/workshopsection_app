@@ -67,14 +67,21 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-2">
-                                    <select name="approval_target" 
-                                        class="w-full px-2 py-1 border rounded shadow-sm focus:ring-1 focus:ring-blue-200 focus:outline-none text-sm"
-                                        onchange="updateSelectColor(this)" 
-                                        style="background-color: {{ optional($notification->purchaseOrder)->approval_target === 'setuju' ? '#d4edda' : (optional($notification->purchaseOrder)->approval_target === 'tidak_setuju' ? '#f8d7da' : '#ffffff') }}">
-                                        <option value="setuju" {{ old('approval_target', optional($notification->purchaseOrder)->approval_target) === 'setuju' ? 'selected' : '' }}>Setuju</option>
-                                        <option value="tidak_setuju" {{ old('approval_target', optional($notification->purchaseOrder)->approval_target) === 'tidak_setuju' ? 'selected' : '' }}>Tidak Setuju</option>
-                                    </select>
-                                </td>
+    <select name="approval_target" 
+        class="w-full px-2 py-1 border rounded shadow-sm focus:ring-1 focus:ring-blue-200 focus:outline-none text-sm"
+        onchange="updateSelectColor(this)" 
+        style="background-color: {{ optional($notification->purchaseOrder)->approval_target === 'setuju' ? '#d4edda' : (optional($notification->purchaseOrder)->approval_target === 'tidak_setuju' ? '#f8d7da' : '#ffffff') }}">
+
+        <option value="setuju" {{ old('approval_target', optional($notification->purchaseOrder)->approval_target) === 'setuju' ? 'selected' : '' }}>
+            Disetujui oleh Admin Bengkel
+        </option>
+        
+        <option value="tidak_setuju" {{ old('approval_target', optional($notification->purchaseOrder)->approval_target) === 'tidak_setuju' ? 'selected' : '' }}>
+            Tidak Disetujui oleh Admin Bengkel
+        </option>
+    </select>
+</td>
+
                                 <td class="px-4 py-2">
                                     <div class="flex flex-col space-y-1">
                                         <label class="flex items-center space-x-2">

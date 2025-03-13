@@ -174,7 +174,18 @@
                                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-xs"
                                             value="{{ $notification->purchaseOrder->target_penyelesaian ?? '' }}">
                                     </div>
-
+                                    <div class="mt-2 flex items-center space-x-1 text-xs">
+                                        <i class="fas fa-check-circle {{ $notification->purchaseOrder->approval_target === 'setuju' ? 'text-green-500' : 'text-red-500' }}"></i>
+                                        <span class="font-semibold">
+                                            @if(optional($notification->purchaseOrder)->approval_target === 'setuju')
+                                                Disetujui oleh Admin Bengkel
+                                            @elseif(optional($notification->purchaseOrder)->approval_target === 'tidak_setuju')
+                                                Tidak Disetujui oleh Admin Bengkel
+                                            @else
+                                                Belum Ditentukan
+                                            @endif
+                                        </span>
+                                    </div>
                                     <!-- Catatan -->
                                     <textarea name="catatan" rows="2"
                                         id="catatan-{{ $notification->notification_number }}"
