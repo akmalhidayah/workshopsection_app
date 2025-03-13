@@ -20,10 +20,10 @@
 
                     <!-- Pilih Nomor Order -->
                     <div class="mb-4">
-                        <label for="nomor_order" class="block text-sm font-medium text-gray-700">Nomor Notification</label>
+                        <label for="nomor_order" class="block text-sm font-medium text-gray-700">Nomor Order</label>
                         <select name="notification_number" id="nomor_order" required
                                 class="mt-1 p-2 w-full border rounded-lg">
-                            <option value="">Pilih Nomor Notification</option>
+                            <option value="">Pilih Nomor Order</option>
                             @foreach($notifications as $notification)
                                 <option value="{{ $notification->notification_number }}">
                                     {{ $notification->notification_number }}

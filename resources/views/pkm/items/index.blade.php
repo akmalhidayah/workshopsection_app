@@ -29,7 +29,7 @@
                     <table class="min-w-full bg-white text-sm rounded-lg shadow-lg">
                         <thead class="bg-orange-500 text-white">
                             <tr>
-                                <th class="px-4 py-3 text-left font-semibold">Nomor Notification</th>
+                                <th class="px-4 py-3 text-left font-semibold">Nomor Order</th>
                                 <th class="px-4 py-3 text-left font-semibold">Deskripsi Pekerjaan</th>
                                 <th class="px-4 py-3 text-left font-semibold">Total HPP</th>
                                 <th class="px-4 py-3 text-left font-semibold">Total Kebutuhan Kerjaan</th>
