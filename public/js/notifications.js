@@ -83,3 +83,12 @@ document.getElementById('sortOrder').addEventListener('change', function() {
 // Inisialisasi untuk default sort berdasarkan "Terbaru"
 document.getElementById('sortOrder').value = 'latest';
 sortTableBy('latest');
+
+    document.addEventListener('DOMContentLoaded', function () {
+        $('#unitKerja').select2({
+            placeholder: 'Cari Unit Kerja...',
+            allowClear: true,
+            width: '100%',
+            dropdownCssClass: "bg-gray-900 text-white"
+        });
+    });

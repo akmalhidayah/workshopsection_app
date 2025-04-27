@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-lg text-gray-200 leading-tight">
+    <h2 class="font-semibold text-lg text-gray-800 dark:text-gray-200 leading-tight">
             {{ __('Dashboard') }}
         </h2>
     </x-slot>
@@ -9,28 +9,28 @@
         <div class="max-w-7xl mx-auto px-4 lg:px-6">
             <!-- Card Section -->
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-3 mb-6">
-                <div class="bg-gray-800 p-3 rounded-lg shadow-md flex items-center justify-between">
+                <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-md flex items-center justify-between">
                     <div>
-                        <h3 class="text-xs font-medium text-gray-300 mb-1">Outstanding Order</h3>
-                        <p class="text-lg font-bold text-white">{{ $jumlahNotifikasi }}</p>
+                    <h3 class="text-xs font-medium text-gray-800 dark:text-gray-300 mb-1">Outstanding Order</h3>
+                    <p class="text-lg font-bold text-gray-900 dark:text-white">{{ $jumlahNotifikasi }}</p>
                     </div>
                     <div class="text-purple-500">
                         <i class="fas fa-chart-line fa-lg"></i>
                     </div>
                 </div>
-                <div class="bg-gray-800 p-3 rounded-lg shadow-md flex items-center justify-between">
+                <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-md flex items-center justify-between">
                     <div>
-                        <h3 class="text-xs font-medium text-gray-300 mb-1">Order in Process</h3>
-                        <p class="text-lg font-bold text-white">{{ $jumlahDiproses }}</p>
+                    <h3 class="text-xs font-medium text-gray-800 dark:text-gray-300 mb-1">Order in Process</h3>
+                    <p class="text-lg font-bold text-gray-900 dark:text-white">{{ $jumlahDiproses }}</p>
                     </div>
                     <div class="text-blue-400">
                         <i class="fas fa-tasks fa-lg"></i>
                     </div>
                 </div>
-                <div class="bg-gray-800 p-3 rounded-lg shadow-md flex items-center justify-between">
+                <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-md flex items-center justify-between">
                     <div>
-                        <h3 class="text-xs font-medium text-gray-300 mb-1">Completed Order</h3>
-                        <p class="text-lg font-bold text-white">{{ $jumlahDiterima }}</p>
+                    <h3 class="text-xs font-medium text-gray-800 dark:text-gray-300 mb-1">Completed Order</h3>
+                    <p class="text-lg font-bold text-gray-900 dark:text-white">{{ $jumlahDiterima }}</p>
                     </div>
                     <div class="text-green-500">
                         <i class="fas fa-check fa-lg"></i>
@@ -39,11 +39,11 @@
             </div>
 
             <!-- Table Section -->
-            <div class="bg-gray-900 p-4 rounded-lg shadow-lg">
-                <h3 class="text-md font-semibold text-gray-200 mb-4">Order Details</h3>
+            <div class="bg-white dark:bg-gray-900 p-4 rounded-lg shadow-lg">
+                <h3 class="text-md font-semibold text-gray-800 dark:text-gray-200 mb-4">Order Details</h3>
                 <div class="overflow-x-auto">
-                    <table class="min-w-full bg-gray-800 border-b border-gray-700 rounded-lg text-xs">
-                        <thead class="bg-gray-700 text-white">
+                    <table class="min-w-full bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 rounded-lg text-xs">
+                    <thead class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white">
                             <tr>
                                 <th class="px-2 py-2 text-left font-medium uppercase">Order Number</th>
                                 <th class="px-2 py-2 text-left font-medium uppercase">Job Name</th>
@@ -56,12 +56,12 @@
                                 <th class="px-2 py-2 text-left font-medium uppercase">Dokumen Laporan</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-700">
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                             @foreach($notifications as $index => $notification)
-                            <tr class="{{ $index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-900' }}">
-                                <td class="px-2 py-2 text-gray-200">{{ $notification->notification_number }}</td>
-                                <td class="px-2 py-2 text-gray-200 truncate">{{ $notification->job_name }}</td>
-                                <td class="px-2 py-2 text-gray-200">{{ $notification->unit_work }}</td>
+                            <tr class="{{ $index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900' }}">
+                                <td class="px-2 py-2 ttext-gray-800 dark:text-gray-200">{{ $notification->notification_number }}</td>
+                                <td class="px-2 py-2 text-gray-800 dark:text-gray-200 truncate">{{ $notification->job_name }}</td>
+                                <td class="px-2 py-2 text-gray-800 dark:text-gray-200">{{ $notification->unit_work }}</td>
                                 <td class="px-2 py-2">
                                     <span class="px-2 py-1 rounded text-white {{ $notification->status == 'Pending' ? 'bg-yellow-500' : 'bg-green-500' }}">
                                         {{ $notification->status }}
@@ -148,11 +148,11 @@
                                              style="width: {{ $notification->purchaseOrder->progress_pekerjaan ?? 0 }}%; transition: width 0.3s;">
                                         </div>
                                     </div>
-                                    <span class="text-xs text-gray-300 mt-1 block">{{ $notification->purchaseOrder->progress_pekerjaan ?? 0 }}%</span>
-                                    <small class="block text-gray-300 mt-1">
+                                    <span class="text-gray-600 dark:text-gray-300">{{ $notification->purchaseOrder->progress_pekerjaan ?? 0 }}%</span>
+                                    <small class="block text-gray-600 dark:text-gray-300">
                                     {{ $notification->purchaseOrder->catatan ?? 'Tidak ada catatan.' }}
                                     </small>
-                                    <span class="text-xs text-gray-400 mt-1 block">
+                                    <span class="text-gray-500 dark:text-gray-400">
                                         Target: 
                                         @if($notification->purchaseOrder && $notification->purchaseOrder->target_penyelesaian)
                                             {{ \Carbon\Carbon::parse($notification->purchaseOrder->target_penyelesaian)->format('d M Y') }}

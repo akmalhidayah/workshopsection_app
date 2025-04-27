@@ -132,12 +132,8 @@
                     </div>
                 </div>
             @else
-                <div class="text-gray-600 text-center p-3 col-span-full">
-                    Tidak ada data yang memenuhi syarat untuk ditampilkan.
-                </div>
             @endif
         @empty
-            <p class="text-center text-gray-500 col-span-full">Tidak ada data notifikasi ditemukan.</p>
         @endforelse
     </div>
 

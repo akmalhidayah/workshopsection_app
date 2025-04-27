@@ -44,9 +44,9 @@
     x-transition:leave="transition ease-in duration-200"
     x-transition:leave-start="opacity-100 transform translate-x-0"
     x-transition:leave-end="opacity-0 transform -translate-x-full"
-    class="fixed top-0 left-0 h-full z-10 w-56 px-2 py-4 shadow-lg text-blue-100 bg-blue-900 text-sm">
-
-        
+    class="fixed top-0 left-0 h-full z-10 w-56 px-2 py-4 shadow-lg text-blue-100 bg-blue-900 text-sm 
+           overflow-y-auto scroll-smooth scrollbar-thin scrollbar-thumb-blue-600 scrollbar-track-blue-300"
+>        
         <!-- Sidebar Header -->
         <div class="flex items-center space-x-2 px-2">
             <a href="#">
@@ -57,7 +57,8 @@
                 <span class="text-xl font-extrabold text-white block">Dashboard</span>
             </div>
         </div>
-        <nav class="mt-5">
+        <!-- Sidebar Navigation -->
+<nav class="mt-5">
     <!-- Dashboard Icon -->
     <a href="{{ route('admin.dashboard') }}"
        class="block px-4 py-2 mt-2 text-xs font-semibold text-white rounded-lg flex items-center group
@@ -76,7 +77,7 @@
         <span>Notifikasi</span>
     </a>
 
-    <!-- Input HPP Icon -->
+    <!-- Create HPP Icon -->
     <a href="{{ route('admin.inputhpp.index') }}"
        class="block px-4 py-2 mt-2 text-xs font-semibold text-white rounded-lg flex items-center group
               {{ request()->routeIs('admin.inputhpp.index') ? 'bg-blue-800' : 'hover:bg-blue-700' }}"
@@ -105,14 +106,12 @@
 
     <!-- LHPP Icon -->
     <a href="{{ route('admin.lhpp.index') }}"
-   class="block px-4 py-2 mt-2 text-xs font-semibold text-white rounded-lg flex items-center group
-          {{ request()->routeIs('admin.lhpp.index') ? 'bg-blue-800' : 'hover:bg-blue-700' }}"
-   @click="open = false">
-    <i class="fas fa-file-alt mr-2 text-lg group-hover:text-blue-300 transition duration-200"></i>
-    <span>LHPP</span>
-</a>
-
-
+       class="block px-4 py-2 mt-2 text-xs font-semibold text-white rounded-lg flex items-center group
+              {{ request()->routeIs('admin.lhpp.index') ? 'bg-blue-800' : 'hover:bg-blue-700' }}"
+       @click="open = false">
+        <i class="fas fa-file-alt mr-2 text-lg group-hover:text-blue-300 transition duration-200"></i>
+        <span>LHPP</span>
+    </a>
 
     <!-- LPJ Icon -->
     <a href="{{ route('admin.lpj') }}"
@@ -123,32 +122,36 @@
         <span>LPJ/PPL</span>
     </a>
 
-    <!-- Kuota Anggaran & OA Icon -->
-    <a href="{{ route('admin.updateoa') }}"
-       class="block px-4 py-2 mt-2 text-xs font-semibold text-white rounded-lg flex items-center group
-              {{ request()->routeIs('admin.updateoa') ? 'bg-blue-800' : 'hover:bg-blue-700' }}"
-       @click="open = false">
-        <i class="fas fa-clipboard-list mr-2 text-lg group-hover:text-blue-300 transition duration-200"></i>
-        <span>Kuota Anggaran & OA</span>
-    </a>
-
-    <!-- User Panel Icon -->
-    <a href="{{ route('admin.users.index') }}"
-       class="block px-4 py-2 mt-2 text-xs font-semibold text-white rounded-lg flex items-center group
-              {{ request()->routeIs('admin.users.index') ? 'bg-blue-800' : 'hover:bg-blue-700' }}"
-       @click="open = false">
-        <i class="fas fa-user-circle mr-2 text-lg group-hover:text-blue-300 transition duration-200"></i>
-        <span>User Panel</span>
-    </a>
-    <!-- Upload Informasi Icon -->
-    <a href="{{ route('admin.uploadinfo') }}"
-    class="block px-4 py-2 mt-2 text-xs font-semibold text-white rounded-lg flex items-center group
-            {{ request()->routeIs('admin.uploadinfo') ? 'bg-blue-800' : 'hover:bg-blue-700' }}"
-    @click="open = false">
-        <i class="fas fa-upload mr-2 text-lg group-hover:text-blue-300 transition duration-200"></i>
-        <span>Upload Informasi</span>
-    </a>
+    <!-- Dropdown Lainnya -->
+    <div x-data="{ openSub: false }">
+        <button @click="openSub = !openSub" class="w-full flex items-center justify-between px-4 py-2 mt-2 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg">
+            <div class="flex items-center">
+                <i class="fas fa-layer-group mr-2 text-lg"></i>
+                <span>Lainnya</span>
+            </div>
+            <i :class="openSub ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+        </button>
+        <div x-show="openSub" x-transition class="ml-4 mt-1 space-y-1">
+            <a href="{{ route('admin.updateoa') }}"
+               class="block px-4 py-2 text-xs text-white rounded-lg hover:bg-blue-700 {{ request()->routeIs('admin.updateoa') ? 'bg-blue-800' : '' }}">
+                <i class="fas fa-clipboard-list mr-2"></i> Kuota Anggaran & OA
+            </a>
+            <a href="{{ route('admin.users.index') }}"
+               class="block px-4 py-2 text-xs text-white rounded-lg hover:bg-blue-700 {{ request()->routeIs('admin.users.index') ? 'bg-blue-800' : '' }}">
+                <i class="fas fa-user-circle mr-2"></i> User Panel
+            </a>
+            <a href="{{ route('admin.uploadinfo') }}"
+               class="block px-4 py-2 text-xs text-white rounded-lg hover:bg-blue-700 {{ request()->routeIs('admin.uploadinfo') ? 'bg-blue-800' : '' }}">
+                <i class="fas fa-upload mr-2"></i> Upload Informasi
+            </a>
+            <a href="{{ route('admin.unit_work.index') }}"
+               class="block px-4 py-2 text-xs text-white rounded-lg hover:bg-blue-700 {{ request()->routeIs('admin.unit_work.index') ? 'bg-blue-800' : '' }}">
+                <i class="fas fa-building mr-2"></i> Unit Kerja
+            </a>
+        </div>
+    </div>
 </nav>
+
 </aside>
 <!-- Main content -->
 <div :class="open ? 'ml-56' : 'ml-0'" class="flex-1 flex flex-col transition-all duration-300 bg-gray-100 overflow-y-auto">

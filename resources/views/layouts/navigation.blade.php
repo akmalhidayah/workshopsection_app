@@ -1,4 +1,4 @@
-<nav x-data="{ open: false }" class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+<nav x-data="{ open: false }" class="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
@@ -9,21 +9,39 @@
                         <x-application-logo class="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200" />
                     </a>
                 </div>
+
                 <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        {{ __('Dashboard') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('notifications.index')" :active="request()->routeIs('notifications.index')">
-                        {{ __('Order') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('abnormalitas.index')" :active="request()->routeIs('abnormalitas.index')">
-                        {{ __('Dokumen ') }}
-                    </x-nav-link>
-                </div>
+                @php
+                    $usertype = Auth::check() ? Auth::user()->usertype : null;
+                @endphp
+
+                @if ($usertype !== 'approval' && $usertype !== 'pkm')
+                    <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
+                        <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                            {{ __('Dashboard') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('notifications.index')" :active="request()->routeIs('notifications.index')">
+                            {{ __('Order') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('abnormalitas.index')" :active="request()->routeIs('abnormalitas.index')">
+                            {{ __('Dokumen ') }}
+                        </x-nav-link>
+                    </div>
+                @endif
                 </div>
             <!-- Settings Dropdown -->
-            <div class="hidden sm:flex sm:items-center sm:ml-6">
+            <div class="hidden sm:flex sm:items-center sm:ml-6 space-x-4">
+            <div class="flex items-center space-x-2">
+    <span x-show="!darkMode"><i class="fas fa-sun text-yellow-500"></i></span>
+    <span x-show="darkMode"><i class="fas fa-moon text-gray-200"></i></span>
+
+    <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" class="sr-only peer" x-model="darkMode" @change="toggleTheme">
+        <div class="w-10 h-5 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:bg-orange-500 transition duration-300 ease-in-out"></div>
+        <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-md transform transition duration-300 ease-in-out peer-checked:translate-x-5"></div>
+    </label>
+</div>
+
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150">
@@ -68,20 +86,26 @@
         </div>
     </div>
 
-
 <!-- Responsive Navigation Menu -->
 <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
-    <div class="pt-2 pb-3 space-y-1">
-        <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-            {{ __('Dashboard') }}
-        </x-responsive-nav-link>
-        <x-responsive-nav-link :href="route('notifications.index')" :active="request()->routeIs('notifications.index')">
-            {{ __('Order') }}
-        </x-responsive-nav-link>
-        <x-responsive-nav-link :href="route('abnormalitas.index')" :active="request()->routeIs('abnormalitas.index')">
-            {{ __('Dokumen') }}
-        </x-responsive-nav-link>
-    </div>
+    @php
+        $usertype = Auth::check() ? Auth::user()->usertype : null;
+    @endphp
+
+    @if ($usertype !== 'approval' && $usertype !== 'pkm')
+        <div class="pt-2 pb-3 space-y-1">
+            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                {{ __('Dashboard') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('notifications.index')" :active="request()->routeIs('notifications.index')">
+                {{ __('Order') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('abnormalitas.index')" :active="request()->routeIs('abnormalitas.index')">
+                {{ __('Dokumen') }}
+            </x-responsive-nav-link>
+        </div>
+    @endif
+
 
 
         <!-- Responsive Settings Options -->

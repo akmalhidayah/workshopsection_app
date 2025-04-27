@@ -4,11 +4,11 @@
             {{ __('Buat Dokumen Permintaan') }}
         </h2>
     </x-slot>
-<div class="py-12">
+    <div class="py-12">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <div class="bg-gray-900 shadow-lg overflow-hidden sm:rounded-lg">
+        <div class="bg-white dark:bg-gray-900 shadow-lg overflow-hidden sm:rounded-lg">
             <!-- Header dan Filter -->
-            <div class="p-6 bg-gray-700 text-white flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
+            <div class="p-6 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
                 <h3 class="text-lg font-semibold">List Dokumen & Permintaan User</h3>
                 <form id="filterForm" action="{{ route('abnormalitas.index') }}" method="GET" class="flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0 w-full sm:w-auto">
                    <!-- Search Bar -->
@@ -18,14 +18,14 @@
                         name="search" 
                         placeholder="Search..." 
                         value="{{ request('search') }}" 
-                        class="px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-md text-sm placeholder-gray-400 focus:outline-none focus:ring focus:ring-blue-500 focus:ring-opacity-50 w-full sm:w-auto"
+                        class="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-md text-sm placeholder-gray-400 focus:outline-none focus:ring focus:ring-blue-500 focus:ring-opacity-50 w-full sm:w-auto"
                     />
 
                     <!-- Sort Dropdown -->
                     <select 
                         id="sortOrder" 
                         name="sortOrder" 
-                        class="px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-md text-sm focus:outline-none focus:ring focus:ring-blue-500 focus:ring-opacity-50 w-full sm:w-auto"
+                        class="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-md text-sm focus:outline-none focus:ring focus:ring-blue-500 focus:ring-opacity-50 w-full sm:w-auto"
                     >
                         <option value="latest" {{ request('sortOrder') == 'latest' ? 'selected' : '' }}>Urutkan Berdasarkan Terbaru</option>
                         <option value="oldest" {{ request('sortOrder') == 'oldest' ? 'selected' : '' }}>Urutkan Berdasarkan Terlama</option>
@@ -35,7 +35,7 @@
                     <select 
                         id="entries" 
                         name="entries" 
-                        class="px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-md text-sm focus:outline-none focus:ring focus:ring-blue-500 focus:ring-opacity-50 w-full sm:w-auto"
+                        class="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-md text-sm focus:outline-none focus:ring focus:ring-blue-500 focus:ring-opacity-50 w-full sm:w-auto"
                     >
                         <option value="10" {{ request('entries') == 10 ? 'selected' : '' }}>Show 10 entries</option>
                         <option value="25" {{ request('entries') == 25 ? 'selected' : '' }}>Show 25 entries</option>
@@ -53,21 +53,21 @@
         </div>
 
                 <!-- Konten List Dokumen -->
-                <div class="p-6 bg-gray-900 space-y-4">
+                <div class="p-6 bg-white dark:bg-gray-900 space-y-4">
                     @foreach($abnormalitas as $index => $abnormality)
                         @if($abnormality['user_id'] == auth()->id())
-                        <div class="p-4 bg-gray-800 rounded-lg shadow-md" data-notification-id="{{ $abnormality['notification_number'] }}">
+                        <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md" data-notification-id="{{ $abnormality['notification_number'] }}">
                                 <!-- Informasi Dasar -->
                                 <div class="mb-4">
-                                    <p class="text-white font-semibold">Nomor Order: {{ $abnormality['notification_number'] }}</p>
-                                    <p class="text-white">Nama Pekerjaan: {{ $abnormality['job_name'] }}</p>
-                                    <p class="text-white">Input Date: {{ $abnormality['input_date'] }}</p>
+                                    <p class="text-gray-800 dark:text-white font-semibold">Nomor Order: {{ $abnormality['notification_number'] }}</p>
+                                    <p class="text-gray-800 dark:text-white">Nama Pekerjaan: {{ $abnormality['job_name'] }}</p>
+                                    <p class="text-gray-800 dark:text-white">Input Date: {{ $abnormality['input_date'] }}</p>
                                 </div>
                                 <!-- Action Sections -->
                                 <div class="space-y-2">
                                     <!-- Abnormalitas Section -->
                                     <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 border-t border-gray-700 pt-2">
-                                        <span class="text-sm text-gray-400">Abnormalitas:</span>
+                                        <span class="text-sm text-gray-800 dark:text-white">Abnormalitas:</span>
                                         @if(!$abnormality->abnormal)
                                             <a href="{{ route('abnormal.create', ['notificationNumber' => $abnormality['notification_number']]) }}" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-xs w-full sm:w-auto text-center">
                                                 <i class="fas fa-plus-circle mr-1"></i> Create Abnormalitas
@@ -88,7 +88,7 @@
 
                                     <!-- Scope of Work Section -->
                                     <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 border-t border-gray-700 pt-2">
-                                        <span class="text-sm text-gray-400">Scope of Work:</span>
+                                        <span class="text-sm text-gray-800 dark:text-white">Scope of Work:</span>
                                         @if(!$abnormality->scopeOfWork)
                                             <a href="{{ route('scopeofwork.create', ['notificationNumber' => $abnormality['notification_number']]) }}" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-xs w-full sm:w-auto text-center">
                                                 <i class="fas fa-plus-circle mr-1"></i> Create Scope Of Work
@@ -109,13 +109,13 @@
 
                                     <!-- Gambar Teknik Section -->
                                     <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 border-t border-gray-700 pt-2">
-                                        <span class="text-sm text-gray-400">Gambar Teknik:</span>
+                                        <span class="text-sm text-gray-800 dark:text-white"> Gambar Teknik (jpg/png/pdf/doc):</span>
                                         <form method="POST" action="{{ route('upload-dokumen') }}" enctype="multipart/form-data" id="uploadForm_{{ $abnormality['notification_number'] }}" class="inline">
                                             @csrf
                                             <input type="hidden" name="notification_number" value="{{ $abnormality['notification_number'] }}">
                                             <input type="file" name="dokumen" class="hidden" id="upload_dokumen_{{ $abnormality['notification_number'] }}" onchange="uploadDokumen(this, '{{ $abnormality['notification_number'] }}');">
                                             <a href="#" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-md text-xs w-full sm:w-auto text-center" onclick="document.getElementById('upload_dokumen_{{ $abnormality['notification_number'] }}').click(); return false;">
-                                                <i class="fas fa-upload mr-1"></i> Upload Gambar
+                                                <i class="fas fa-upload mr-1"></i> Upload Gambar 
                                             </a>
                                         </form>
                                         <a href="{{ route('view-dokumen', ['notificationNumber' => $abnormality['notification_number']]) }}" 

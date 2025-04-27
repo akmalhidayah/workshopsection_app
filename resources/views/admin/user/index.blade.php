@@ -95,7 +95,19 @@
                     <td class="py-2 px-4 text-left">{{ $user->jabatan }}</td>
                     <td class="py-2 px-4 text-center">
                         <!-- Tombol Edit -->
-                        <button onclick="openEditForm('{{ $user->id }}', '{{ $user->name }}', '{{ $user->email }}', '{{ $user->usertype }}', '{{ $user->departemen }}', '{{ $user->unit_work }}', '{{ $user->seksi }}', '{{ $user->jabatan }}', '{{ $user->whatsapp_number }}', '{{ $user->initials }}')"
+                        <button onclick='openEditForm(
+                                "{{ $user->id }}",
+                                "{{ $user->name }}",
+                                "{{ $user->email }}",
+                                "{{ $user->usertype }}",
+                                "{{ $user->departemen }}",
+                                "{{ $user->unit_work }}",
+                                "{{ $user->seksi }}",
+                                "{{ $user->jabatan }}",
+                                "{{ $user->whatsapp_number }}",
+                                "{{ $user->initials }}",
+                                {!! json_encode($user->related_units ?? []) !!}
+                            )'
                             class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-700 text-xs">
                             <i class="fas fa-edit"></i>
                         </button>
@@ -174,6 +186,12 @@
         class="mt-1 block w-full px-3 py-2 border border-gray-500 rounded-md shadow-sm bg-blue-900 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
 </div>
 <div>
+    <label for="editRelatedUnits" class="block text-sm font-medium text-gray-300 text-left">Related Units</label>
+    <textarea id="editRelatedUnits" name="related_units" placeholder="Pisahkan dengan koma, contoh: Unit A, Unit B"
+        class="mt-1 block w-full px-3 py-2 border border-gray-500 rounded-md shadow-sm bg-blue-900 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
+</div>
+
+<div>
     <label for="editSeksi" class="block text-sm font-medium text-gray-300 text-left">Seksi</label>
     <input type="text" id="editSeksi" name="seksi" placeholder="Seksi"
         class="mt-1 block w-full px-3 py-2 border border-gray-500 rounded-md shadow-sm bg-blue-900 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
@@ -208,7 +226,7 @@
 </div>
 
     <script>
-function openEditForm(id, name, email, usertype, departemen, unit_work, seksi, jabatan, whatsapp_number, initials) {
+function openEditForm(id, name, email, usertype, departemen, unit_work, seksi, jabatan, whatsapp_number, initials, related_units = '') {
     const form = document.getElementById('editUserForm');
     if (form) {
         form.action = `/admin/users/${id}`;
@@ -223,9 +241,11 @@ function openEditForm(id, name, email, usertype, departemen, unit_work, seksi, j
     document.getElementById('editJabatan').value = jabatan || '';
     document.getElementById('editWhatsAppNumber').value = whatsapp_number || '';
     document.getElementById('editInitials').value = initials || '';
+    document.getElementById('editRelatedUnits').value = related_units ? related_units.join(', ') : '';
 
     document.getElementById('editForm').classList.remove('hidden');
 }
+
 function closeEditForm() {
     document.getElementById('editForm').classList.add('hidden');
 }

@@ -11,11 +11,11 @@
             <div class="flex flex-wrap justify-between mb-4 items-center">
                 <form action="" method="GET" class="flex items-center w-full sm:w-auto mb-2 sm:mb-0">
                     <input type="text" name="search" placeholder="Cari dokumen..." class="border border-gray-300 rounded-lg px-4 py-2 w-full sm:w-auto" />
-                    <button type="submit" class="bg-gray-400 text-white px-4 py-2 ml-2 rounded-lg hover:bg-gray-600 flex items-center">
+                    <button type="submit" class="bg-orange-400 text-white px-4 py-2 ml-2 rounded-lg hover:bg-gray-600 flex items-center">
                         <i class="fas fa-search mr-2"></i> Cari
                     </button>
                 </form>
-                <a href="{{ route('pkm.lhpp.create') }}" class="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center w-full sm:w-auto justify-center">
+                <a href="{{ route('pkm.lhpp.create') }}" class="bg-orange-400 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center w-full sm:w-auto justify-center">
                     <i class="fas fa-plus mr-2"></i> Buat Form LHPP
                 </a>
             </div>
@@ -24,7 +24,7 @@
             <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
                 <div class="overflow-x-auto">
                     <table class="min-w-full bg-white text-sm rounded-lg shadow-lg">
-                        <thead class="bg-gray-400 text-white">
+                        <thead class="bg-orange-400 text-white">
                             <tr>
                                 <th class="px-6 py-3 text-left font-semibold">Nomor Order</th>
                                 <th class="px-6 py-3 text-left font-semibold">Nomor PO</th>

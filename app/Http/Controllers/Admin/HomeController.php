@@ -306,17 +306,25 @@ class HomeController extends Controller
             $notification->isAbnormalAvailable = Abnormal::where('notification_number', $notification->notification_number)->exists();
             $notification->isScopeOfWorkAvailable = ScopeOfWork::where('notification_number', $notification->notification_number)->exists();
             $notification->isGambarTeknikAvailable = GambarTeknik::where('notification_number', $notification->notification_number)->exists();
-            
-            // Cek HPP berdasarkan notification_number dan ambil juga nilai source_form
+        
+            // ✅ Tambahkan pengecekan tanda tangan
+            $abnormal = Abnormal::where('notification_number', $notification->notification_number)->first();
+            $notification->isAbnormalSigned = $abnormal && $abnormal->manager_signature && $abnormal->senior_manager_signature;
+        
+            // ✅ Perluas logika AbnormalAvailable
+            $notification->isAbnormalAvailable = $notification->isAbnormalAvailable && $notification->isAbnormalSigned;
+        
+            // ✅ HPP
             $hpp = Hpp1::where('notification_number', $notification->notification_number)->first();
             if ($hpp) {
                 $notification->isHppAvailable = true;
                 $notification->source_form = $hpp->source_form;
-                $notification->total_amount = $hpp->total_amount; // Ambil total amount dari tabel HPP
+                $notification->total_amount = $hpp->total_amount;
             } else {
                 $notification->isHppAvailable = false;
             }
         }
+        
     
         return view('admin.verifikasianggaran', compact('notifications', 'search', 'entries'));
     }

@@ -7,25 +7,55 @@ use App\Models\Abnormal;
 use App\Models\ScopeOfWork;
 use App\Models\GambarTeknik;
 use App\Models\Notification;
+use App\Models\UnitWork;
 use Illuminate\Database\QueryException;
 
 class NotificationController extends Controller
 {
-    public function index()
-{
-    // Jika pengguna adalah admin, ambil semua notifikasi
-    if (auth()->user()->usertype == 'admin') {
-        $notifications = Notification::orderBy('created_at', 'desc')->get();
-    } else {
-        // Jika bukan admin, ambil notifikasi milik user yang login
-        $notifications = Notification::where('user_id', auth()->id())
-                                     ->orderBy('created_at', 'desc')
-                                     ->get();
+    public function index(Request $request)
+    {
+        $query = Notification::query();
+    
+        if (auth()->user()->usertype != 'admin') {
+            $query->where('user_id', auth()->id());
+        }
+    
+        // Search
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('notification_number', 'like', '%' . $request->search . '%')
+                  ->orWhere('job_name', 'like', '%' . $request->search . '%');
+            });
+        }
+    
+        // Sorting
+        switch ($request->sortOrder) {
+            case 'oldest':
+                $query->orderBy('created_at', 'asc');
+                break;
+            case 'priority-highest':
+                $query->orderByRaw("FIELD(priority, 'Urgently', 'Hard', 'Medium', 'Low')");
+                break;
+            case 'priority-lowest':
+                $query->orderByRaw("FIELD(priority, 'Low', 'Medium', 'Hard', 'Urgently')");
+                break;
+            default:
+                $query->orderBy('created_at', 'desc');
+                break;
+        }
+    
+        // Pagination jumlah
+        $entries = $request->entries ?? 10;
+    
+        // Ambil hasil paginasi
+        $notifications = $query->paginate($entries)->withQueryString();
+    
+        // Ambil unit kerja
+        $units = UnitWork::orderBy('name')->get();
+    
+        return view('notifications.index', compact('notifications', 'units'));
     }
-
-    return view('notifications.index', compact('notifications'));
-}
-
+    
 public function store(Request $request)
     {
         // Validasi input dari form termasuk jenis_kontrak dan nama_kontrak

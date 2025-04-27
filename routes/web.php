@@ -169,7 +169,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     ->name('admin.lhpp.download_pdf');
 
 });
-
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::resource('unit_work', App\Http\Controllers\Admin\UnitWorkController::class);
+});
 
 //Route PKM
 Route::middleware(['auth', PkmMiddleware::class])
@@ -271,6 +273,7 @@ Route::middleware(['auth'])->prefix('approval/lhpp')->name('approval.lhpp.')->gr
     // ✅ Route untuk download PDF menggunakan LHPPController
     Route::get('/{notification_number}/download-pdf', [App\Http\Controllers\LHPPController::class, 'downloadPDF'])->name('download_pdf');
 });
+
 
 // Route::get('/send-wa', function() {
 //     $response = Http::withHeaders([

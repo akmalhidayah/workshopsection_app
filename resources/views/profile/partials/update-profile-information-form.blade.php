@@ -46,6 +46,13 @@
                 </div>
             @endif
         </div>
+        <div>
+            <x-input-label for="whatsapp_number" :value="__('WhatsApp Number')" />
+            <x-text-input id="whatsapp_number" name="whatsapp_number" type="text" class="mt-1 block w-full"
+                :value="old('whatsapp_number', $user->whatsapp_number)" autocomplete="tel" />
+            <x-input-error class="mt-2" :messages="$errors->get('whatsapp_number')" />
+        </div>
+
 
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>

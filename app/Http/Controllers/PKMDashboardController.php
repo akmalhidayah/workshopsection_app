@@ -192,19 +192,24 @@ class PKMDashboardController extends Controller
     
     
     public function laporan(Request $request)
-    {
-        $query = Notification::with(['lhpp', 'lpj', 'abnormal', 'hpp1']); // Tambahkan relasi abnormal dan hpp
-    
-        if ($request->has('notification_number')) {
-            $query->where('notification_number', 'like', '%' . $request->input('notification_number') . '%');
-        }
-    
-        $notifications = $query->orderBy('created_at', 'desc')->paginate(10);
-    
-        return view('pkm.laporan', compact('notifications'));
+{
+    $query = Notification::with(['lhpp', 'lpj', 'abnormal', 'hpp1', 'purchaseOrder']);
+
+    if ($request->has('notification_number')) {
+        $query->where('notification_number', 'like', '%' . $request->input('notification_number') . '%');
     }
-    
-    
+
+    // 🔥 Filter: hanya tampilkan jika HPP, PO, dan LHPP tersedia
+    $query->whereHas('hpp1')
+          ->whereHas('purchaseOrder', function ($q) {
+              $q->whereNotNull('po_document_path');
+          })
+          ->whereHas('lhpp');
+
+    $notifications = $query->orderBy('created_at', 'desc')->paginate(10);
+
+    return view('pkm.laporan', compact('notifications'));
+}
 
     public function showLHPP($notification_number)
     {

@@ -31,14 +31,19 @@ class LHPPController extends Controller
      */
     public function create()
     {
-        // Ambil notifikasi yang belum ada di tabel 'lhpp'
+        // Ambil notifikasi yang belum ada di tabel 'lhpp' DAN sudah memiliki HPP & PO
         $notifications = Notification::whereNotIn('notification_number', function ($query) {
             $query->select('notification_number')->from('lhpp');
-        })->get();
-
-        // Kirim variabel $notifications ke view
+        })
+        ->whereHas('hpp1') // harus sudah punya HPP
+        ->whereHas('purchaseOrder', function ($q) {
+            $q->whereNotNull('po_document_path'); // PO wajib ada dan ada filenya
+        })
+        ->get();
+    
         return view('pkm.lhpp.create', compact('notifications'));
     }
+    
     
 
     /**
@@ -228,14 +233,19 @@ public function getPurchaseOrder($notificationNumber)
     }
 }
 
-public function getNomorOrder($notificationNumber)
+public function getNomorOrder($notificationNumber) 
 {
     try {
-        $nomorOrder = Notification::where('notification_number', $notificationNumber)->first();
+        $nomorOrder = Notification::where('notification_number', $notificationNumber)
+            ->whereHas('hpp1')
+            ->whereHas('purchaseOrder', function ($query) {
+                $query->whereNotNull('po_document_path');
+            })
+            ->first();
 
         if (!$nomorOrder) {
-            \Log::error("Nomor Order tidak ditemukan untuk notification_number: $notificationNumber");
-            return response()->json(['error' => 'Nomor Order tidak ditemukan'], 404);
+            \Log::error("Nomor Order tidak ditemukan atau belum memiliki HPP dan PO untuk notification_number: $notificationNumber");
+            return response()->json(['error' => 'Nomor Order tidak ditemukan atau belum memiliki HPP dan PO'], 404);
         }
 
         return response()->json([
@@ -246,6 +256,7 @@ public function getNomorOrder($notificationNumber)
         return response()->json(['error' => 'Terjadi kesalahan di server'], 500);
     }
 }
+
 
 public function getAbnormalDescription($notificationNumber)
 {

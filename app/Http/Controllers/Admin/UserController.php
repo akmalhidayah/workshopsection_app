@@ -63,7 +63,11 @@ class UserController extends Controller
             'jabatan' => $request->input('jabatan'),
             'whatsapp_number' => $request->input('whatsapp_number'),
             'initials' => $request->input('initials'),
+            'related_units' => $request->input('related_units') 
+                ? array_map('trim', explode(',', $request->input('related_units')))
+                : [],
         ]);
+        
     
         return redirect()->route('admin.users.index')->with('success', 'User berhasil diperbarui.');
     }

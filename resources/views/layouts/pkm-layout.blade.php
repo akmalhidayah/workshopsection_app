@@ -16,9 +16,9 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- @vite(['resources/css/app.css', 'resources/js/app.js']) -->
-    <link rel="stylesheet" href="{{ asset('build/assets/app-CmMamunY.css') }}">
-    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <!-- <link rel="stylesheet" href="{{ asset('build/assets/app-CmMamunY.css') }}">
+    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script> -->
 
     <!-- Alpine.js -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -121,17 +121,22 @@
                                             </button>
                                         </x-slot>
                                 <x-slot name="content">
-                        <x-slot name="content">
-                            <!-- Authentication -->
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <x-dropdown-link :href="route('logout')"
-                                                 onclick="event.preventDefault();
-                                                 this.closest('form').submit();">
-                                    {{ __('Log Out') }}
-                                </x-dropdown-link>
-                            </form>
-                        </x-slot>
+                                <x-slot name="content">
+    <x-dropdown-link :href="route('profile.edit')">
+        {{ __('Profile') }}
+    </x-dropdown-link>
+
+    <!-- Authentication -->
+    <form method="POST" action="{{ route('logout') }}">
+        @csrf
+        <x-dropdown-link :href="route('logout')"
+                         onclick="event.preventDefault();
+                         this.closest('form').submit();">
+            {{ __('Log Out') }}
+        </x-dropdown-link>
+    </form>
+</x-slot>
+
                     </x-dropdown>
                 </div>
             </div>
