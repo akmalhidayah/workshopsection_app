@@ -24,7 +24,11 @@
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js" defer></script>
 
     <!-- Vite -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- @vite(['resources/css/app.css', 'resources/js/app.js']) -->
+    <link rel="stylesheet" href="{{ asset('build/assets/app-BD6FMr64.css') }}">
+    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script> 
 
 </head>
 <body 

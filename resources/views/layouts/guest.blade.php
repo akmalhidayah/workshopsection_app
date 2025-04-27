@@ -12,10 +12,12 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-        <!-- Scripts -->
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-        <!-- <link rel="stylesheet" href="{{ asset('build/assets/app-CmMamunY.css') }}">
-        <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script> -->
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- @vite(['resources/css/app.css', 'resources/js/app.js']) -->
+    <link rel="stylesheet" href="{{ asset('build/assets/app-BD6FMr64.css') }}">
+    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script> 
+    
     </head>
     <body class="font-sans text-gray-900 antialiased bg-cover bg-center" style="background-image: url('{{ asset('images/bg-login.jpg') }}')">
     <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-none">

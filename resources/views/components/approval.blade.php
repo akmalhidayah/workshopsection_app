@@ -11,9 +11,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 
     <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <!-- @vite(['resources/css/app.css', 'resources/js/app.js']) -->
-    <link rel="stylesheet" href="{{ asset('build/assets/app-CmMamunY.css') }}">
-    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script>
+    <link rel="stylesheet" href="{{ asset('build/assets/app-BD6FMr64.css') }}">
+    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script> 
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
