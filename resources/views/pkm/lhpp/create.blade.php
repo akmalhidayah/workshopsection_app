@@ -21,7 +21,7 @@
                         <select id="notifikasi" name="notification_number" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                             <option value="" disabled selected>Pilih Nomor Order</option>
                             @foreach($notifications as $notification)
-                                <option value="{{ $notification->notification_number }}" data-unit-work="{{ $notification->unit_work }}">
+                                <option value="{{ $notification->notification_number }}" data-unit-work="{{ $notification->seksi }}">
                                     {{ $notification->notification_number }}
                                 </option>
                             @endforeach
@@ -216,9 +216,11 @@
             </div>
         </div>
     </div>
-    <script>
-      // Script untuk tambah baris dokumentasi baru
-      let dokumentasiIndex = 2;
+ <script>
+/* ===============================
+   🔹 Script Tambah Dokumentasi
+================================*/
+let dokumentasiIndex = 2;
 document.getElementById('add-dokumentasi').addEventListener('click', function () {
     const container = document.getElementById('dokumentasi-container');
 
@@ -237,6 +239,10 @@ document.getElementById('add-dokumentasi').addEventListener('click', function ()
     container.appendChild(newRow);
     dokumentasiIndex++;
 });
+
+/* ===============================
+   🔹 Isi Otomatis Data LHPP
+================================*/
 document.getElementById('notifikasi').addEventListener('change', function () {
     const selectedNotification = this.value; // Ambil notification_number yang dipilih
 
@@ -244,18 +250,18 @@ document.getElementById('notifikasi').addEventListener('change', function () {
         const selectedOption = this.options[this.selectedIndex];
         const unitWork = selectedOption.getAttribute('data-unit-work');
 
-        // 🔹 Isi otomatis Unit Kerja berdasarkan data `data-unit-work`
+        // Isi otomatis Unit Kerja
         document.getElementById('unit_kerja').value = unitWork ? unitWork : '';
 
-        // 🔹 Ambil Deskripsi Notifikasi (Abnormal Title)
-        fetch(`/pkm/lhpp/get-abnormal-description/${selectedNotification}`)
+        // Ambil Deskripsi dari Notification (job_name)
+        fetch(`/pkm/lhpp/get-jobname/${selectedNotification}`)
             .then(response => response.json())
             .then(data => {
-                document.getElementById('description_notifikasi').value = data.description_notifikasi || '-';
+                document.getElementById('description_notifikasi').value = data.job_name || '-';
             })
-            .catch(error => console.error('Error fetching abnormal description:', error));
+            .catch(error => console.error('Error fetching job name:', error));
 
-        // 🔹 Ambil Purchase Order berdasarkan notification_number
+        // Ambil Purchase Order
         fetch(`/pkm/lhpp/get-purchase-order/${selectedNotification}`)
             .then(response => response.json())
             .then(data => {
@@ -263,7 +269,7 @@ document.getElementById('notifikasi').addEventListener('change', function () {
             })
             .catch(error => console.error('Error fetching purchase order:', error));
 
-        // 🔹 Ambil Nomor Order berdasarkan notification_number
+        // Ambil Nomor Order
         fetch(`/pkm/lhpp/get-nomor-order/${selectedNotification}`)
             .then(response => response.json())
             .then(data => {
@@ -271,11 +277,14 @@ document.getElementById('notifikasi').addEventListener('change', function () {
             })
             .catch(error => console.error('Error fetching nomor order:', error));
 
-        // 🔹 Coba hitung durasi pekerjaan setelah order dipilih (jika tanggal sudah dipilih)
+        // Hitung durasi pekerjaan
         calculateWorkDuration();
     }
 });
 
+/* ===============================
+   🔹 Hitung Durasi Pekerjaan
+================================*/
 function calculateWorkDuration() {
     const notificationNumber = document.getElementById('notifikasi').value;
     const tanggalSelesai = document.getElementById('tanggal_selesai').value;
@@ -289,33 +298,77 @@ function calculateWorkDuration() {
             .catch(error => console.error('Error fetching work duration:', error));
     }
 }
-
-// 🔹 Pastikan hitungan berjalan setiap kali tanggal selesai berubah
 document.getElementById('tanggal_selesai').addEventListener('change', calculateWorkDuration);
 
 
-</script>
-    <script src="{{ asset('js/lhpp.js') }}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-    // SweetAlert untuk pesan sukses
-    @if(session('success'))
-    Swal.fire({
-        title: 'Berhasil!',
-        text: "{{ session('success') }}",
-        icon: 'success',
-        confirmButtonText: 'OK'
-    });
-    @endif
+/* ===============================
+   🔹 Perhitungan Otomatis LHPP
+   (Jumlah, Subtotal, Total Biaya)
+================================*/
+function setupAutoCalculation(sectionId, prefix, subtotalId) {
+    const section = document.getElementById(sectionId);
 
-    // SweetAlert untuk pesan error
-    @if(session('error'))
-    Swal.fire({
-        title: 'Gagal!',
-        text: "{{ session('error') }}",
-        icon: 'error',
-        confirmButtonText: 'OK'
+    function calculateRow(row) {
+        const volume = parseFloat(row.querySelector(`[name="${prefix}_volume[]"]`)?.value) || 0;
+        const harga = parseFloat(row.querySelector(`[name="${prefix}_harga_satuan[]"]`)?.value) || 0;
+        const jumlah = volume * harga;
+        row.querySelector(`[name="${prefix}_jumlah[]"]`).value = jumlah.toFixed(2);
+        calculateSubtotal();
+    }
+
+    function calculateSubtotal() {
+        let subtotal = 0;
+        section.querySelectorAll(`[name="${prefix}_jumlah[]"]`).forEach(input => {
+            subtotal += parseFloat(input.value) || 0;
+        });
+        document.getElementById(subtotalId).value = subtotal.toFixed(2);
+        calculateTotal();
+    }
+
+    // Hitung ulang setiap kali volume atau harga diubah
+    section.addEventListener('input', e => {
+        if (e.target.matches(`[name="${prefix}_volume[]"], [name="${prefix}_harga_satuan[]"]`)) {
+            const row = e.target.closest('.grid');
+            calculateRow(row);
+        }
     });
-    @endif
+}
+
+// Hitung total keseluruhan (A + B + C)
+function calculateTotal() {
+    const a = parseFloat(document.getElementById('material_subtotal').value) || 0;
+    const b = parseFloat(document.getElementById('consumable_subtotal').value) || 0;
+    const c = parseFloat(document.getElementById('upah_subtotal').value) || 0;
+    document.getElementById('total_biaya').value = (a + b + c).toFixed(2);
+}
+
+// Aktifkan perhitungan otomatis
+setupAutoCalculation('material-section', 'material', 'material_subtotal');
+setupAutoCalculation('consumable-section', 'consumable', 'consumable_subtotal');
+setupAutoCalculation('upah-section', 'upah', 'upah_subtotal');
 </script>
+
+<script src="{{ asset('js/lhpp.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+@if(session('success'))
+Swal.fire({
+    title: 'Berhasil!',
+    text: "{{ session('success') }}",
+    icon: 'success',
+    confirmButtonText: 'OK'
+});
+@endif
+
+@if(session('error'))
+Swal.fire({
+    title: 'Gagal!',
+    text: "{{ session('error') }}",
+    icon: 'error',
+    confirmButtonText: 'OK'
+});
+@endif
+</script>
+
 </x-pkm-layout>

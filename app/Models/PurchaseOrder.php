@@ -9,10 +9,9 @@ class PurchaseOrder extends Model
 {
     use HasFactory;
 
-    // Menentukan bahwa primary key adalah 'notification_number' dan bukan 'id'
     protected $primaryKey = 'notification_number';
-    public $incrementing = false; // Menyatakan bahwa primary key bukan auto-increment
-    protected $keyType = 'string'; // Tipe data primary key adalah string
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
         'notification_number',
@@ -25,6 +24,9 @@ class PurchaseOrder extends Model
         'progress_pekerjaan',
         'catatan',
         'target_penyelesaian',
+        'approval_target',
+        'approval_note',    // ✅ Catatan kecil saat PO disetujui/tidak disetujui
+        'catatan_pkm',      // ✅ Catatan umum PKM (pengelola)
         'update_date',
     ];
 
@@ -36,7 +38,6 @@ class PurchaseOrder extends Model
         'update_date' => 'datetime',
     ];
 
-    // Relasi ke model Notification
     public function notification()
     {
         return $this->belongsTo(Notification::class, 'notification_number', 'notification_number');

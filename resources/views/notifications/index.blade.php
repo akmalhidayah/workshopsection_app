@@ -1,284 +1,504 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Buat Order/Notification Type 14 Planner Group 001/4701') }}
+            {{ __('Buat Order ') }}
         </h2>
     </x-slot>
-
-    <div class="py-12">
-    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
-            <!-- Header -->
-            <div class="flex justify-between p-6 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white">
-                <h3 class="text-lg leading-6 font-medium">
-                    List Order User
-                </h3>
-                <div class="flex space-x-2">
-                    <button onclick="confirmCreate()" class="inline-flex items-center px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-green-600 transition duration-150 ease-in-out">
-                        <i class="fas fa-plus mr-2"></i> Input Notifikasi / Order
-                    </button>
-                </div>
-            </div>
-
-            <!-- Search and Sorting -->
-            <form method="GET" action="{{ route('notifications.index') }}" class="flex flex-col sm:flex-row justify-between px-6 py-4 bg-white dark:bg-gray-900 border-b border-gray-300 dark:border-gray-700 space-y-4 sm:space-y-0">
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari..." 
-                    class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg w-full sm:w-1/3 text-gray-800 dark:text-white bg-white dark:bg-gray-700">
-
-                <div class="flex space-x-2 items-center">
-                    <select name="sortOrder" onchange="this.form.submit()" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white">
-                        <option value="latest" {{ request('sortOrder') == 'latest' ? 'selected' : '' }}>Terbaru</option>
-                        <option value="oldest" {{ request('sortOrder') == 'oldest' ? 'selected' : '' }}>Terlama</option>
-                        <option value="priority-highest" {{ request('sortOrder') == 'priority-highest' ? 'selected' : '' }}>Prioritas Tertinggi</option>
-                        <option value="priority-lowest" {{ request('sortOrder') == 'priority-lowest' ? 'selected' : '' }}>Prioritas Terendah</option>
-                    </select>
-
-                    <select name="entries" onchange="this.form.submit()" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white">
-                        <option value="10" {{ request('entries') == 10 ? 'selected' : '' }}>10</option>
-                        <option value="25" {{ request('entries') == 25 ? 'selected' : '' }}>25</option>
-                        <option value="50" {{ request('entries') == 50 ? 'selected' : '' }}>50</option>
-                        <option value="100" {{ request('entries') == 100 ? 'selected' : '' }}>100</option>
-                    </select>
-                </div>
-            </form>
-
-                <!-- Table -->
-                <div class="overflow-x-auto">
-                <table class="min-w-full bg-gray-800 border border-gray-300 dark:border-none">
-                    <thead class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Nomor Order</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Nama Pekerjaan</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Unit Kerja</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Prioritas</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Tanggal Input</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody" class="divide-y divide-gray-300 dark:divide-gray-700">
-                            @foreach($notifications as $index => $notification)
-                            <tr class="{{ $index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-100 dark:bg-gray-900' }}">
-                                    <td class="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-white">{{ $notification->notification_number }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-white">{{ $notification->job_name }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-white">{{ $notification->unit_work }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                            @if($notification->priority == 'Urgently') bg-red-500 text-white @endif
-                                            @if($notification->priority == 'Hard') bg-orange-500 text-white @endif
-                                            @if($notification->priority == 'Medium') bg-yellow-500 text-white @endif
-                                            @if($notification->priority == 'Low') bg-green-500 text-white @endif
-                                        ">
-                                            {{ $notification->priority }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-white">{{ $notification->input_date }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center space-x-2">
-                                            <!-- Tombol Edit dengan bentuk persegi dan border 
-                                            <button onclick="openEditForm('{{ $notification->notification_number }}')" class="bg-green-500 text-white p-2 border border-green-600 hover:bg-green-600 transition duration-300 ease-in-out">
-                                                <i class="fas fa-edit text-sm"></i>
-                                            </button>-->
-
-                                            <!-- Tombol Hapus dengan bentuk persegi dan border -->
-                                            <form action="{{ route('notifications.destroy', $notification->notification_number) }}" method="POST" onsubmit="return confirmDelete(this)">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="bg-red-500 text-white p-2 border border-red-600 hover:bg-red-600 transition duration-300 ease-in-out">
-                                                    <i class="fas fa-trash-alt text-sm"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-   <!-- Modal form untuk menambahkan data -->
-<div id="dataForm" class="fixed z-50 inset-0 overflow-y-auto @if ($errors->any()) block @else hidden @endif">
-    <div class="flex items-center justify-center min-h-screen px-4 text-center">
-        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-            <div class="absolute inset-0 bg-gray-900 opacity-75"></div>
-        </div>
-        <div class="inline-block bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:align-middle sm:max-w-md w-full">
-        <div class="bg-gray-100 dark:bg-gray-700 px-6 py-4">
-                <div class="text-center sm:text-left">
-                    <h3 class="text-lg leading-6 font-medium  text-gray-900 dark:text-white" id="modal-title">Input Notifikasi / Order In Planning (03)</h3>
-                    <div class="mt-4">
-                        <form id="createForm" action="{{ route('notifications.store') }}" method="POST">
-                            @csrf
-                            <div class="mb-4">
-                                <label for="notifikasiNo" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nomor Notifikasi / Order </label>
-                                <input type="text" id="notifikasiNo" name="notification_number" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                                
-                                <!-- Menampilkan pesan error jika nomor notifikasi sudah ada -->
-                                @if ($errors->has('notification_number'))
-                                    <span class="text-red-400 text-sm mt-1">{{ $errors->first('notification_number') }}</span>
-                                @endif
-                            </div>
-                            <div class="mb-4">
-                                <label for="namaPekerjaan" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Pekerjaan</label>
-                                <input type="text" id="namaPekerjaan" name="job_name" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                            </div>
-                            <div class="mb-4">
-                                <label for="unitKerja" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Unit Kerja</label>
-                                <select id="unitKerja" name="unit_work" class="select2 mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-500  rounded-md shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                                    <option value="">Pilih Unit Kerja</option>
-                                    @foreach ($units as $unit)
-                                        <option value="{{ $unit->name }}">{{ $unit->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="mb-4">
-                                <label for="priority" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Prioritas</label>
-                                <select id="priority" name="priority" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                                    <option value="Urgently">Urgently</option>
-                                    <option value="Hard">Hard</option>
-                                    <option value="Medium" selected>Medium</option>
-                                    <option value="Low">Low</option>
-                                </select>
-                            </div>
-                            <div class="mb-4">
-                                    <label for="jenisKontrak" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Jenis Kontrak</label>
-                                    <select id="jenisKontrak" name="jenis_kontrak" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onchange="handleJenisKontrakChange()" required>
-                                        <option value="">Pilih Jenis Kontrak</option>
-                                        <option value="Bengkel Mesin">Bengkel Mesin</option>
-                                        <option value="Bengkel Listrik">Bengkel Listrik</option>
-                                        <option value="Field Supporting">Field Supporting</option>
-                                    </select>
-                                </div>
-
-                                <div class="mb-4" id="namaKontrakContainer" style="display:none;">
-                                    <label for="namaKontrak" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Kontrak</label>
-                                    <select id="namaKontrak" name="nama_kontrak" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                                        <!-- Pilihan Nama Kontrak akan dimasukkan melalui JavaScript -->
-                                    </select>
-                                </div>
-                            <div class="mb-4">
-                                <input type="hidden" id="InputDate" name="input_date" value="{{ date('Y-m-d') }}">
-                            </div>
-                            <div class="mb-4">
-                                <label for="rencanaPemakaian" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Rencana Pemakaian</label>
-                                <input type="date" id="rencanaPemakaian" name="usage_plan_date" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                            </div>
-                            <div class="flex flex-col sm:flex-row justify-end gap-2">
-    <button type="submit"
-        class="w-full sm:w-auto inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2
-               bg-indigo-500 text-base font-medium text-white hover:bg-indigo-600
-               focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm">
-        Submit
-    </button>
-
-    <button type="button"
-        class="w-full sm:w-auto inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-500 shadow-sm px-4 py-2
-               bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300
-               hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:text-sm"
-        onclick="closeForm()">
-        Cancel
-    </button>
-</div>
-
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<!-- Modal form untuk edit data -->
-<div id="editForm" class="fixed z-50 inset-0 overflow-y-auto hidden">
-    <div class="flex items-center justify-center min-h-screen px-4 text-center">
-        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-            <div class="absolute inset-0 bg-gray-900 opacity-75"></div>
-        </div>
-        <div class="inline-block bg-gray-800 text-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:align-middle sm:max-w-md w-full">
-            <div class="bg-gray-700 px-6 py-4">
-                <div class="text-center sm:text-left">
-                    <h3 class="text-lg leading-6 font-medium text-white" id="modal-title">Edit Order Permintaan</h3>
-                    <div class="mt-4">
-                        <form id="editNotificationForm" action="" method="POST">
-                            @csrf
-                            @method('PATCH')
-                            <div class="mb-4">
-                                <label for="editNotifikasiNo" class="block text-sm font-medium text-gray-300">Nomor Order</label>
-                                <input type="text" id="editNotifikasiNo" name="notification_number" class="mt-1 block w-full px-3 py-2 border border-gray-500 rounded-md shadow-sm bg-gray-900 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" readonly>
-                            </div>
-                            <div class="mb-4">
-                                <label for="editNamaPekerjaan" class="block text-sm font-medium text-gray-300">Nama Pekerjaan</label>
-                                <input type="text" id="editNamaPekerjaan" name="job_name" class="mt-1 block w-full px-3 py-2 border border-gray-500 rounded-md shadow-sm bg-gray-900 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                            </div>
-                            <div class="mb-4">
-                                <label for="editUnitKerja" class="block text-sm font-medium text-gray-300">Unit Kerja</label>
-                                <input type="text" id="editUnitKerja" name="unit_work" class="mt-1 block w-full px-3 py-2 border border-gray-500 rounded-md shadow-sm bg-gray-900 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                            </div>
-                            <div class="mb-4">
-                                <label for="priority" class="block text-sm font-medium text-gray-300">Prioritas</label>
-                                <select id="priority" name="priority" class="mt-1 block w-full px-3 py-2 border border-gray-500 rounded-md shadow-sm bg-gray-900 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                                    <option value="Urgently">Urgently</option>
-                                    <option value="Hard">Hard</option>
-                                    <option value="Medium" selected>Medium</option>
-                                    <option value="Low">Low</option>
-                                </select>
-                            </div>
-                            <div class="mb-4">
-                                <label for="editInputDate" class="block text-sm font-medium text-gray-300">Tanggal Input</label>
-                                <input type="date" id="editInputDate" name="input_date" class="mt-1 block w-full px-3 py-2 border border-gray-500 rounded-md shadow-sm bg-gray-900 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                            </div>
-                            <div class="mb-4">
-                                <label for="rencanaPemakaian" class="block text-sm font-medium text-gray-300">Rencana Pemakaian</label>
-                                <input type="date" id="rencanaPemakaian" name="usage_plan_date" class="mt-1 block w-full px-3 py-2 border border-gray-500 rounded-md shadow-sm bg-gray-900 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                            </div>
-                            <div class="flex justify-end">
-                                <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-500 text-base font-medium text-white hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:w-auto sm:text-sm">
-                                    Update
-                                </button>
-                                <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-500 shadow-sm px-4 py-2 bg-gray-600 text-base font-medium text-gray-300 hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:w-auto sm:text-sm" onclick="closeEditForm()">Cancel</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-@if(session('success'))
-    <script>
-        Swal.fire({
-            title: 'Sukses!',
-            text: '{{ session('success') }}',
-            icon: 'success',
-            confirmButtonText: 'OK'
-        });
-    </script>
+    {{-- FLASH PLACEHOLDERS --}}
+@if(session('success') || session('success_priority') || session('status'))
+  <div id="flash-success"
+       data-message="{{ session('success') ?? session('success_priority') ?? session('status') }}"></div>
 @endif
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="{{ asset('js/custom-notification.js') }}"></script>
-<script>
-        function confirmDelete(form) {
-    event.preventDefault(); // Mencegah form submit langsung
+@if(session('error'))
+  <div id="flash-error" data-message="{{ session('error') }}"></div>
+@endif
 
-    Swal.fire({
-        title: 'Yakin ingin menghapus user ini?',
-        text: "Aksi ini tidak dapat dibatalkan!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Ya, hapus!',
-        cancelButtonText: 'Batal'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            form.submit(); // Submit form jika konfirmasi
-        }
+@if ($errors->any())
+  <div id="flash-error" data-message="{{ implode(' • ', $errors->all()) }}"></div>
+@endif
+
+
+    <div class="py-6">
+        <div class="w-full max-w-[98%] mx-auto">
+            <!-- HEADER + FILTER -->
+            <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5 border border-gray-200 dark:border-gray-700 mb-5">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <!-- Judul -->
+                    <div>
+                        <h3 class="font-bold text-lg text-gray-800 dark:text-gray-100">
+                            📋 List Order User
+                        </h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Buat dan kelola order</p>
+                    </div>
+
+                    <!-- Tombol tambah -->
+                    <div class="relative inline-block text-left">
+                        <button id="openCreateBtn"
+                                class="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-semibold shadow focus:outline-none">
+                            <i class="fas fa-plus mr-2"></i> Input Order
+                        </button>
+                    </div>
+                </div>
+
+                <!-- FILTER -->
+                <form method="GET" action="{{ route('notifications.index') }}"
+                      class="flex flex-wrap items-end justify-between gap-3 mt-5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-3">
+
+                    <div class="flex flex-wrap gap-3 items-end">
+                        <!-- Pencarian -->
+                        <div>
+                            <label class="text-[10px] font-semibold text-gray-600 dark:text-gray-300 block mb-1">Pencarian</label>
+                            <input type="text" name="search" value="{{ request('search') }}"
+                                   placeholder="Cari nomor / nama pekerjaan..."
+                                   class="w-64 sm:w-72 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-[13px] focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100">
+                        </div>
+
+                        <!-- Sorting -->
+                        <div>
+                            <label class="text-[10px] font-semibold text-gray-600 dark:text-gray-300 block mb-1">Sort</label>
+                            <select name="sortOrder" onchange="this.form.submit()"
+                                    class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-[13px] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100">
+                                <option value="latest" {{ request('sortOrder') == 'latest' ? 'selected' : '' }}>Terbaru</option>
+                                <option value="oldest" {{ request('sortOrder') == 'oldest' ? 'selected' : '' }}>Terlama</option>
+                                <option value="priority-highest" {{ request('sortOrder') == 'priority-highest' ? 'selected' : '' }}>Prioritas Tertinggi</option>
+                                <option value="priority-lowest" {{ request('sortOrder') == 'priority-lowest' ? 'selected' : '' }}>Prioritas Terendah</option>
+                            </select>
+                        </div>
+
+                        <!-- Entries -->
+                        <div>
+                            <label class="text-[10px] font-semibold text-gray-600 dark:text-gray-300 block mb-1">Per halaman</label>
+                            <select name="entries" onchange="this.form.submit()"
+                                    class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-[13px] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100">
+                                @foreach([10,25,50,100] as $n)
+                                    <option value="{{ $n }}" {{ (int) request('entries', 10) === $n ? 'selected' : '' }}>{{ $n }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Tombol reset/filter (kanan) -->
+                    <div class="flex gap-2">
+                        <button type="submit"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-[13px] shadow flex items-center">
+                            <i class="fas fa-filter mr-2 text-[12px]"></i> Filter
+                        </button>
+                        <a href="{{ route('notifications.index') }}"
+                           class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded-md text-[13px] shadow flex items-center">
+                            <i class="fas fa-undo mr-2 text-[12px]"></i> Reset
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+<!-- TABEL (Diperbarui: tambah kolom Informasi Order & Verifikasi Anggaran + tombol Lengkapi Dokumen) -->
+<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white">
+            <tr>
+                <th class="px-4 py-3 text-left font-medium">Nomor Order</th>
+                <th class="px-4 py-3 text-left font-medium">Nama Pekerjaan</th>
+                <th class="px-4 py-3 text-left font-medium">Unit Kerja</th>
+                <th class="px-4 py-3 text-left font-medium">Prioritas</th>
+                <th class="px-4 py-3 text-left font-medium">Tanggal Input</th>
+
+                <!-- NEW: Informasi Order (status + catatan) -->
+                <th class="px-4 py-3 text-left font-medium">Informasi Order</th>
+
+                <!-- NEW: Verifikasi Anggaran -->
+                <th class="px-4 py-3 text-left font-medium">Verifikasi Anggaran</th>
+
+                <th class="px-4 py-3 text-left font-medium w-40">Aksi</th>
+            </tr>
+            </thead>
+
+            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            @forelse($notifications as $notification)
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-900 transition">
+                    <td class="px-4 py-3 text-gray-700 dark:text-gray-200">{{ $notification->notification_number }}</td>
+                    <td class="px-4 py-3 text-gray-700 dark:text-gray-200">{{ Str::limit($notification->job_name, 80) }}</td>
+                   <td class="px-4 py-3">
+    <div class="text-gray-700 dark:text-gray-200">
+        {{ $notification->unit_work }}
+    </div>
+
+    @if(!empty($notification->seksi))
+        <div class="mt-1">
+            <span
+                class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold
+                       bg-indigo-100 text-indigo-800 ring-1 ring-indigo-200
+                       dark:bg-indigo-900/40 dark:text-indigo-300 dark:ring-indigo-700">
+                <i class="fas fa-sitemap text-[9px] opacity-80"></i>
+                {{ $notification->seksi }}
+            </span>
+        </div>
+    @endif
+</td>
+
+                    <td class="px-4 py-3">
+                        @if($notification->priority == 'Urgently')
+                            <span class="inline-flex items-center px-2 py-0.5 rounded bg-red-600 text-white text-xs">Emergency</span>
+                        @elseif($notification->priority == 'Hard')
+                            <span class="inline-flex items-center px-2 py-0.5 rounded bg-orange-500 text-white text-xs">High</span>
+                        @elseif($notification->priority == 'Medium')
+                            <span class="inline-flex items-center px-2 py-0.5 rounded bg-yellow-400 text-black text-xs">Medium</span>
+                        @else
+                            <span class="inline-flex items-center px-2 py-0.5 rounded bg-green-600 text-white text-xs">Low</span>
+                        @endif
+                    </td>
+
+                    <td class="px-4 py-3 text-gray-700 dark:text-gray-200">{{ $notification->input_date }}</td>
+
+                    <!-- Informasi Order: status + catatan -->
+                    <td class="px-4 py-3 align-top">
+                        @php
+                            $status = $notification->status ?? 'Pending';
+                        @endphp
+
+                        <div class="flex items-start gap-3">
+                            <span class="px-2 py-1 rounded text-white text-xs
+                                {{ $status === 'Pending' ? 'bg-yellow-500' : ($status === 'Reject' ? 'bg-red-500' : 'bg-green-500') }}">
+                                {{ $status }}
+                            </span>
+                            <div class="text-[12px] leading-tight text-gray-600 dark:text-gray-300">
+                                <div><strong>Catatan:</strong> {{ $notification->catatan ?? 'Tidak Ada Catatan' }}</div>
+                            </div>
+                        </div>
+                    </td>
+
+                 <!-- Verifikasi Anggaran -->
+<td class="px-4 py-3 align-top">
+    @php $verif = $notification->verifikasiAnggaran ?? null; @endphp
+
+    @if($verif)
+        <div class="flex flex-col gap-1">
+            <span class="inline-flex items-center px-2 py-1 rounded text-white text-xs
+                {{ $verif->status_anggaran === 'Tersedia' ? 'bg-green-500' : ($verif->status_anggaran === 'Tidak Tersedia' ? 'bg-red-500' : 'bg-yellow-400') }}">
+                {{ $verif->status_anggaran ?? 'Menunggu' }}
+            </span>
+
+            {{-- Info ringkas (font kecil) --}}
+            <div class="text-[11px] text-gray-600 dark:text-gray-300 leading-tight">
+                <div class="font-medium">
+                    <span class="opacity-70">Cost Element:</span>
+                    <span class="font-mono">{{ $verif->cost_element ?? '-' }}</span>
+                </div>
+                <div><span class="opacity-70">Catatan:</span> {{ $verif->catatan ?? '-' }}</div>
+            </div>
+        </div>
+
+        {{-- E-KORIN: tampil hanya jika dana Tersedia --}}
+        @if(($verif->status_anggaran ?? null) === 'Tersedia')
+            <div class="mt-2 p-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                <form method="POST"
+                      action="{{ route('verifikasianggaran.ekorin.update', $notification->notification_number) }}"
+                      class="flex flex-wrap items-center gap-2">
+                    @csrf
+                    @method('PATCH')
+
+                    {{-- Nomor E-KORIN (wajib) --}}
+                    <label class="text-[11px] text-gray-600 dark:text-gray-300">
+                        No. E-KORIN
+                        <input type="text" name="nomor_e_korin"
+                               value="{{ old('nomor_e_korin', $verif->nomor_e_korin ?? '') }}"
+                               placeholder="Nomor e-korin…"
+                               required
+                               class="ml-1 w-44 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-800 focus:ring-blue-500 focus:border-blue-500">
+                    </label>
+
+                    {{-- Status E-KORIN (wajib) --}}
+                    <label class="text-[11px] text-gray-600 dark:text-gray-300">
+                        Status
+                        <select name="status_e_korin" required
+                                class="ml-1 w-44 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-800 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="waiting_korin" {{ ($verif->status_e_korin ?? '')==='waiting_korin' ? 'selected' : '' }}>Waiting Korin</option>
+                             <option value="waiting_transfer" {{ ($verif->status_e_korin ?? '')==='waiting_approval' ? 'selected' : '' }}>Waiting Approval</option>
+                            <option value="waiting_transfer" {{ ($verif->status_e_korin ?? '')==='waiting_transfer' ? 'selected' : '' }}>Waiting Transfer</option>
+                            <option value="complete_transfer" {{ ($verif->status_e_korin ?? '')==='complete_transfer' ? 'selected' : '' }}>Complete Transfer</option>
+                        </select>
+                    </label>
+
+                    <button type="submit"
+                            class="ml-auto inline-flex items-center px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white text-[11px]">
+                        Simpan E-KORIN
+                    </button>
+                </form>
+
+                {{-- Error message (jika validasi gagal) --}}
+                @error('ekorin') <div class="mt-1 text-[11px] text-red-600">{{ $message }}</div> @enderror
+                @error('nomor_e_korin') <div class="mt-1 text-[11px] text-red-600">{{ $message }}</div> @enderror
+                @error('status_e_korin') <div class="mt-1 text-[11px] text-red-600">{{ $message }}</div> @enderror
+            </div>
+        @else
+            <div class="mt-2 text-[11px] text-gray-500 italic">
+                E-KORIN dapat diisi setelah <span class="font-medium">Status Dana = Tersedia</span>.
+            </div>
+        @endif
+    @else
+        <div class="flex flex-col gap-1">
+            <span class="px-2 py-1 rounded text-white bg-gray-400 text-xs">Menunggu</span>
+            <div class="text-[12px] text-gray-500 italic">Belum diverifikasi</div>
+        </div>
+    @endif
+</td>
+
+
+                    <!-- Aksi: Edit | Hapus | Lengkapi Dokumen -->
+                    <td class="px-4 py-3">
+                        <div class="flex items-center justify-end gap-2">
+                            <!-- Edit -->
+                            <button class="btn-edit inline-flex items-center px-3 py-1 rounded bg-green-600 hover:bg-green-700 text-white"
+                                    data-number="{{ $notification->notification_number }}" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+
+                            <!-- Delete -->
+                            <form action="{{ route('notifications.destroy', $notification->notification_number) }}" method="POST" class="inline"
+                                  data-number="{{ $notification->notification_number }}">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="inline-flex items-center px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white btn-delete" title="Hapus">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </form>
+
+                            <!-- Lengkapi Dokumen (ke halaman dokumen, sertakan notification sebagai query param) -->
+                            <a href="{{ route('dokumen_orders.index', ['notification_number' => $notification->notification_number]) }}"
+                               class="inline-flex items-center px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white"
+                               title="Lengkapi Dokumen">
+                                <i class="fas fa-file-upload mr-1"></i> Lengkapi Dokumen
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="8" class="text-center py-8 text-gray-500 dark:text-gray-400">
+                        Tidak ada data notifikasi.
+                    </td>
+                </tr>
+            @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+        {{ $notifications->withQueryString()->links() }}
+    </div>
+</div>
+
+    </div>
+
+    <!-- include partial modals -->
+    @include('notifications._create_modal')
+    @include('notifications._edit_modal')
+
+  @push('scripts')
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script src="{{ asset('js/custom-notification.js') }}"></script>
+
+  <script>
+  // ---------- Modal Create: Unit -> Seksi (dependent) ----------
+  function setupCreateModal() {
+    const $modal = $('#modalCreate');
+    const $unit  = $('#unitKerjaCreate');
+    const $seksi = $('#seksiCreate');
+    const $wrap  = $('#wrapSeksiCreate');
+
+    // Helper parse aman untuk data-seksi
+    const parseSeksi = (raw) => {
+      if (!raw) return [];
+      try { return JSON.parse(raw); }
+      catch (e) {
+        return String(raw).replace(/^\[|\]$/g,'')
+          .split(',')
+          .map(s => s.replace(/^"+|"+$/g,'').trim())
+          .filter(Boolean);
+      }
+    };
+
+    // Bersihkan init sebelumnya agar tidak double-init
+    $unit.off('.seksi');
+    if ($unit.data('select2')) $unit.select2('destroy');
+    if ($seksi.data('select2')) $seksi.select2('destroy');
+
+    // Init Select2 untuk Unit (penting: dropdownParent modal)
+    $unit.select2({
+      width: '100%',
+      placeholder: 'Pilih Unit Kerja',
+      allowClear: true,
+      dropdownParent: $modal
     });
+
+    // Isi opsi Seksi lalu init Select2-nya
+    function populateSeksi(list) {
+      $seksi.empty().append('<option value="">Pilih Seksi</option>');
+      (list || []).forEach(s => $seksi.append(new Option(s, s)));
+      $wrap.toggle(!!(list && list.length));
+      $seksi.select2({
+        width: '100%',
+        placeholder: 'Pilih Seksi',
+        allowClear: true,
+        dropdownParent: $modal
+      });
+    }
+
+    function onUnitChanged() {
+      const el  = $unit.get(0);
+      const opt = el ? el.options[el.selectedIndex] : null;
+      const raw = opt ? opt.getAttribute('data-seksi') : '[]';
+      populateSeksi(parseSeksi(raw));
+    }
+
+    // Bind event (native + select2), pakai namespace biar mudah di-off
+    $unit.on('change.seksi select2:select.seksi', onUnitChanged);
+
+    // Trigger sekali setelah Select2 render
+    setTimeout(onUnitChanged, 0);
+  }
+
+  // Buka / tutup modal
+  window.openCreate = function () {
+    document.getElementById('modalCreate')?.classList.remove('hidden');
+    setupCreateModal();
+  };
+  window.closeCreate = function () {
+    document.getElementById('modalCreate')?.classList.add('hidden');
+  };
+
+  // Kaitkan tombol ke openCreate (ID: #openCreateBtn)
+  document.getElementById('openCreateBtn')?.addEventListener('click', openCreate);
+function setupEditModal(prefill) {
+  const $modal = $('#modalEdit');
+  const $form  = $('#editForm');
+  const $unit  = $('#unitKerjaEdit');
+  const $seksi = $('#seksiEdit');
+  const $wrap  = $('#wrapSeksiEdit');
+
+  // bersihkan double-init
+  $unit.off('.seksi-edit');
+  if ($unit.data('select2')) $unit.select2('destroy');
+  if ($seksi.data('select2')) $seksi.select2('destroy');
+
+  // helper parse aman
+  const parseSeksi = (raw) => {
+    if (!raw) return [];
+    try { return JSON.parse(raw); }
+    catch(e){
+      return String(raw).replace(/^\[|\]$/g,'')
+        .split(',').map(s=>s.replace(/^"+|"+$/g,'').trim()).filter(Boolean);
+    }
+  };
+
+  function populateSeksi(list, selected=null) {
+    $seksi.empty().append('<option value="">Pilih Seksi</option>');
+    (list||[]).forEach(s => $seksi.append(new Option(s, s, false, s===selected)));
+    $wrap.toggle(!!(list && list.length));
+    $seksi.select2({ width:'100%', placeholder:'Pilih Seksi', allowClear:true, dropdownParent: $modal });
+  }
+
+  function onUnitChanged() {
+    const el  = $unit.get(0);
+    const opt = el ? el.options[el.selectedIndex] : null;
+    const raw = opt ? opt.getAttribute('data-seksi') : '[]';
+    populateSeksi(parseSeksi(raw), prefill?.seksi || null);
+  }
+
+  // init select2 unit
+  $unit.select2({ width:'100%', placeholder:'Pilih Unit Kerja', allowClear:true, dropdownParent: $modal })
+       .on('change.seksi-edit select2:select.seksi-edit', onUnitChanged);
+
+  // prefill form fields
+  $('#editNotifikasiNo').val(prefill.notification_number || '');
+  $('#editNamaPekerjaan').val(prefill.job_name || '');
+  $('#priority_edit').val(prefill.priority || 'Medium');
+  $('#editInputDate').val(prefill.input_date || '');
+  $('#editRencanaPemakaian').val(prefill.usage_plan_date || '');
+
+  // set Unit, trigger load Seksi, lalu set Seksi
+  if (prefill.unit_work) {
+    $unit.val(prefill.unit_work).trigger('change'); // memicu onUnitChanged
+  } else {
+    onUnitChanged();
+  }
+
+  // set action PATCH /notifikasi/{notification_number}
+  if (prefill.notification_number) {
+    $form.attr('action', `{{ url('/notifikasi') }}/${encodeURIComponent(prefill.notification_number)}`);
+  }
 }
+
+// buka/tutup modal edit
+window.openEdit = function(prefill) {
+  document.getElementById('modalEdit')?.classList.remove('hidden');
+  setupEditModal(prefill || {});
+};
+window.closeEdit = function(){
+  document.getElementById('modalEdit')?.classList.add('hidden');
+};
+
+// hook tombol Edit (pakai data-number di tabel)
+document.querySelectorAll('.btn-edit').forEach(btn => {
+  btn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const number = btn.getAttribute('data-number');
+    try {
+      const res = await fetch(`{{ url('/notifikasi') }}/${encodeURIComponent(number)}/edit`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      if (!res.ok) throw new Error('Gagal ambil data');
+      const data = await res.json();
+      openEdit(data);
+    } catch (err) {
+      Swal.fire({ icon:'error', title:'Oops', text:'Tidak bisa memuat data edit.' });
+    }
+  });
+});
+  // ---------- Delete confirmation ----------
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.btn-delete').forEach(button => {
+      button.addEventListener('click', function (e) {
+        e.preventDefault();
+        const form = this.closest('form');
+        Swal.fire({
+          title: 'Yakin ingin menghapus?',
+          text: 'Data akan dihapus permanen!',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Ya, hapus',
+          cancelButtonText: 'Batal'
+        }).then(result => { if (result.isConfirmed && form) form.submit(); });
+      });
+    });
+  });
+  </script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // SUCCESS
+    const ok = document.getElementById('flash-success');
+    if (ok) {
+      const msg = ok.dataset.message || 'Berhasil.';
+      if (window.Swal) {
+        Swal.fire({ icon:'success', title:'Sukses', text: msg, timer: 2000, showConfirmButton: false });
+      }
+    }
+
+    // ERROR
+    const err = document.getElementById('flash-error');
+    if (err) {
+      const msg = err.dataset.message || 'Terjadi kesalahan.';
+      if (window.Swal) {
+        Swal.fire({ icon:'error', title:'Gagal', text: msg });
+      }
+    }
+  });
 </script>
+
+@endpush
 
 </x-app-layout>

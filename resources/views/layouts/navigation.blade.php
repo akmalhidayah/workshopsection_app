@@ -10,24 +10,50 @@
                     </a>
                 </div>
 
-                <!-- Navigation Links -->
-                @php
-                    $usertype = Auth::check() ? Auth::user()->usertype : null;
-                @endphp
+             <!-- Navigation Links -->
+@php
+    $usertype = Auth::check() ? Auth::user()->usertype : null;
+@endphp
 
-                @if ($usertype !== 'approval' && $usertype !== 'pkm')
-                    <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-                        <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                            {{ __('Dashboard') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('notifications.index')" :active="request()->routeIs('notifications.index')">
-                            {{ __('Order') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('abnormalitas.index')" :active="request()->routeIs('abnormalitas.index')">
-                            {{ __('Dokumen ') }}
-                        </x-nav-link>
-                    </div>
-                @endif
+@if ($usertype !== 'approval' && $usertype !== 'pkm')
+    <div class="hidden sm:-my-px sm:ml-10 sm:flex space-x-8">
+
+        <x-nav-link 
+            :href="route('dashboard')" 
+            :active="request()->routeIs('dashboard')"
+            class="flex items-center space-x-2 font-medium text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>{{ __('Dashboard') }}</span>
+        </x-nav-link>
+
+        <x-nav-link 
+            :href="route('notifications.index')" 
+            :active="request()->routeIs('notifications.index')"
+            class="flex items-center space-x-2 font-medium text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+            <i class="fas fa-tasks"></i>
+            <span>{{ __('Order Pekerjaan') }}</span>
+        </x-nav-link>
+
+      <x-nav-link 
+    :href="route('dokumen_orders.index')" 
+    :active="request()->routeIs('dokumen_orders.*')"
+    class="flex items-center space-x-2 font-medium text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+    <i class="fas fa-file-alt"></i>
+    <span>{{ __('Dokumen Order Pekerjaan') }}</span>
+</x-nav-link>
+
+        <x-nav-link 
+            :href="route('kawatlas.index')" 
+            :active="request()->routeIs('kawatlas.index')"
+            class="flex items-center space-x-2 font-medium text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+            <i class="fas fa-industry"></i>
+            <span>{{ __('Order Permintaan Kawat Las') }}</span>
+        </x-nav-link>
+
+    </div>
+@endif
+
+
                 </div>
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ml-6 space-x-4">
@@ -98,11 +124,16 @@
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('notifications.index')" :active="request()->routeIs('notifications.index')">
-                {{ __('Order') }}
+                {{ __('Order Pekerjaan') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('abnormalitas.index')" :active="request()->routeIs('abnormalitas.index')">
-                {{ __('Dokumen') }}
-            </x-responsive-nav-link>
+          <x-responsive-nav-link :href="route('dokumen_orders.index')" :active="request()->routeIs('dokumen_orders.*')">
+    {{ __('Dokumen Order Pekerjaan') }}
+</x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('kawatlas.index')" :active="request()->routeIs('kawatlas.index')">
+    {{ __('Order Permintaan Kawat Las') }}
+</x-responsive-nav-link>
+
         </div>
     @endif
 

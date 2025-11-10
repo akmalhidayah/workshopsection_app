@@ -20,18 +20,14 @@
     <div style="text-align: center; margin-bottom: 20px;">
         <table width="100%" style="border: none;">
             <tr>
-                <td width="15%" style="border: none;">
-                    <img src="{{ public_path('images/logo-st.png') }}" class="logo" alt="Logo Tonasa">
-                </td>
+               
                 <td width="70%" style="text-align: center; border: none;">
                     <h2>
                         <strong>Laporan Hasil Penyelesaian Pekerjaan (LHPP)</strong><br>
                         JASA PEKERJAAN FABRIKASI, KONSTRUKSI & MESIN
                     </h2>
                 </td>
-                <td width="15%" style="border: none;">
-                    <img src="{{ public_path('images/pkm.png') }}" class="logo" alt="Logo PKM">
-                </td>
+                
             </tr>
         </table>
     </div>
@@ -42,10 +38,6 @@
         <tr>
             <td style="font-weight: bold; background-color: #f2f2f2; padding: 5px; border: 1px solid black;">ORDER</td>
             <td style="padding: 5px; border: 1px solid black;">{{ $lhpp->notification_number }}</td>
-        </tr>
-        <tr>
-            <td style="font-weight: bold; background-color: #f2f2f2; padding: 5px; border: 1px solid black;">ORDER NUMBER</td>
-            <td style="padding: 5px; border: 1px solid black;">{{ $lhpp->nomor_order }}</td>
         </tr>
         <tr>
             <td style="font-weight: bold; background-color: #f2f2f2; padding: 5px; border: 1px solid black;">DESCRIPTION</td>
@@ -112,65 +104,17 @@
         </tr>
     </tfoot>
 </table>
-
-<!-- Bagian Tabel Consumable -->
-<table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px;">
-    <thead>
-        <tr>
-            <th colspan="5" style="background-color: #f6e7b0; padding: 8px; text-align: left; border: 1px solid black;">
-                NO. B. ACTUAL PEMAKAIAN CONSUMABLE
-            </th>
-        </tr>
-        <tr style="background-color: #f6e7b0;">
-            <th style="padding: 5px; border: 1px solid black;">No</th>
-            <th style="padding: 5px; border: 1px solid black;">Consumable Description</th>
-            <th style="padding: 5px; border: 1px solid black;">Volume (Jam/Kg)</th>
-            <th style="padding: 5px; border: 1px solid black;">Harga Satuan (Rp)</th>
-            <th style="padding: 5px; border: 1px solid black;">Jumlah (Rp)</th>
-        </tr>
-    </thead>
-    <tbody>
-        @php $totalConsumable = 0; @endphp
-        @foreach($lhpp->consumable_description as $key => $desc)
-            <tr>
-                <td style="padding: 5px; border: 1px solid black;">{{ $key + 1 }}</td>
-                <td style="padding: 5px; border: 1px solid black;">{{ $desc }}</td>
-                <td style="padding: 5px; border: 1px solid black;">{{ $lhpp->consumable_volume[$key] }}</td>
-                @php
-    $consumableHargaSatuan = (float) ($lhpp->consumable_harga_satuan[$key] ?? 0);
-    $consumableJumlah = (float) ($lhpp->consumable_jumlah[$key] ?? 0);
-@endphp
-
-<td style="padding: 5px; border: 1px solid black;">{{ number_format($consumableHargaSatuan, 0, ',', '.') }}</td>
-<td style="padding: 5px; border: 1px solid black;">{{ number_format($consumableJumlah, 0, ',', '.') }}</td>
-
-            </tr>
-            @php $totalConsumable += (float) ($lhpp->consumable_jumlah[$key] ?? 0); @endphp
-
-        @endforeach
-    </tbody>
-    <tfoot>
-        <tr style="background-color: #f6e7b0;">
-            <td colspan="3" style="padding: 5px; text-align: right; font-weight: bold; border: 1px solid black;">
-                SUB TOTAL ( B )
-            </td>
-            <td colspan="2" style="padding: 5px; border: 1px solid black;">
-                Rp {{ number_format($totalConsumable, 0, ',', '.') }}
-            </td>
-        </tr>
-    </tfoot>
-</table>
 <!-- Bagian Tabel Biaya Upah Kerja -->
 <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px;">
     <thead>
         <tr>
             <th colspan="5" style="background-color: #f6e7b0; padding: 8px; text-align: left; border: 1px solid black;">
-                NO. C. ACTUAL BIAYA UPAH KERJA
+                NO. B. ACTUAL BIAYA JASA
             </th>
         </tr>
         <tr style="background-color: #f6e7b0;">
             <th style="padding: 5px; border: 1px solid black;">No</th>
-            <th style="padding: 5px; border: 1px solid black;">Upah Kerja Description</th>
+            <th style="padding: 5px; border: 1px solid black;">Biaya Jasa Description</th>
             <th style="padding: 5px; border: 1px solid black;">Volume (Jam/Kg)</th>
             <th style="padding: 5px; border: 1px solid black;">Harga Satuan (Rp)</th>
             <th style="padding: 5px; border: 1px solid black;">Jumlah (Rp)</th>
@@ -210,7 +154,7 @@
                 TOTAL ACTUAL BIAYA ( A + B + C )
             </td>
             @php
-    $totalBiaya = (float) $totalMaterial + (float) $totalConsumable + (float) $totalUpah;
+    $totalBiaya = (float) $totalMaterial  + (float) $totalUpah;
 @endphp
 
 <td colspan="2" style="padding: 5px; border: 1px solid black;">Rp {{ number_format($totalBiaya, 0, ',', '.') }}</td>
@@ -264,7 +208,7 @@
         <span>Manager User</span>
     @endif
     <br>
-    <strong>{{ \App\Models\User::find($lhpp->manager_signature_requesting_user_id)->name ?? 'HERWANTO.S' }}</strong>
+    <strong>{{ \App\Models\User::find($lhpp->manager_signature_requesting_user_id)->name ?? 'Manager User' }}</strong>
 </td>
 
 <!-- Kolom Tanda Tangan Manager Workshop -->

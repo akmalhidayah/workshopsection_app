@@ -21,7 +21,7 @@ return new class extends Migration
             $table->json('qty'); // Menyimpan quantity sebagai JSON
             $table->json('satuan'); // Menyimpan satuan sebagai JSON
             $table->json('keterangan')->nullable();
-            $table->text('catatan');
+            $table->text('catatan')->nullable();
             $table->string('nama_penginput')->nullable();
             $table->text('tanda_tangan')->nullable(); // Menambahkan kolom tanda tangan
             $table->timestamps();

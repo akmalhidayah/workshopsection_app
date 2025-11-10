@@ -26,10 +26,12 @@ class ScopeOfWork extends Model
     ];
 
     protected $casts = [
-        'scope_pekerjaan' => 'array',
-        'qty' => 'array',
-        'satuan' => 'array',
-        'keterangan' => 'array',
-    ];
+    'scope_pekerjaan'      => 'array',
+    'qty'                  => 'array',
+    'satuan'               => 'array',
+    'keterangan'           => 'array',
+    'notification_number'  => 'string', // ✅ tambahan
+];
+
 }
 

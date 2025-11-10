@@ -257,22 +257,21 @@ public function getNomorOrder($notificationNumber)
     }
 }
 
-
-public function getAbnormalDescription($notificationNumber)
+public function getJobName($notificationNumber)
 {
     try {
-        $abnormal = Abnormal::where('notification_number', $notificationNumber)->first();
+        $notification = \App\Models\Notification::where('notification_number', $notificationNumber)->first();
 
-        if (!$abnormal) {
-            \Log::error("Deskripsi abnormalitas tidak ditemukan untuk notification_number: $notificationNumber");
-            return response()->json(['error' => 'Deskripsi abnormalitas tidak ditemukan'], 404);
+        if (!$notification) {
+            \Log::error("Job name tidak ditemukan untuk notification_number: $notificationNumber");
+            return response()->json(['error' => 'Job name tidak ditemukan'], 404);
         }
 
         return response()->json([
-            'description_notifikasi' => $abnormal->abnormal_title ?? null
+            'job_name' => $notification->job_name ?? '-'
         ]);
     } catch (\Exception $e) {
-        \Log::error("Error fetching abnormal description: " . $e->getMessage());
+        \Log::error("Error fetching job name: " . $e->getMessage());
         return response()->json(['error' => 'Terjadi kesalahan di server'], 500);
     }
 }

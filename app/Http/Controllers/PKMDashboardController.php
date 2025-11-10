@@ -4,9 +4,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Notification;
-use App\Models\Abnormal;
-use App\Models\ScopeOfWork;
-use App\Models\GambarTeknik;
+use App\Models\DokumenOrder;
+use App\Models\JenisKawatLas;
+use App\Models\KawatLas;
+use App\Models\KawatLasDetail;
 use App\Models\Hpp1;
 use App\Models\PurchaseOrder;
 use App\Models\LHPP;
@@ -58,158 +59,303 @@ class PKMDashboardController extends Controller
         ]);
     }
     
-    public function jobWaiting(Request $request)
-    {
-        // Ambil filter dari request
-        $priority = $request->input('priority'); // Filter prioritas
-        $search = $request->input('search'); // Filter pencarian berdasarkan nomor notifikasi
-    
-        // Ambil semua notifikasi yang memiliki PurchaseOrder dan approval manager sudah disetujui
+public function jobWaiting(Request $request)
+{
+    try {
+        // 🎯 Ambil filter dari request
+        $priority = $request->input('priority');
+        $search   = $request->input('search');
+
+        // 🔍 Ambil semua notifikasi dengan PurchaseOrder yang sudah disetujui manager
         $query = Notification::with('purchaseOrder')
-        ->whereHas('purchaseOrder', function ($query) {
-            $query->whereNotNull('approval_target') // Harus memiliki approval target
-                ->where('approve_manager', true); // Hanya yang sudah disetujui Manager
-        });
-    
-        // Filter berdasarkan prioritas jika diberikan
-        if ($priority) {
+            ->whereHas('purchaseOrder', function ($q) {
+                $q->whereNotNull('approval_target')
+                  ->where('approve_manager', true);
+            });
+
+        // 🔹 Filter prioritas
+        if (!empty($priority)) {
             $query->where('priority', $priority);
         }
-    
-        // Filter berdasarkan pencarian nomor notifikasi jika diberikan
-        if ($search) {
-            $query->where('notification_number', 'like', '%' . $search . '%');
+
+        // 🔹 Filter pencarian
+        if (!empty($search)) {
+            $query->where('notification_number', 'like', "%{$search}%");
         }
-    
-        // Ambil data notifikasi yang sudah difilter
+
+        // 🔹 Ambil data notifikasi
         $notifications = $query->orderBy('created_at', 'desc')->get();
-    
-        // Iterasi notifikasi dan tambahkan informasi tambahan
+
+        // 🔧 Iterasi & tambahkan atribut dokumen tambahan
         $notifications->each(function ($notification) {
-            // Cek apakah dokumen LHPP tersedia
-            $notification->isLhppAvailable = LHPP::where('notification_number', $notification->notification_number)->exists();
-    
-            // Cek apakah dokumen LPJ tersedia
-            $notification->isLpjAvailable = Lpj::where('notification_number', $notification->notification_number)->exists();
-    
-            // Cek apakah dokumen LPP tersedia (berasal dari LPJ - ppl_document_path)
-            $notification->isLppAvailable = Lpj::where('notification_number', $notification->notification_number)
-                ->whereNotNull('ppl_document_path')
-                ->exists();
-    
-            // Cek apakah dokumen abnormalitas tersedia
-            $notification->isAbnormalAvailable = Abnormal::where('notification_number', $notification->notification_number)->exists();
-    
-            // Cek apakah dokumen scope of work tersedia
-            $notification->isScopeOfWorkAvailable = ScopeOfWork::where('notification_number', $notification->notification_number)->exists();
-    
-            // Cek apakah dokumen gambar teknik tersedia
-            $notification->isGambarTeknikAvailable = GambarTeknik::where('notification_number', $notification->notification_number)->exists();
-    
-            // Cek apakah dokumen HPP tersedia dan ambil source_form serta total_amount
-            $hpp = Hpp1::where('notification_number', $notification->notification_number)->first();
-            if ($hpp) {
-                $notification->isHppAvailable = true;
-                $notification->source_form = $hpp->source_form;
-                $notification->total_amount = $hpp->total_amount;
-            } else {
-                $notification->isHppAvailable = false;
+            try {
+                // LHPP, LPJ, LPP
+                $notification->isLhppAvailable = LHPP::where('notification_number', $notification->notification_number)->exists();
+                $notification->isLpjAvailable  = Lpj::where('notification_number', $notification->notification_number)->exists();
+                $notification->isLppAvailable  = Lpj::where('notification_number', $notification->notification_number)
+                    ->whereNotNull('ppl_document_path')
+                    ->exists();
+
+                // Abnormalitas → DokumenOrder
+                $notification->isAbnormalAvailable = DokumenOrder::where('notification_number', $notification->notification_number)
+                    ->where('jenis_dokumen', 'abnormalitas')
+                    ->exists();
+
+                // Scope of Work → model khusus
+                $notification->isScopeOfWorkAvailable = \App\Models\ScopeOfWork::where('notification_number', $notification->notification_number)
+                    ->exists();
+
+                // Gambar Teknik → DokumenOrder
+                $notification->isGambarTeknikAvailable = DokumenOrder::where('notification_number', $notification->notification_number)
+                    ->where('jenis_dokumen', 'gambar_teknik')
+                    ->exists();
+
+                // HPP
+                $hpp = Hpp1::where('notification_number', $notification->notification_number)->first();
+                if ($hpp) {
+                    $notification->isHppAvailable = true;
+                    $notification->source_form    = $hpp->source_form;
+                    $notification->total_amount   = $hpp->total_amount;
+                } else {
+                    $notification->isHppAvailable = false;
+                }
+
+                // SPK
+                $notification->isSpkAvailable = SPK::where('notification_number', $notification->notification_number)->exists();
+
+            } catch (\Exception $e) {
+                \Log::error("Error saat cek dokumen notification {$notification->notification_number}: " . $e->getMessage());
             }
-    
-            // Cek apakah dokumen SPK tersedia
-            $notification->isSpkAvailable = SPK::where('notification_number', $notification->notification_number)->exists();
         });
-    
-        // Filter notifikasi yang belum memiliki semua dokumen LHPP, LPJ, dan LPP
-        $filteredNotifications = $notifications->reject(function ($notification) {
-            return $notification->isLhppAvailable && $notification->isLpjAvailable && $notification->isLppAvailable;
-        });
-    
-        // Konversi koleksi menjadi paginasi
-        $page = $request->input('page', 1); // Halaman saat ini
-        $perPage = 10; // Jumlah item per halaman
-        $paginatedNotifications = new LengthAwarePaginator(
-            $filteredNotifications->forPage($page, $perPage)->values(),
-            $filteredNotifications->count(),
+
+        // 🚫 Filter hanya yang belum lengkap LHPP, LPJ, LPP
+        $filtered = $notifications->reject(fn($n) =>
+            $n->isLhppAvailable && $n->isLpjAvailable && $n->isLppAvailable
+        );
+
+        // 📄 Pagination manual
+        $page    = $request->input('page', 1);
+        $perPage = 10;
+        $paginated = new LengthAwarePaginator(
+            $filtered->forPage($page, $perPage)->values(),
+            $filtered->count(),
             $perPage,
             $page,
             ['path' => $request->url(), 'query' => $request->query()]
         );
-    
-        // Kirim data ke view
-        return view('pkm.jobwaiting', ['notifications' => $paginatedNotifications]);
+
+        // 🎨 Return view biasa
+        if (!$request->ajax()) {
+            return view('pkm.jobwaiting', ['notifications' => $paginated]);
+        }
+
+        // 🔁 Return JSON jika AJAX
+        return response()->json([
+            'status' => 'success',
+            'data'   => $paginated,
+        ], 200);
+
+    } catch (\Illuminate\Database\QueryException $e) {
+        \Log::error("Database error: " . $e->getMessage());
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Terjadi kesalahan database saat mengambil data.',
+            'error'   => $e->getMessage()
+        ], 500);
+
+    } catch (\Exception $e) {
+        \Log::error("Unexpected error: " . $e->getMessage());
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Terjadi kesalahan tidak terduga.',
+            'error'   => $e->getMessage()
+        ], 500);
     }
-    public function updateProgress(Request $request, $notification_number)
-    {
-        // Validasi input progress yang diperbolehkan
-        $request->validate([
-            'progress_pekerjaan' => 'nullable|integer|min:10|max:100',
-            'catatan' => 'nullable|string|max:1000',
-            'target_penyelesaian' => 'nullable|date',
+}
+
+/**
+ * 🔽 Download file HPP sesuai source_form (HPP1 / HPP2 / HPP3)
+ */
+public function downloadHpp($notification_number)
+{
+    try {
+        // Ambil data HPP berdasarkan notification_number
+        $hpp = Hpp1::where('notification_number', $notification_number)->first();
+
+        if (!$hpp) {
+            return back()->with('error', 'Data HPP tidak ditemukan.');
+        }
+
+        // Pastikan kolom file_path atau pdf_path ada
+        $filePath = $hpp->file_path ?? $hpp->pdf_path ?? null;
+
+        if (!$filePath || !\Storage::exists('public/' . $filePath)) {
+            return back()->with('error', 'File HPP belum tersedia di server.');
+        }
+
+        // Buat nama file yang rapi berdasarkan source_form
+        $source = strtoupper(str_replace('create', '', $hpp->source_form ?? 'HPP'));
+        $fileName = "{$source}_{$notification_number}.pdf";
+
+        return \Storage::download('public/' . $filePath, $fileName);
+
+    } catch (\Exception $e) {
+        \Log::error("Error download HPP: " . $e->getMessage());
+        return back()->with('error', 'Terjadi kesalahan saat mengunduh dokumen HPP.');
+    }
+}
+
+
+ public function updateProgress(Request $request, $notification_number)
+{
+    try {
+        // ✅ Validasi input
+        $validated = $request->validate([
+            'progress_pekerjaan'   => 'nullable|integer|min:10|max:100',
+            'catatan'              => 'nullable|string|max:1000',
+            'target_penyelesaian'  => 'nullable|date',
         ]);
-    
-        // Cari atau buat PurchaseOrder berdasarkan notification_number
+
+        // ✅ Cari atau buat PurchaseOrder
         $purchaseOrder = PurchaseOrder::firstOrCreate(
             ['notification_number' => $notification_number],
-            ['purchase_order_number' => null]
+            ['purchase_order_number' => null, 'progress_pekerjaan' => 0]
         );
-    
-        // Perbarui catatan dan target penyelesaian jika ada input
-        if ($request->filled('catatan')) {
-            $purchaseOrder->catatan = $request->input('catatan');
+
+        // ✅ Update catatan jika ada
+        if (!empty($validated['catatan'])) {
+            $purchaseOrder->catatan = $validated['catatan'];
         }
-    
-        if ($request->filled('target_penyelesaian')) {
-            $purchaseOrder->target_penyelesaian = $request->input('target_penyelesaian');
+
+        // ✅ Update target penyelesaian jika ada
+        if (!empty($validated['target_penyelesaian'])) {
+            $purchaseOrder->target_penyelesaian = $validated['target_penyelesaian'];
         }
-    
-        // Periksa apakah progress diubah
-        if ($request->filled('progress_pekerjaan')) {
-            $newProgress = $request->input('progress_pekerjaan');
-    
-            // Pastikan update hanya untuk progress yang lebih tinggi
+
+        // ✅ Update progress hanya jika lebih tinggi
+        if (!empty($validated['progress_pekerjaan'])) {
+            $newProgress = $validated['progress_pekerjaan'];
+
             if ($newProgress > $purchaseOrder->progress_pekerjaan) {
                 $purchaseOrder->progress_pekerjaan = $newProgress;
             }
         }
-    
-        // Simpan perubahan
+
+        // ✅ Simpan perubahan
         $purchaseOrder->save();
-    
-        // Periksa apakah request datang dari AJAX atau form biasa
+
+        // Jika request via AJAX
         if ($request->ajax()) {
             return response()->json([
-                'message' => 'Progress pekerjaan berhasil diperbarui.',
-                'new_progress' => $purchaseOrder->progress_pekerjaan,
-                'catatan' => $purchaseOrder->catatan,
-                'target_penyelesaian' => $purchaseOrder->target_penyelesaian
-            ]);
+                'message'            => 'Progress pekerjaan berhasil diperbarui.',
+                'new_progress'       => $purchaseOrder->progress_pekerjaan,
+                'catatan'            => $purchaseOrder->catatan,
+                'target_penyelesaian'=> $purchaseOrder->target_penyelesaian,
+            ], 200);
         }
-    
-        // Jika request berasal dari form biasa (bukan AJAX), kembalikan redirect dengan session flash
+
+        // Jika request via form biasa
         return back()->with('success', 'Progress pekerjaan berhasil diperbarui.');
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        // 🔴 Error validasi
+        if ($request->ajax()) {
+            return response()->json([
+                'message' => 'Validasi gagal.',
+                'errors'  => $e->errors(),
+            ], 422);
+        }
+        return back()->withErrors($e->errors())->withInput();
+
+    } catch (\Exception $e) {
+        // 🔴 Error tak terduga
+        \Log::error("Error updateProgress: " . $e->getMessage());
+
+        if ($request->ajax()) {
+            return response()->json([
+                'message' => 'Terjadi kesalahan saat memperbarui progress.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+
+        return back()->with('error', 'Terjadi kesalahan saat memperbarui progress.');
     }
-    
-    
-    public function laporan(Request $request)
-{
-    $query = Notification::with(['lhpp', 'lpj', 'abnormal', 'hpp1', 'purchaseOrder']);
-
-    if ($request->has('notification_number')) {
-        $query->where('notification_number', 'like', '%' . $request->input('notification_number') . '%');
-    }
-
-    // 🔥 Filter: hanya tampilkan jika HPP, PO, dan LHPP tersedia
-    $query->whereHas('hpp1')
-          ->whereHas('purchaseOrder', function ($q) {
-              $q->whereNotNull('po_document_path');
-          })
-          ->whereHas('lhpp');
-
-    $notifications = $query->orderBy('created_at', 'desc')->paginate(10);
-
-    return view('pkm.laporan', compact('notifications'));
 }
+
+public function laporan(Request $request)
+{
+    try {
+        // ambil filter dari request
+        $notificationNumber = $request->input('notification_number');
+        $status = $request->input('status'); // '' | 'complete' | 'incomplete'
+
+        // base query: eager load relations yang dibutuhkan
+        $query = Notification::with(['lhpp', 'lpj', 'hpp1', 'purchaseOrder']);
+
+        // filter by notification number (partial)
+        $query->when($notificationNumber, fn($q) => $q->where('notification_number', 'like', "%{$notificationNumber}%"));
+
+        // tetap persyaratan dasar: HPP ada, PurchaseOrder punya dokumen, dan LHPP ada
+        $query->whereHas('hpp1')
+              ->whereHas('purchaseOrder', function ($q) {
+                  $q->whereNotNull('po_document_path');
+              })
+              ->whereHas('lhpp');
+
+        // status filter: complete = punya LPJ+PPL; incomplete = tidak memenuhi semua syarat complete
+        if ($status === 'complete') {
+            $query->whereHas('lpj', function ($q) {
+                $q->whereNotNull('lpj_document_path')
+                  ->whereNotNull('ppl_document_path');
+            });
+        } elseif ($status === 'incomplete') {
+            // jika salah satu komponen lengkap belum terpenuhi -> termasuk incomplete
+            $query->where(function ($q) {
+                $q->whereDoesntHave('lpj', function ($qq) {
+                        $qq->whereNotNull('lpj_document_path')
+                           ->whereNotNull('ppl_document_path');
+                    })
+                    ->orWhereDoesntHave('purchaseOrder', function ($qq) {
+                        $qq->whereNotNull('po_document_path');
+                    })
+                    ->orWhereDoesntHave('lhpp')
+                    ->orWhereDoesntHave('hpp1');
+            });
+        }
+
+        // paginate dan jaga query string
+        $notifications = $query->orderBy('created_at', 'desc')
+                               ->paginate(10)
+                               ->appends($request->query());
+
+        // transform supaya blade tidak melakukan query ulang
+        $notifications->transform(function ($notification) {
+            $hpp = $notification->hpp1;
+            $notification->isHppAvailable = (bool) $hpp;
+            $notification->source_form    = $hpp->source_form ?? '-';
+            $notification->total_amount   = $hpp->total_amount ?? 0;
+
+            $po = $notification->purchaseOrder;
+            $notification->has_po_document = !empty($po->po_document_path);
+
+            $notification->has_lhpp = (bool) $notification->lhpp;
+
+            $lpj = $notification->lpj;
+            $notification->has_lpj = !empty($lpj->lpj_document_path);
+            $notification->has_ppl = !empty($lpj->ppl_document_path);
+
+            return $notification;
+        });
+
+        return view('pkm.laporan', compact('notifications'));
+    } catch (\Exception $e) {
+        \Log::error('Error di PKMDashboardController::laporan - ' . $e->getMessage(), [
+            'request' => $request->all()
+        ]);
+        abort(500, 'Terjadi kesalahan saat memuat laporan PKM.');
+    }
+}
+
 
     public function showLHPP($notification_number)
     {

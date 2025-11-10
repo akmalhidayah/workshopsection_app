@@ -32,100 +32,139 @@
                     {{ $notifications->links() }}
                 </div>
 
-                @if(count($notifications) > 0)
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        @foreach($notifications as $notification)
-                            <div class="bg-gray-50 shadow-md rounded-lg p-4 border border-gray-900 hover:shadow-lg transition duration-200">
-                                <h4 class="text-xs font-bold text-gray-800 mb-2 flex items-center space-x-1">
-                                    <i class="fas fa-bell text-blue-500"></i>
-                                    <span>Nomor Order:</span>
-                                </h4>
-                                <p class="text-blue-600 text-sm font-semibold">{{ $notification->notification_number }}</p>
-                                
-                                <div class="mt-2 text-xs flex items-center space-x-2 font-bold">📌 {{ $notification->abnormal->abnormal_title }}</div>
+             @if(count($notifications) > 0)
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    @foreach($notifications as $notification)
+        <div class="bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md transition duration-200 overflow-hidden">
+            
+            <!-- 🔹 HEADER CARD: Order, Job, dan Priority dalam satu bar horizontal -->
+            <div class="flex justify-between items-center px-3 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                <div class="flex flex-col leading-tight">
+                    <span class="text-[10px] font-semibold opacity-80">Nomor Order</span>
+                    <span class="text-sm font-bold tracking-wide">
+                        <i class="fas fa-bell mr-1"></i>{{ $notification->notification_number }}
+                    </span>
+                </div>
 
-                                <!-- Display Priority Status -->
-                                <div class="mt-2 text-xs">
-                                    @if($notification->priority == 'Urgently')
-                                        <span class="text-red-500 font-bold">Priority: Urgent</span>
-                                    @elseif($notification->priority == 'Hard')
-                                        <span class="text-orange-500 font-bold">Priority: High</span>
-                                    @elseif($notification->priority == 'Medium')
-                                        <span class="text-yellow-500 font-bold">Priority: Medium</span>
-                                    @elseif($notification->priority == 'Low')
-                                        <span class="text-green-500 font-bold">Priority: Low</span>
-                                    @else
-                                        <span class="text-gray-500">Priority: Not Set</span>
-                                    @endif
-                                </div>
-                                 <!-- Grid dengan 2 kolom untuk mengatur tampilan dokumen lebih rapi -->
-                                 <div class="grid grid-cols-2 gap-2 mt-3">
-                                    <!-- Abnormalitas -->
-                                    <div class="text-xs flex items-center space-x-2">
-                                        <i class="fas fa-exclamation-circle text-red-500"></i>
-                                        @if($notification->isAbnormalAvailable)
-                                            <a href="{{ route('abnormal.download_pdf', ['notificationNumber' => $notification->notification_number]) }}" class="text-red-500 font-semibold" target="_blank">Abnormalitas</a>
-                                        @else
-                                            <span class="text-gray-500">Abnormalitas: Tidak Tersedia</span>
-                                        @endif
-                                    </div>
+                <div class="flex flex-col text-right">
+                    <span class="text-[10px] font-semibold opacity-80">Prioritas</span>
+                    @switch($notification->priority)
+                        @case('Urgently')
+                            <span class="text-xs font-bold text-red-200">Urgent 🔥</span>
+                            @break
+                        @case('Hard')
+                            <span class="text-xs font-bold text-yellow-200">High ⚡</span>
+                            @break
+                        @case('Medium')
+                            <span class="text-xs font-bold text-blue-200">Medium ⚙️</span>
+                            @break
+                        @case('Low')
+                            <span class="text-xs font-bold text-green-200">Low 🌿</span>
+                            @break
+                        @default
+                            <span class="text-xs text-gray-200">Not Set</span>
+                    @endswitch
+                </div>
+            </div>
 
-                                    <!-- Scope of Work -->
-                                    <div class="text-xs flex items-center space-x-2">
-                                        <i class="fas fa-tasks text-green-500"></i>
-                                        @if($notification->isScopeOfWorkAvailable)
-                                            <a href="{{ route('scopeofwork.view', ['notificationNumber' => $notification->notification_number]) }}" class="text-green-500 font-semibold" target="_blank">Scope of Work</a>
-                                        @else
-                                            <span class="text-gray-500">Scope of Work: Tidak Tersedia</span>
-                                        @endif
-                                    </div>
+            <!-- 🔸 BODY CARD -->
+            <div class="p-3 text-xs text-gray-800 space-y-2">
+                <!-- Nama pekerjaan -->
+                <div class="flex items-center font-semibold text-gray-700">
+                    <i class="fas fa-thumbtack text-red-500 mr-1"></i>
+                    {{ $notification->job_name ?? 'Nama pekerjaan tidak tersedia' }}
+                </div>
+<!-- Grid dua kolom untuk file dokumen (rapat & ergonomis) -->
+<div class="grid grid-cols-2 gap-x-3 gap-y-1 mt-2 text-[11px] leading-snug">
+    <!-- Abnormalitas -->
+    <div class="flex items-center space-x-1">
+        <i class="fas fa-exclamation-circle text-red-500 text-[12px]"></i>
+        @if($notification->isAbnormalAvailable)
+            <a href="{{ route('dokumen_orders.view', [
+                'notificationNumber' => $notification->notification_number,
+                'jenis' => 'abnormalitas'
+            ]) }}"
+               class="text-red-500 font-semibold hover:underline truncate"
+               target="_blank">Abnormalitas</a>
+        @else
+            <span class="text-gray-500 truncate">Abnormalitas: -</span>
+        @endif
+    </div>
 
-                                    <!-- Gambar Teknik -->
-                                    <div class="text-xs flex items-center space-x-2">
-                                        <i class="fas fa-image text-blue-500"></i>
-                                        @if($notification->isGambarTeknikAvailable)
-                                            <a href="{{ route('view-dokumen', ['notificationNumber' => $notification->notification_number]) }}" class="text-blue-500 font-semibold" target="_blank">Gambar Teknik</a>
-                                        @else
-                                            <span class="text-gray-500">Gambar Teknik: Tidak Tersedia</span>
-                                        @endif
-                                    </div>
+    <!-- Scope of Work -->
+    <div class="flex items-center space-x-1">
+        <i class="fas fa-tasks text-green-500 text-[12px]"></i>
+        @if($notification->isScopeOfWorkAvailable)
+            <a href="{{ route('dokumen_orders.scope.view', $notification->notification_number) }}"
+               class="text-green-500 font-semibold hover:underline truncate"
+               target="_blank">Scope of Work</a>
+        @else
+            <span class="text-gray-500 truncate">Scope: -</span>
+        @endif
+    </div>
 
-                                    <!-- Dokumen HPP -->
-                                    <div class="text-xs flex items-center space-x-2">
-                                        <i class="fas fa-file-alt text-purple-500"></i>
-                                        @if($notification->isHppAvailable)
-                                            @if($notification->source_form === 'createhpp1')
-                                                <a href="{{ route('pkm.inputhpp.download_hpp1', ['notification_number' => $notification->notification_number]) }}" class="text-red-500 font-semibold hover:underline" target="_blank">Dokumen HPP</a>
-                                            @elseif($notification->source_form === 'createhpp2')
-                                                <a href="{{ route('pkm.inputhpp.download_hpp2', ['notification_number' => $notification->notification_number]) }}" class="text-blue-500 font-semibold hover:underline" target="_blank">Dokumen HPP</a>
-                                            @elseif($notification->source_form === 'createhpp3')
-                                                <a href="{{ route('pkm.inputhpp.download_hpp3', ['notification_number' => $notification->notification_number]) }}" class="text-green-500 font-semibold hover:underline" target="_blank">Dokumen HPP</a>
-                                            @endif
-                                        @else
-                                            <span class="text-gray-500">Dokumen HPP: Tidak Tersedia</span>
-                                        @endif
-                                    </div>
+    <!-- Gambar Teknik -->
+    <div class="flex items-center space-x-1">
+        <i class="fas fa-image text-blue-500 text-[12px]"></i>
+        @if($notification->isGambarTeknikAvailable)
+            <a href="{{ route('dokumen_orders.view', [
+                'notificationNumber' => $notification->notification_number,
+                'jenis' => 'gambar_teknik'
+            ]) }}"
+               class="text-blue-500 font-semibold hover:underline truncate"
+               target="_blank">Gambar Teknik</a>
+        @else
+            <span class="text-gray-500 truncate">Gambar: -</span>
+        @endif
+    </div>
 
-                                    <!-- Dokumen PO -->
-                                    <div class="text-xs flex items-center space-x-2">
-                                        <i class="fas fa-receipt text-blue-400"></i>
-                                        @if($notification->purchaseOrder && $notification->purchaseOrder->po_document_path)
-                                            <a href="{{ Storage::url($notification->purchaseOrder->po_document_path) }}" target="_blank" class="text-blue-500 font-semibold">Dokumen PO/PR</a>
-                                        @else
-                                            <span class="text-gray-500">Dokumen PO/PR: Tidak Tersedia</span>
-                                        @endif
-                                    </div>
+    <!-- Dokumen HPP -->
+    <div class="flex items-center space-x-1">
+        @if($notification->isHppAvailable)
+            @php
+                $hppColor = match($notification->source_form) {
+                    'createhpp1' => 'text-red-500',
+                    'createhpp2' => 'text-blue-500',
+                    'createhpp3' => 'text-green-500',
+                    default => 'text-gray-500',
+                };
+            @endphp
+            <a href="{{ route('pkm.download_hpp', ['notification_number' => $notification->notification_number]) }}"
+               class="{{ $hppColor }} font-semibold hover:underline flex items-center space-x-1 truncate"
+               target="_blank" title="Unduh Dokumen HPP">
+                <i class="fas fa-file-pdf text-[12px]"></i>
+                <span>Dokumen HPP</span>
+            </a>
+        @else
+            <span class="text-gray-500 truncate">HPP: -</span>
+        @endif
+    </div>
 
-                                    <!-- Dokumen SPK -->
-                                    <div class="text-xs flex items-center space-x-2">
-                                        <i class="fas fa-file-contract text-indigo-500"></i>
-                                        @if($notification->isSpkAvailable)
-                                            <a href="{{ route('spk.show', ['notification_number' => $notification->notification_number]) }}" class="text-indigo-500 font-semibold" target="_blank">Lihat Initial Work</a>
-                                        @else
-                                            <span class="text-gray-500">Initial Work: Tidak Tersedia</span>
-                                         @endif
-                                    </div>
-                                </div>
+    <!-- Dokumen PO -->
+    <div class="flex items-center space-x-1">
+        <i class="fas fa-receipt text-blue-400 text-[12px]"></i>
+        @if($notification->purchaseOrder && $notification->purchaseOrder->po_document_path)
+            <a href="{{ Storage::url($notification->purchaseOrder->po_document_path) }}"
+               target="_blank"
+               class="text-blue-500 font-semibold hover:underline truncate">Dokumen PO/PR</a>
+        @else
+            <span class="text-gray-500 truncate">PO/PR: -</span>
+        @endif
+    </div>
+
+    <!-- Dokumen SPK -->
+    <div class="flex items-center space-x-1">
+        <i class="fas fa-file-contract text-indigo-500 text-[12px]"></i>
+        @if($notification->isSpkAvailable)
+            <a href="{{ route('spk.show', ['notification_number' => $notification->notification_number]) }}"
+               class="text-indigo-500 font-semibold hover:underline truncate"
+               target="_blank">Initial Work</a>
+        @else
+            <span class="text-gray-500 truncate">Initial Work: -</span>
+        @endif
+    </div>
+</div>
+
                                 <!-- Wrapper untuk Tombol -->
                                 <div class="flex space-x-2">
                                     <!-- Tombol Pengadaan Material -->
@@ -186,12 +225,23 @@
                                             @endif
                                         </span>
                                     </div>
-                                    <!-- Catatan -->
+                                    <!-- Catatan PKM (yang bisa diisi PKM sendiri) -->
                                     <textarea name="catatan" rows="2"
                                         id="catatan-{{ $notification->notification_number }}"
-                                        class="w-full mt-2 px-2 py-1 border border-gray-300 rounded-lg text-xs"
-                                        placeholder="Catatan">{{ $notification->purchaseOrder->catatan ?? '' }}</textarea>
+                                        class="w-full mt-2 px-2 py-1 border border-gray-300 rounded-lg text-xs focus:ring-orange-400 focus:border-orange-400"
+                                        placeholder="Catatan Anda untuk pekerjaan ini...">{{ $notification->purchaseOrder->catatan ?? '' }}</textarea>
 
+                                    <!-- Catatan dari Admin Bengkel -->
+                                    @if(!empty($notification->purchaseOrder->catatan_pkm))
+                                        <div class="mt-2 bg-gray-100 border border-gray-300 rounded-lg p-2">
+                                            <span class="block text-[11px] text-gray-600 font-semibold mb-1">
+                                                💬 Catatan dari Admin Bengkel:
+                                            </span>
+                                            <p class="text-[12px] text-gray-800 leading-snug whitespace-pre-line">
+                                                {{ $notification->purchaseOrder->catatan_pkm }}
+                                            </p>
+                                        </div>
+                                    @endif
                                     <!-- Tombol Submit -->
                                     <button type="submit" class="mt-3 bg-blue-500 text-white px-3 py-1 text-xs rounded hover:bg-blue-600 transition-colors">
                                         Update

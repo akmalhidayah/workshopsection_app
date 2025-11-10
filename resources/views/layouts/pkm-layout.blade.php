@@ -19,9 +19,9 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <!-- @vite(['resources/css/app.css', 'resources/js/app.js']) -->
-    <link rel="stylesheet" href="{{ asset('build/assets/app-BD6FMr64.css') }}">
-    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script> 
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <!-- <link rel="stylesheet" href="{{ asset('build/assets/app-BD6FMr64.css') }}">
+    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script>  -->
 
     <!-- Alpine.js -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -58,7 +58,7 @@
                 <x-application-logo class="block h-9 w-auto fill-current text-gray-200" />
             </a>
             <div>
-                <span class="text-2xl font-extrabold text-gray-200 block">PKM</span>
+                <span class="text-2xl font-extrabold text-gray-200 block">Vendor BMS</span>
                 <span class="text-xl font-extrabold text-white block">Dashboard</span>
             </div>
         </div>
@@ -105,10 +105,10 @@
                     <div class="relative flex items-center justify-between h-16">
                         <div class="flex items-center">
                             <!-- Logo di sebelah kiri -->
-                            <img src="{{ asset('images/pkm.png') }}" alt="PKM Logo" class="h-10 w-auto mr-2">
+                            <img src="{{ asset('images/logo-st2.png') }}" alt="Logo" class="h-10 w-auto mr-2">
                             <!-- Teks di sebelah kiri -->
                             <div class="flex flex-col text-white">
-                                <span class="font-bold text-sm">PT. Prima Karya Manuggal</span>
+                                <span class="font-bold text-sm">Halaman Dashboard Vendor Workshop Section</span>
                             </div>
                         </div>
                         <div class="flex items-center space-x-4">

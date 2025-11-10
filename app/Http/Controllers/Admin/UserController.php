@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\UnitWork;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
@@ -21,8 +22,9 @@ class UserController extends Controller
         }
     
         $users = $query->get();
-    
-        return view('admin.user.index', compact('users', 'usertype'));
+    $units = UnitWork::orderBy('name')->get();
+
+        return view('admin.user.index', compact('users', 'usertype', 'units'));
     }
     
     // Fungsi untuk menampilkan form edit user
@@ -53,21 +55,24 @@ class UserController extends Controller
     
         $user = User::findOrFail($id);
     
-        $user->update([
-            'name' => $request->input('name'),
-            'email' => $request->input('email'),
-            'usertype' => $request->input('usertype'),
-            'departemen' => $request->input('departemen'),
-            'unit_work' => $request->input('unit_work'),
-            'seksi' => $request->input('seksi'),
-            'jabatan' => $request->input('jabatan'),
-            'whatsapp_number' => $request->input('whatsapp_number'),
-            'initials' => $request->input('initials'),
-            'related_units' => $request->input('related_units') 
-                ? array_map('trim', explode(',', $request->input('related_units')))
-                : [],
-        ]);
-        
+$user->update([
+    'name'            => $request->input('name'),
+    'email'           => $request->input('email'),
+    'usertype'        => $request->input('usertype'),
+    'departemen'      => $request->input('departemen'),
+    'unit_work'       => $request->input('unit_work'),
+    'seksi'           => $request->input('seksi'),
+    'jabatan'         => $request->input('jabatan'),
+    'whatsapp_number' => $request->input('whatsapp_number'),
+    'initials'        => $request->input('initials'),
+    'related_units'   => $request->filled('related_units')
+        ? (is_array($request->input('related_units'))
+            ? $request->input('related_units')
+            : json_decode($request->input('related_units'), true))
+        : [],
+]);
+
+
     
         return redirect()->route('admin.users.index')->with('success', 'User berhasil diperbarui.');
     }

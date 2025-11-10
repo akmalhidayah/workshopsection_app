@@ -17,39 +17,44 @@ class Notification extends Model
         'notification_number',
         'job_name',
         'unit_work',
+        'seksi',
         'priority',
         'input_date',
         'status',
         'catatan',
         'user_id',
-        'jenis_kontrak',
-        'nama_kontrak', 
         'usage_plan_date',
-        'status_anggaran',
-        'update_date', // Tambahkan kolom update_date ke dalam fillable
+        'update_date', 
     ];
 
     protected $casts = [
         'update_date' => 'datetime', // Memastikan update_date dianggap sebagai datetime
     ];
 
-    // Relasi one-to-one dengan Abnormalitas
-    public function abnormal()
-    {
-        return $this->hasOne(Abnormal::class, 'notification_number', 'notification_number');
-    }
+public function hasAbnormalitas()
+{
+    return $this->dokumenOrders()->where('jenis_dokumen', 'abnormalitas')->exists();
+}
 
-    // Relasi one-to-one dengan ScopeOfWork
-    public function scopeOfWork()
-    {
-        return $this->hasOne(ScopeOfWork::class, 'notification_number', 'notification_number');
-    }
+public function hasGambarTeknik()
+{
+    return $this->dokumenOrders()->where('jenis_dokumen', 'gambar_teknik')->exists();
+}
 
-    // Relasi one-to-one atau one-to-many dengan GambarTeknik
-    public function gambarTeknik()
-    {
-        return $this->hasOne(GambarTeknik::class, 'notification_number', 'notification_number');
-    }
+ public function dokumenOrders()
+{
+    return $this->hasMany(DokumenOrder::class, 'notification_number', 'notification_number');
+}
+public function scopeOfWork()
+{
+    return $this->hasOne(\App\Models\ScopeOfWork::class, 'notification_number', 'notification_number');
+}
+public function verifikasiAnggaran()
+{
+    return $this->hasOne(VerifikasiAnggaran::class, 'notification_number', 'notification_number');
+}
+
+
     public function purchaseOrder()
     {
         return $this->hasOne(PurchaseOrder::class, 'notification_number', 'notification_number');

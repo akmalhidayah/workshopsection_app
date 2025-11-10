@@ -174,7 +174,7 @@
                     <tr>
                         <!-- Nama SM -->
                         <td style="border-right: 1px solid black; border-bottom: 1px solid black; padding: 4px; font-size: 10px;">
-                            <strong>{{ $hpp->seniorManagerRequestingUser->name ?? 'N/A' }}</strong>
+                            <strong>{{ $hpp->seniorManagerSignatureUser ? $hpp->seniorManagerSignatureUser->name : 'N/A' }}</strong>
                         </td>
 
                         <!-- Nama MGR -->
@@ -188,125 +188,147 @@
     </tr>
 </table>
 
-
-<!-- TABEL HPP -->
+<!-- TABEL HPP (final + nomor jenis + indent grup) -->
 <div class="overflow-x-auto">
-    <table class="table-hpp" style="width: 100%; border: 1px solid black; border-collapse: collapse;">
-        <thead style="background-color: #B0C4DE; color: #333;">
+@php
+$groups        = $hpp->uraian_pekerjaan ?? [];
+$jenis         = $hpp->jenis_item ?? [];
+$nama          = $hpp->nama_item ?? [];
+$qty           = $hpp->qty ?? [];
+$satuan        = $hpp->satuan ?? [];
+$harga_satuan  = $hpp->harga_satuan ?? [];
+$harga_total   = $hpp->harga_total ?? [];
+$keterangan    = $hpp->keterangan ?? [];
+
+/*
+ * Rowspan OA = (judul grup) + (jumlah label jenis unik) + (jumlah item) untuk
+ * setiap grup, lalu dijumlahkan untuk semua grup.
+ */
+$rowspanOA = 0;
+foreach ($groups as $gIdx => $gTitle) {
+    $rowCount = is_array($nama[$gIdx] ?? null) ? count($nama[$gIdx]) : 0;
+
+    // hitung label unik sesuai data jenis_item; kosong -> "Lainnya"
+    $labels = [];
+    for ($i = 0; $i < $rowCount; $i++) {
+        $lab = trim($jenis[$gIdx][$i] ?? '');
+        $lab = ($lab === '') ? 'Lainnya' : $lab;
+        if (!in_array($lab, $labels, true)) $labels[] = $lab;
+    }
+
+    $rowspanOA += 1 /*judul grup*/ + count($labels) + $rowCount;
+}
+if ($rowspanOA === 0) $rowspanOA = 1;
+@endphp
+
+
+    <table class="table-hpp" style="width:100%; border-collapse:collapse; border:1px solid black; font-size:9px;">
+        <thead style="background-color:#B0C4DE; color:#333;">
             <tr>
-            <th rowspan="3" style="border: 1px solid black; padding: 5px; background-color: #B0C4DE; text-align: center; vertical-align: middle; font-weight: bold;">
-                OUTLINE AGREEMENT (OA)
-            </th>
-            <th rowspan="3" style="border: 1px solid black; padding: 5px; background-color: #B0C4DE; text-align: center; vertical-align: middle; font-weight: bold;">
-                URAIAN PEKERJAAN
-            </th>
-            <th rowspan="3" style="border: 1px solid black; padding: 5px; background-color: #B0C4DE; text-align: center; vertical-align: middle; font-weight: bold;">
-                Qty
-            </th>
-            <th rowspan="3" style="border: 1px solid black; padding: 5px; background-color: #B0C4DE; text-align: center; vertical-align: middle; font-weight: bold;">
-                Satuan
-            </th>
-            <th rowspan="3" style="border: 1px solid black; padding: 5px; background-color: #B0C4DE; text-align: center; vertical-align: middle; font-weight: bold;">
-                Volume Satuan
-            </th>
-            <th rowspan="2" style="border: 1px solid black; padding: 5px; background-color: #B0C4DE; text-align: center; vertical-align: middle; font-weight: bold;">
-                Jumlah Volume Satuan
-            </th>
-            <th colspan="3" style="border: 1px solid black; padding: 5px; background-color: #B0C4DE; text-align: center; vertical-align: middle; font-weight: bold;">
-                Harga Satuan
-            </th>
-            <th colspan="3" style="border: 1px solid black; padding: 5px; background-color: #B0C4DE; text-align: center; vertical-align: middle; font-weight: bold;">
-                Jumlah Harga Satuan
-            </th>
-            <th rowspan="2" style="border: 1px solid black; padding: 5px; background-color: #B0C4DE; text-align: center; vertical-align: middle; font-weight: bold;">
-                Harga Total
-            </th>
-            <th rowspan="3" style="border: 1px solid black; padding: 5px; background-color: #B0C4DE; text-align: center; vertical-align: middle; font-weight: bold;">
-                Keterangan
-            </th>
-            </tr>
-            <tr>
-                <th style="border: 1px solid black; padding: 5px; background-color: #B0C4DE;">Material</th>
-                <th style="border: 1px solid black; padding: 5px; background-color: #B0C4DE;">Consumable</th>
-                <th style="border: 1px solid black; padding: 5px; background-color: #B0C4DE;">Upah Kerja</th>
-                <th style="border: 1px solid black; padding: 5px; background-color: #B0C4DE;">Material</th>
-                <th style="border: 1px solid black; padding: 5px; background-color: #B0C4DE;">Consumable</th>
-                <th style="border: 1px solid black; padding: 5px; background-color: #B0C4DE;">Upah Kerja</th>
-            </tr>
-            <tr>
-                <th style="border: 1px solid black; padding: 5px; background-color: #FFD700;">(1)</th>
-                <th style="border: 1px solid black; padding: 5px; background-color: #FFD700;">(2)</th>
-                <th style="border: 1px solid black; padding: 5px; background-color: #FFD700;">(3)</th>
-                <th style="border: 1px solid black; padding: 5px; background-color: #FFD700;">(4)</th>
-                <th style="border: 1px solid black; padding: 5px; background-color: #FFD700;">A=(1)*(2)</th>
-                <th style="border: 1px solid black; padding: 5px; background-color: #FFD700;">B=(1)*(3)</th>
-                <th style="border: 1px solid black; padding: 5px; background-color: #FFD700;">C=(1)*(4)</th>
-                <th style="border: 1px solid black; padding: 5px; background-color: #FFD700;">A+B+C</th>
+                <th style="border:1px solid black; padding:5px; text-align:center; width:14%;">OUTLINE AGREEMENT (OA)</th>
+                <th style="border:1px solid black; padding:5px; text-align:center;">URAIAN PEKERJAAN</th>
+                <th style="border:1px solid black; padding:5px; text-align:center; width:6%;">QTY</th>
+                <th style="border:1px solid black; padding:5px; text-align:center; width:10%;">SATUAN (EA/LOT/JAM/M2/KG)</th>
+                <th style="border:1px solid black; padding:5px; text-align:center; width:12%;">HARGA SATUAN</th>
+                <th style="border:1px solid black; padding:5px; text-align:center; width:12%;">JUMLAH</th>
+                <th style="border:1px solid black; padding:5px; text-align:center; width:18%;">KETERANGAN</th>
             </tr>
         </thead>
-        <tbody>
-    @foreach($uraian_pekerjaan as $index => $uraian)
-        <tr>
-            @if($index === 0)
-                <td rowspan="{{ count($uraian_pekerjaan) }}" style="border: 1px solid black; padding: 5px; text-align: center;">
-                    {{ ($hpp->outline_agreement !== '-' && $hpp->outline_agreement !== '') ? $hpp->outline_agreement : '' }}
-                </td>
-            @endif
-            <td style="border: 1px solid black; padding: 5px;">
-                @if(str_contains(strtolower($uraian), 'bubut kecil'))
-                    {{ $uraian !== '-' && $uraian !== '' ? $uraian : '' }} 
-                @else
-                    <strong>{{ $uraian !== '-' && $uraian !== '' ? $uraian : '' }}</strong><br> 
-                    {{ $jenis_material[$index] !== '-' && $jenis_material[$index] !== '' ? $jenis_material[$index] : '' }}
-                @endif
+<tbody>
+@php $printedOA = false; @endphp
+
+@forelse ($groups as $g => $groupTitle)
+    {{-- BARIS JUDUL GRUP --}}
+    <tr>
+        @if (!$printedOA)
+            <td style="border:1px solid black; text-align:center; vertical-align:top;" rowspan="{{ $rowspanOA }}">
+                {{ $hpp->outline_agreement ?? '' }}
             </td>
-            <td style="border: 1px solid black; padding: 5px; text-align: center;">
-                {{ ($qty[$index] !== '-' && $qty[$index] !== '' && $qty[$index] != 0) ? $qty[$index] : '' }}
-            </td>
-            <td style="border: 1px solid black; padding: 5px; text-align: center;">
-                {{ ($satuan[$index] !== '-' && $satuan[$index] !== '' && $satuan[$index] != 0) ? $satuan[$index] : '' }}
-            </td>
-            <td style="border: 1px solid black; padding: 5px; text-align: center;">
-                {{ ($volume_satuan[$index] !== '-' && $volume_satuan[$index] !== '' && $volume_satuan[$index] != 0) ? $volume_satuan[$index] : '' }}
-            </td>
-            <td style="border: 1px solid black; padding: 5px; text-align: center;">
-                {{ ($jumlah_volume_satuan[$index] !== '-' && $jumlah_volume_satuan[$index] !== '' && $jumlah_volume_satuan[$index] != 0) ? $jumlah_volume_satuan[$index] : '' }}
-            </td>
-            <td style="border: 1px solid black; padding: 5px; text-align: center;">
-                {{ ($harga_material[$index] !== '-' && $harga_material[$index] !== '' && $harga_material[$index] != 0) ? number_format((float)$harga_material[$index], 0, ',', '.') : '' }}
-            </td>
-            <td style="border: 1px solid black; padding: 5px; text-align: center;">
-                {{ ($harga_consumable[$index] !== '-' && $harga_consumable[$index] !== '' && $harga_consumable[$index] != 0) ? number_format((float)$harga_consumable[$index], 0, ',', '.') : '' }}
-            </td>
-            <td style="border: 1px solid black; padding: 5px; text-align: center;">
-                {{ ($harga_upah[$index] !== '-' && $harga_upah[$index] !== '' && $harga_upah[$index] != 0) ? number_format((float)$harga_upah[$index], 0, ',', '.') : '' }}
-            </td>
-            <td style="border: 1px solid black; padding: 5px; text-align: center;">
-                {{ ($jumlah_harga_material[$index] !== '-' && $jumlah_harga_material[$index] !== '' && $jumlah_harga_material[$index] != 0) ? number_format((float)$jumlah_harga_material[$index], 0, ',', '.') : '' }}
-            </td>
-            <td style="border: 1px solid black; padding: 5px; text-align: center;">
-                {{ ($jumlah_harga_consumable[$index] !== '-' && $jumlah_harga_consumable[$index] !== '' && $jumlah_harga_consumable[$index] != 0) ? number_format((float)$jumlah_harga_consumable[$index], 0, ',', '.') : '' }}
-            </td>
-            <td style="border: 1px solid black; padding: 5px; text-align: center;">
-                {{ ($jumlah_harga_upah[$index] !== '-' && $jumlah_harga_upah[$index] !== '' && $jumlah_harga_upah[$index] != 0) ? number_format((float)$jumlah_harga_upah[$index], 0, ',', '.') : '' }}
-            </td>
-            <td style="border: 1px solid black; padding: 5px; text-align: center;">
-                {{ ($harga_total[$index] !== '-' && $harga_total[$index] !== '' && $harga_total[$index] != 0) ? number_format((float)$harga_total[$index], 0, ',', '.') : '' }}
-            </td>
-            <td style="border: 1px solid black; padding: 5px;">
-                {{ ($keterangan[$index] !== '-' && $keterangan[$index] !== '' && $keterangan[$index] != 0) ? $keterangan[$index] : '' }}
-            </td>
-        </tr>
-    @endforeach
-    <!-- Baris Total -->
-    <tr style="font-weight: bold; background-color: #DCDCDC;">
-        <td colspan="12" class="border border-gray-400 px-2 py-1 text-center font-bold bg-gray-200">TOTAL</td>
-        <td colspan="1" class="border border-gray-400 px-2 py-1 text-center bg-gray-200">
-            <strong>{{ ($hpp->total_amount !== '-' && $hpp->total_amount !== '' && $hpp->total_amount != 0) ? number_format($hpp->total_amount, 0, ',', '.') : '' }}</strong>
+            @php $printedOA = true; @endphp
+        @endif
+        <td style="border:1px solid black; padding:3px; font-size:8.5px; font-weight:bold;">
+            {{ chr(65 + $g) }}. {{ $groupTitle }}
         </td>
-        <td colspan="1" class="border border-gray-400 px-2 py-1 text-center bg-gray-200"></td>
+        <td style="border:1px solid black;"></td>
+        <td style="border:1px solid black;"></td>
+        <td style="border:1px solid black;"></td>
+        <td style="border:1px solid black;"></td>
+        <td style="border:1px solid black;"></td>
     </tr>
+
+    @php
+        $rowCount = is_array($nama[$g] ?? null) ? count($nama[$g]) : 0;
+
+        // bucket dinamis: label -> daftar index item
+        $buckets = [];
+        for ($i = 0; $i < $rowCount; $i++) {
+            $lab = trim($jenis[$g][$i] ?? '');
+            $key = ($lab === '') ? 'Lainnya' : $lab;
+            $buckets[$key] = $buckets[$key] ?? [];
+            $buckets[$key][] = $i;
+        }
+        // urutan label mengikuti urutan kemunculan
+        $order = array_keys($buckets);
+        $noJenis = 1;
+    @endphp
+
+    @foreach ($order as $label)
+        {{-- LABEL JENIS (opsional, bebas) --}}
+        <tr>
+            <td style="border:1px solid black; padding:4px 4px 4px 12px; font-weight:bold;">
+                {{ $noJenis }}. {{ $label }}
+            </td>
+            <td style="border:1px solid black;"></td>
+            <td style="border:1px solid black;"></td>
+            <td style="border:1px solid black;"></td>
+            <td style="border:1px solid black;"></td>
+            <td style="border:1px solid black;"></td>
+        </tr>
+        @php $noJenis++; @endphp
+
+        {{-- ITEM DI BAWAH LABEL TERKAIT --}}
+        @foreach ($buckets[$label] as $i)
+            <tr>
+                <td style="border:1px solid black; padding:4px 4px 4px 16px;">
+                    {{ $nama[$g][$i] ?? '' }}
+                </td>
+                <td style="border:1px solid black; text-align:center;">
+                    {{ isset($qty[$g][$i]) ? rtrim(rtrim(number_format((float)$qty[$g][$i], 3, ',', '.'), '0'), ',') : '' }}
+                </td>
+                <td style="border:1px solid black; text-align:center;">
+                    {{ $satuan[$g][$i] ?? '' }}
+                </td>
+                <td style="border:1px solid black; text-align:right; padding-right:6px;">
+                    {{ isset($harga_satuan[$g][$i]) ? number_format((float)$harga_satuan[$g][$i], 0, ',', '.') : '' }}
+                </td>
+                <td style="border:1px solid black; text-align:right; padding-right:6px;">
+                    {{ isset($harga_total[$g][$i]) ? number_format((float)$harga_total[$g][$i], 0, ',', '.') : '' }}
+                </td>
+                <td style="border:1px solid black; padding:4px;">
+                    {{ $keterangan[$g][$i] ?? '' }}
+                </td>
+            </tr>
+        @endforeach
+    @endforeach
+
+@empty
+    <tr>
+        <td style="border:1px solid black; text-align:center;">{{ $hpp->outline_agreement ?? '' }}</td>
+        <td colspan="6" style="border:1px solid black; text-align:center; padding:6px;">Tidak ada data</td>
+    </tr>
+@endforelse
+
+{{-- TOTAL --}}
+<tr style="font-weight:bold; background-color:#DCDCDC;">
+    <td colspan="5" style="border:1px solid black; text-align:center;">TOTAL</td>
+    <td style="border:1px solid black; text-align:right; padding-right:6px;">
+        {{ ($hpp->total_amount ?? 0) ? number_format((float)$hpp->total_amount, 0, ',', '.') : '' }}
+    </td>
+    <td style="border:1px solid black;"></td>
+</tr>
 </tbody>
+
+    </table>
 </div>
 <!-- Informasi Catatan dan Tanda Tangan -->
 <table style="width: 100%; border: 1px solid black; border-collapse: collapse;">
@@ -391,7 +413,7 @@
                 </tr>
                 <tr>
                     <td class="px-2 py-2 text-center" style="border-bottom: 1px solid black;">
-                        <strong>{{ $hpp->generalManagerSignatureUser ? $hpp->generalManagerSignatureUser->name : 'N/A' }}</strong>
+                        <strong>{{ $hpp->generalManagerSignatureUser ? $hpp->generalManagerSignatureUser->name : 'N/A / TTD' }}</strong>
                     </td>
                 </tr>
             </table>

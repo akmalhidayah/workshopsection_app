@@ -85,4 +85,19 @@ class LHPP extends Model
     {
         return $this->belongsTo(User::class, 'manager_pkm_signature_user_id');
     }
+/**
+ * Cek apakah ketiga tanda tangan manager sudah terisi.
+ * Meng-handle beberapa kemungkinan penyimpanan: field base64/path atau user_id.
+ *
+ * @return bool
+ */
+public function hasAllSignatures(): bool
+{
+    $a = !empty($this->manager_signature) || !empty($this->manager_signature_user_id);
+    $b = !empty($this->manager_signature_requesting) || !empty($this->manager_signature_requesting_user_id);
+    $c = !empty($this->manager_pkm_signature) || !empty($this->manager_pkm_signature_user_id);
+
+    return $a && $b && $c;
+}
+
 }

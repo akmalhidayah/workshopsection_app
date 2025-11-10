@@ -6,14 +6,16 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\Hpp1;
-use App\Models\Abnormal; 
 use App\Models\ScopeOfWork; 
-use App\Models\GambarTeknik; 
+use App\Models\JenisKawatLas;
+use App\Models\KawatLas;
+use App\Models\KawatLasDetail;
+use App\Models\VerifikasiAnggaran;
 use App\Models\Lpj;
 use App\Models\KuotaAnggaranOA;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log; 
-
+use Illuminate\Support\Facades\Cache;
 
 
 class HomeController extends Controller
@@ -21,8 +23,9 @@ class HomeController extends Controller
     public function index()
     {
         // Ambil semua notifikasi dengan eager loading
-        $notifications = Notification::with(['abnormal', 'scopeOfWork', 'gambarTeknik'])->get();
-    
+        $notifications = Notification::with(['dokumenOrders', 'scopeOfWork'])->get();
+
+
         // Ambil semua notifikasi yang sudah memiliki dokumen HPP
         $notificationsWithHPP = DB::table('hpp1')->pluck('notification_number')->toArray();
     
@@ -54,17 +57,19 @@ class HomeController extends Controller
         $lhppNotificationNumbers = DB::table('lhpp')->pluck('notification_number')->toArray();
     
         // **Jumlah data**
-        $outstandingNotifications = $notifications->filter(function ($notification) use ($notificationsWithHPP, $approvalNotifications, $poNotifications) {
-            return $notification->abnormal !== null &&
-                   $notification->abnormal->manager_signature !== null &&
-                   $notification->abnormal->senior_manager_signature !== null &&
-                   $notification->scopeOfWork !== null &&
-                   $notification->gambarTeknik !== null &&
-                   $notification->status !== 'Approved' &&
-                   !in_array($notification->notification_number, $notificationsWithHPP) &&
-                   !in_array($notification->notification_number, $approvalNotifications) &&
-                   !in_array($notification->notification_number, $poNotifications);
-        })->count();
+$outstandingNotifications = $notifications->filter(function ($notification) use ($notificationsWithHPP, $approvalNotifications, $poNotifications) {
+    $abnormal = $notification->dokumenOrders->where('jenis_dokumen', 'abnormalitas')->first();
+    $gambarTeknik = $notification->dokumenOrders->where('jenis_dokumen', 'gambar_teknik')->first();
+
+    return $abnormal !== null &&
+           $gambarTeknik !== null &&
+           $notification->scopeOfWork !== null &&
+           $notification->status !== 'Approved' &&
+           !in_array($notification->notification_number, $notificationsWithHPP) &&
+           !in_array($notification->notification_number, $approvalNotifications) &&
+           !in_array($notification->notification_number, $poNotifications);
+})->count();
+
     
         $pendingProcessJasa = Notification::where('status', 'Approved')
             ->whereNotIn('notification_number', $notificationsWithHPP)
@@ -149,6 +154,8 @@ class HomeController extends Controller
         // Hitung Sisa Kuota Kontrak
         $sisaKuotaKontrak = $totalKuotaKontrak - $totalRealisasiBiaya;
     
+        // Ambil target biaya pemeliharaan dari OA terakhir
+        $targetPemeliharaan = optional($latestKuotaAnggaran)->target_biaya_pemeliharaan ?? null;
         // Passing data ke view
         return view('admin.dashboard', compact(
             'outstandingNotifications',
@@ -167,7 +174,8 @@ class HomeController extends Controller
             'totalKuotaKontrak',
             'sisaKuotaKontrak',
             'periodeKontrak',
-            'totalRealisasiBiaya'
+            'totalRealisasiBiaya',
+            'targetPemeliharaan'
         ));
     }
     public function getYears()
@@ -247,253 +255,443 @@ class HomeController extends Controller
 
     return response()->json($months);
 }
+/**
+ * Helper filter notifikasi (reusable).
+ * - $context === 'verifikasi'  -> filter unit dari notifications.unit_work & tanggal dari va.tanggal_verifikasi
+ * - selain itu                  -> filter default dari notifications.created_at
+ */
+private function filterNotifications(Request $request, $withHpp = false, $withDate = true, $context = null)
+{
+    // pagination & basic filters
+    $entries     = (int) $request->input('entries', 10);
+    $search      = $request->input('search', '');
+    $statusNotif = $request->input('status', '');     // dipakai saat context != 'verifikasi'
+    $regu        = $request->input('regu');
+    $startDate   = $request->input('start_date');
+    $endDate     = $request->input('end_date');
 
-    
-    public function notifikasi(Request $request)
-    {
-        // Default pagination size
-        $entries = $request->input('entries', 10); // Default 10 entries per page
-        $searchQuery = $request->input('search', ''); // Ambil input pencarian
-    
-        // Mengambil data notifications dengan eager loading
-        $notifications = Notification::with(['abnormal', 'scopeOfWork', 'gambarTeknik'])
-            ->when($searchQuery, function ($query) use ($searchQuery) {
-                $query->where('notification_number', 'LIKE', "%{$searchQuery}%");
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate($entries);
-    
-        // Iterasi untuk menandai notifikasi yang memiliki dokumen lengkap
-        foreach ($notifications as $notification) {
-            $notification->isAbnormalAvailable = $notification->abnormal !== null;
-            $notification->isScopeOfWorkAvailable = $notification->scopeOfWork !== null;
-            $notification->isGambarTeknikAvailable = $notification->gambarTeknik !== null;
-            
-            // Tambahkan pengecekan tanda tangan manager dan senior manager
-            $notification->isAbnormalSigned = $notification->abnormal !== null &&
-                                              $notification->abnormal->manager_signature !== null &&
-                                              $notification->abnormal->senior_manager_signature !== null;
+    // filter khusus verifikasi anggaran
+    $unit         = $request->input('unit');               // notifications.unit_work
+    $statusVA     = $request->input('status_va');          // va.status_anggaran (opsional)
+    $kategoriItem = $request->input('kategori_item');      // 'spare part' | 'jasa'
+    $statusEKorin = $request->input('status_e_korin');     // 'waiting_korin' | 'waiting_transfer' | 'complete_transfer'
+
+    $query = Notification::query();
+
+    // eager-load relasi untuk view
+    $with = ['dokumenOrders', 'scopeOfWork'];
+    if ($withHpp) $with[] = 'hpp1';
+    $query->with($with);
+
+    // cari berdasarkan nomor notifikasi
+    $query->when($search, fn($q) => $q->where('notification_number', 'like', "%{$search}%"));
+
+    if ($context !== 'verifikasi') {
+        // ===== MODE NON-VERIFIKASI =====
+        $query->when($statusNotif, fn($q) => $q->where('status', $statusNotif))
+              ->when($regu,        fn($q) => $q->where('catatan', $regu));
+
+        if ($withDate) {
+            $query->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
+                  ->when($endDate,   fn($q) => $q->whereDate('created_at', '<=', $endDate));
         }
-    
-        // Hitung jumlah notifikasi yang sudah lengkap dokumennya
-        $outstandingNotifications = $notifications->filter(function ($notification) {
-            return $notification->isAbnormalAvailable &&
-                   $notification->isAbnormalSigned && // Pastikan tanda tangan manager dan senior manager sudah ada
-                   $notification->isScopeOfWorkAvailable &&
-                   $notification->isGambarTeknikAvailable;
-        })->count();
-    
-        return view('admin.notifikasi', compact('notifications', 'outstandingNotifications'));
+
+        return $query->orderBy('created_at', 'desc')
+                     ->paginate($entries)
+                     ->appends($request->all());
     }
-    public function verifikasiAnggaran(Request $request)
-    {
-        $entries = $request->input('entries', 10); // Default 5 entries per page
-        $search = $request->input('search'); // Untuk pencarian
-    
-        // Query untuk mendapatkan data notifications
-        $query = Notification::query();
-    
-        // Jika ada input search, lakukan pencarian berdasarkan nomor notifikasi
-        if ($search) {
-            $query->where('notification_number', 'LIKE', "%{$search}%");
-        }
-    
-        // Lanjutkan dengan pagination dan order
-        $notifications = $query->orderBy('created_at', 'desc')->paginate($entries);
-    
-        // Iterasi untuk cek apakah dokumen abnormalitas, scope of work, gambar teknik, dan HPP sudah ada
+
+    // ===== MODE VERIFIKASI =====
+    $query->leftJoin('verifikasi_anggarans as va', 'va.notification_number', '=', 'notifications.notification_number')
+          ->select('notifications.*'); // penting: hindari kolom bentrok saat join
+
+    // unit dari notifications.unit_work
+    $query->when($unit, fn($q) => $q->where('notifications.unit_work', $unit));
+
+    // filter kolom VA
+    $query->when($statusVA,     fn($q) => $q->where('va.status_anggaran', $statusVA))
+          ->when($kategoriItem, fn($q) => $q->where('va.kategori_item', $kategoriItem))
+          ->when($statusEKorin, fn($q) => $q->where('va.status_e_korin', $statusEKorin));
+
+    // periode by tanggal_verifikasi (bukan created_at)
+    if ($withDate) {
+        $query->when($startDate, fn($q) => $q->whereDate('va.tanggal_verifikasi', '>=', $startDate))
+              ->when($endDate,   fn($q) => $q->whereDate('va.tanggal_verifikasi', '<=', $endDate));
+    }
+
+    return $query->orderBy('notifications.created_at', 'desc')
+                 ->paginate($entries)
+                 ->appends($request->all());
+}
+
+public function notifikasi(Request $request)
+{
+    // ✅ Panggil helper biar konsisten filter & pagination
+    $notifications = $this->filterNotifications($request, false, false);
+
+    foreach ($notifications as $notification) {
+        $notification->isAbnormalAvailable = $notification->dokumenOrders
+            ->where('jenis_dokumen', 'abnormalitas')
+            ->isNotEmpty();
+
+        $notification->isGambarTeknikAvailable = $notification->dokumenOrders
+            ->where('jenis_dokumen', 'gambar_teknik')
+            ->isNotEmpty();
+
+        $notification->isScopeOfWorkAvailable = $notification->scopeOfWork !== null;
+
+        $notification->isAbnormalSigned = false;
+    }
+
+    $outstandingNotifications = $notifications->filter(function ($notification) {
+        return $notification->isAbnormalAvailable &&
+               $notification->isScopeOfWorkAvailable &&
+               $notification->isGambarTeknikAvailable;
+    })->count();
+
+    // 🔥 ambil order kawat las + jenis list
+    $kawatLasOrders      = KawatLas::with('details')->orderBy('created_at', 'desc')->paginate(10);
+    $jumlahOrderKawatLas = $kawatLasOrders->total(); // biar konsisten dengan pagination
+    $jenisList           = JenisKawatLas::orderBy('kode')->get();
+
+    // 🔥 distinct Unit untuk filter dropdown
+    $units = KawatLas::select('unit_work')
+        ->distinct()
+        ->orderBy('unit_work')
+        ->pluck('unit_work');
+
+    return view('admin.notifikasi', compact(
+        'notifications',
+        'outstandingNotifications',
+        'jumlahOrderKawatLas',
+        'kawatLasOrders',
+        'jenisList',
+        'units' // 👈 tambahan ini
+    ));
+}
+public function inputHppIndex(Request $request)
+{
+    $query = \App\Models\Hpp1::query()->orderBy('created_at', 'desc');
+
+    // 🔍 Filter berdasarkan pencarian (nomor order / unit kerja)
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function ($q) use ($search) {
+            $q->where('notification_number', 'like', "%{$search}%")
+              ->orWhere('requesting_unit', 'like', "%{$search}%");
+        });
+    }
+
+    // 🧾 Filter berdasarkan jenis HPP (source_form)
+    if ($request->filled('jenis_hpp')) {
+        $query->where('source_form', $request->jenis_hpp);
+    }
+
+    // 🏢 Filter berdasarkan unit kerja
+    if ($request->filled('unit_kerja')) {
+        $query->where('requesting_unit', $request->unit_kerja);
+    }
+
+    // 🔹 Ambil data hasil filter + pagination
+    $hpp = $query->paginate(10)->appends($request->all());
+
+    // 🔹 Ambil daftar unit kerja unik untuk pilihan filter
+    $unitKerjaOptions = \App\Models\Hpp1::select('requesting_unit')
+        ->distinct()
+        ->pluck('requesting_unit')
+        ->sort()
+        ->values();
+
+    // 🔹 Data tambahan (grafik / analisis)
+    $unitKerjaHppData = \App\Models\Hpp1::selectRaw('requesting_unit, SUM(total_amount) as total')
+        ->groupBy('requesting_unit')
+        ->orderBy('total', 'desc')
+        ->take(10)
+        ->get();
+
+    return view('admin.inputhpp.index', compact('hpp', 'unitKerjaHppData', 'unitKerjaOptions'));
+}
+
+public function verifikasiAnggaran(Request $request)
+{
+    try {
+        // aktifkan mode 'verifikasi' agar join & filter VA berjalan
+        $notifications = $this->filterNotifications($request, true, true, 'verifikasi');
+
+        // ambil semua nomor notifikasi di halaman ini untuk bulk-ambil VA
+        $notifNumbers = $notifications->pluck('notification_number')->all();
+
+        $verifMap = VerifikasiAnggaran::whereIn('notification_number', $notifNumbers)
+            ->get()
+            ->keyBy('notification_number');
+
         foreach ($notifications as $notification) {
-            $notification->isAbnormalAvailable = Abnormal::where('notification_number', $notification->notification_number)->exists();
-            $notification->isScopeOfWorkAvailable = ScopeOfWork::where('notification_number', $notification->notification_number)->exists();
-            $notification->isGambarTeknikAvailable = GambarTeknik::where('notification_number', $notification->notification_number)->exists();
-        
-            // ✅ Tambahkan pengecekan tanda tangan
-            $abnormal = Abnormal::where('notification_number', $notification->notification_number)->first();
-            $notification->isAbnormalSigned = $abnormal && $abnormal->manager_signature && $abnormal->senior_manager_signature;
-        
-            // ✅ Perluas logika AbnormalAvailable
-            $notification->isAbnormalAvailable = $notification->isAbnormalAvailable && $notification->isAbnormalSigned;
-        
-            // ✅ HPP
-            $hpp = Hpp1::where('notification_number', $notification->notification_number)->first();
-            if ($hpp) {
+            // status dokumen
+            $notification->isAbnormalAvailable     = $notification->dokumenOrders->where('jenis_dokumen', 'abnormalitas')->isNotEmpty();
+            $notification->isGambarTeknikAvailable = $notification->dokumenOrders->where('jenis_dokumen', 'gambar_teknik')->isNotEmpty();
+            $notification->isScopeOfWorkAvailable  = $notification->scopeOfWork !== null;
+
+            // HPP
+            if ($notification->hpp1) {
                 $notification->isHppAvailable = true;
-                $notification->source_form = $hpp->source_form;
-                $notification->total_amount = $hpp->total_amount;
+                $notification->source_form  = $notification->hpp1->source_form;
+                $notification->total_amount = $notification->hpp1->total_amount;
             } else {
                 $notification->isHppAvailable = false;
             }
-        }
-        
-    
-        return view('admin.verifikasianggaran', compact('notifications', 'search', 'entries'));
-    }
-    
 
-public function purchaseRequest(Request $request)
-{
-    // Default pagination size
-    $entries = $request->input('entries', 5); // Default 5 entries per page
-    
-    // Mengambil data notifications dengan pagination
-    $notifications = Notification::orderBy('created_at', 'desc')->paginate($entries);
-    
-    // Iterasi untuk cek apakah dokumen abnormalitas, scope of work, gambar teknik, dan HPP sudah ada
-    foreach ($notifications as $notification) {
-        $notification->isAbnormalAvailable = Abnormal::where('notification_number', $notification->notification_number)->exists();
-        $notification->isScopeOfWorkAvailable = ScopeOfWork::where('notification_number', $notification->notification_number)->exists();
-        $notification->isGambarTeknikAvailable = GambarTeknik::where('notification_number', $notification->notification_number)->exists();
-        
-        // Ambil data HPP dan source_form
-        $hpp = Hpp1::where('notification_number', $notification->notification_number)->first();
-        if ($hpp) {
-            $notification->isHppAvailable = true;
-            $notification->source_form = $hpp->source_form;
-        } else {
-            $notification->isHppAvailable = false;
+            // Merge Verifikasi Anggaran ke objek notif (untuk Blade)
+            $v = $verifMap->get($notification->notification_number);
+            $notification->status_anggaran    = $v->status_anggaran    ?? 'Menunggu';
+            $notification->cost_element       = $v->cost_element       ?? '';
+            $notification->kategori_biaya     = $v->kategori_biaya     ?? null;
+            $notification->kategori_item      = $v->kategori_item      ?? null;   // NEW
+            $notification->nomor_e_korin      = $v->nomor_e_korin      ?? null;   // NEW
+            $notification->status_e_korin     = $v->status_e_korin     ?? null;   // NEW
+            $notification->catatan            = $v->catatan            ?? '';
+            $notification->tanggal_verifikasi = $v->tanggal_verifikasi ?? null;
         }
-    }
 
-    return view('admin.purchaserequest', compact('notifications'));
+        // Dropdown Unit → dari notifications.unit_work (bukan KawatLas / requesting_unit)
+        $units = Notification::select('unit_work')
+            ->whereNotNull('unit_work')
+            ->distinct()
+            ->orderBy('unit_work')
+            ->pluck('unit_work');
+
+        return view('admin.verifikasianggaran', compact('notifications', 'units'));
+
+    } catch (\Exception $e) {
+        \Log::error('Error di verifikasiAnggaran(): ' . $e->getMessage());
+        abort(500, 'Terjadi kesalahan saat memproses data Verifikasi Anggaran.');
+    }
 }
 
-public function purchaseOrder(Request $request)
+public function updateVerifikasiAnggaran(Request $request, $notification_number)
 {
-    // Ambil data dari tabel notifications
-    $notifications = Notification::orderBy('created_at', 'desc')->get(); // Gunakan get() untuk filtering manual
-
-    // Filter hanya notifikasi dengan dokumen lengkap
-    $filteredNotifications = $notifications->filter(function ($notification) {
-        $hasAbnormal = Abnormal::where('notification_number', $notification->notification_number)->exists();
-        $hasScopeOfWork = ScopeOfWork::where('notification_number', $notification->notification_number)->exists();
-        $hasGambarTeknik = GambarTeknik::where('notification_number', $notification->notification_number)->exists();
-
-        // Periksa keberadaan HPP dan ambil detail
-        $hpp = Hpp1::where('notification_number', $notification->notification_number)->first();
-        if ($hpp) {
-            $notification->isHppAvailable = true;
-            $notification->source_form = $hpp->source_form;
-            $notification->total_amount = $hpp->total_amount;
-
-            // Perbarui update_date jika semua dokumen tersedia
-            if ($hasAbnormal && $hasScopeOfWork && $hasGambarTeknik) {
-                $notification->update_date = now();
-                $notification->save();
-                return true;
-            }
-        }
-
-        return false;
-    });
-
-    // Return view dengan data filteredNotifications
-    return view('admin.purchaseorder', [
-        'notifications' => $filteredNotifications->paginate(5) // Paginasi setelah filter
-    ]);
-}
-
-
-public function lpj()
-    {
-        // Ambil data notifikasi untuk LPJ
-        $notifications = Notification::paginate(10); // Sesuaikan dengan kebutuhan
-
-        return view('admin.lpj', compact('notifications'));
-    }
-
-    // Fungsi untuk memperbarui LPJ
-    public function updateLpj(Request $request, $notification_number)
-    {
-        // Validasi data
-        $request->validate([
-            'lpj_number' => 'required|string',
-            'lpj_document' => 'nullable|file|mimes:pdf,doc,docx|max:2048',
-            'ppl_number' => 'nullable|string',
-            'ppl_document' => 'nullable|file|mimes:pdf,doc,docx|max:2048',
+    try {
+        // Validasi sesuai schema baru
+        $validated = $request->validate([
+            'status_anggaran' => 'nullable|string|in:Tersedia,Tidak Tersedia,Menunggu',
+            'cost_element'    => 'nullable|string|max:255',
+            'kategori_biaya'  => 'nullable|in:pemeliharaan,non pemeliharaan,capex',
+            'kategori_item'   => 'nullable|in:spare part,jasa',
+            'nomor_e_korin'   => 'nullable|string|max:255',
+            'status_e_korin'  => 'nullable|in:waiting_korin,waiting_transfer,complete_transfer',
+            'catatan'         => 'nullable|string|max:1000',
         ]);
-    
-        // Proses dokumen LPJ
-        if ($request->hasFile('lpj_document')) {
-            $lpjExtension = $request->file('lpj_document')->getClientOriginalExtension();
-            $lpjFileName = 'LPJ BMS ' . $notification_number . '.' . $lpjExtension;
-            $lpjPath = $request->file('lpj_document')->storeAs('lpj_documents', $lpjFileName, 'public');
-        } else {
-            $lpjPath = Lpj::where('notification_number', $notification_number)->value('lpj_document_path');
-        }
-    
-        // Proses dokumen PPL
-        if ($request->hasFile('ppl_document')) {
-            Log::info('PPL document uploaded', ['notification_number' => $notification_number]);
-    
-            $pplExtension = $request->file('ppl_document')->getClientOriginalExtension();
-            $pplFileName = 'PPL BMS ' . $notification_number . '.' . $pplExtension;
-            $pplPath = $request->file('ppl_document')->storeAs('ppl_documents', $pplFileName, 'public');
-        } else {
-            $pplPath = Lpj::where('notification_number', $notification_number)->value('ppl_document_path');
-            if (!$pplPath) {
-                Log::warning('No previous PPL document found', ['notification_number' => $notification_number]);
-                $pplPath = null;
-            }
-        }
-    
-        // Update atau simpan data LPJ
-        Lpj::updateOrCreate(
+
+        // Ambil data lama (jika ada)
+        $verifikasi = VerifikasiAnggaran::where('notification_number', $notification_number)->first();
+
+        $old = [
+            'status_anggaran'    => $verifikasi->status_anggaran    ?? 'Menunggu',
+            'cost_element'       => $verifikasi->cost_element       ?? null,
+            'kategori_biaya'     => $verifikasi->kategori_biaya     ?? null,
+            'kategori_item'      => $verifikasi->kategori_item      ?? null,
+            'nomor_e_korin'      => $verifikasi->nomor_e_korin      ?? null,
+            'status_e_korin'     => $verifikasi->status_e_korin     ?? null,
+            'catatan'            => $verifikasi->catatan            ?? null,
+            'tanggal_verifikasi' => $verifikasi->tanggal_verifikasi ?? null,
+        ];
+
+        // Susun nilai baru (fallback ke lama jika kosong)
+        $new = [
+            'status_anggaran' => $validated['status_anggaran'] ?? $old['status_anggaran'],
+            'cost_element'    => $validated['cost_element']    ?? $old['cost_element'],
+            'kategori_biaya'  => $validated['kategori_biaya']  ?? $old['kategori_biaya'],
+            'kategori_item'   => $validated['kategori_item']   ?? $old['kategori_item'],
+            'nomor_e_korin'   => $validated['nomor_e_korin']   ?? $old['nomor_e_korin'],
+            'status_e_korin'  => $validated['status_e_korin']  ?? $old['status_e_korin'],
+            'catatan'         => $validated['catatan']         ?? $old['catatan'],
+        ];
+
+        // Tentukan apakah ada perubahan (update timestamp jika ada)
+        $changed = array_filter($new, fn($k) => ($new[$k] ?? null) !== ($old[$k] ?? null), ARRAY_FILTER_USE_KEY);
+        $tanggalUpdate = !empty($changed) ? now() : $old['tanggal_verifikasi'];
+
+        VerifikasiAnggaran::updateOrCreate(
             ['notification_number' => $notification_number],
-            [
-                'lpj_number' => $request->lpj_number,
-                'lpj_document_path' => $lpjPath,
-                'ppl_number' => $request->ppl_number,
-                'ppl_document_path' => $pplPath,
-                'update_date' => now(),
-            ]
+            $new + ['tanggal_verifikasi' => $tanggalUpdate]
         );
-    
-        return redirect()->route('admin.lpj')->with('success', 'Data LPJ berhasil diupdate!');
+
+        return redirect()->back()->with('success', '✅ Data verifikasi anggaran berhasil diperbarui.');
+
+    } catch (\Illuminate\Validation\ValidationException $ve) {
+        return back()->withErrors($ve->errors())->withInput();
+    } catch (\Exception $e) {
+        \Log::error('Gagal update Verifikasi Anggaran: ' . $e->getMessage());
+        return back()->with('error', '❌ Terjadi kesalahan saat memperbarui data.');
     }
-    
-    public function updateOA(Request $request)
-    {
-        // Cek apakah ada parameter 'new' untuk membuat OA baru
-        $latestData = $request->has('new') ? null : KuotaAnggaranOA::latest()->first();
-    
-        return view('admin.updateoa', compact('latestData'));
-    }
-    
-    public function storeOA(Request $request)
-    {
-        $request->validate([
-            'outline_agreement' => 'required|string',
-            'unit_work' => 'required|string',
-            'jenis_kontrak' => 'required|string',
-            'nama_kontrak' => 'required|string',
-            'nilai_kontrak' => 'required|numeric',
-            'tambahan_kuota_kontrak' => 'nullable|numeric',
-            'total_kuota_kontrak' => 'required|numeric',
-            'periode_kontrak_start' => 'required|date',
-            'periode_kontrak_end' => 'required|date',
-            'adendum_end' => 'nullable|date',
+}
+
+
+public function lpj(Request $request)
+{
+    try {
+        // Hanya cari by notification_number (simple)
+        $search  = $request->input('search', null);
+        $entries = (int) $request->input('entries', 10);
+
+        $query = \App\Models\Notification::with(['dokumenOrders', 'scopeOfWork']);
+
+        if ($search) {
+            // hanya cari pada kolom notification_number
+            $query->where('notification_number', 'like', "%{$search}%");
+        }
+
+        // ambil notifications dengan pagination
+        $notifications = $query->orderBy('created_at', 'desc')
+                               ->paginate($entries)
+                               ->appends($request->all());
+
+        // ambil notification_number pada page ini untuk mengambil LPJ & LHPP sekaligus
+        $notificationNumbersOnPage = $notifications->pluck('notification_number')->toArray();
+
+        $lpjMap = \App\Models\Lpj::whereIn('notification_number', $notificationNumbersOnPage)
+                    ->get()
+                    ->keyBy('notification_number');
+
+        $lhppMap = \App\Models\LHPP::whereIn('notification_number', $notificationNumbersOnPage)
+                    ->get()
+                    ->keyBy('notification_number');
+
+        return view('admin.lpj', [
+            'notifications' => $notifications,
+            'lpjMap' => $lpjMap,
+            'lhppMap' => $lhppMap,
+            'request' => $request,
         ]);
-    
-        KuotaAnggaranOA::updateOrCreate(
-            ['outline_agreement' => $request->outline_agreement],
-            [
-                'unit_work' => $request->unit_work,
-                'jenis_kontrak' => $request->jenis_kontrak,
-                'nama_kontrak' => $request->nama_kontrak,
-                'nilai_kontrak' => $request->nilai_kontrak,
-                'tambahan_kuota_kontrak' => $request->tambahan_kuota_kontrak,
-                'total_kuota_kontrak' => $request->nilai_kontrak + ($request->tambahan_kuota_kontrak ?? 0),
-                'periode_kontrak_start' => $request->periode_kontrak_start,
-                'periode_kontrak_end' => $request->periode_kontrak_end,
-                'adendum_end' => $request->adendum_end,
-                'periode_kontrak_final' => $request->periode_kontrak_final ?? $request->periode_kontrak_end,
-            ]
-        );
-    
-        return redirect()->route('admin.updateoa')->with('success', 'Data Outline Agreement berhasil disimpan!');
+    } catch (\Exception $e) {
+        Log::error('Error di lpj(): ' . $e->getMessage());
+        return response()->view('errors.500', [
+            'message' => 'Terjadi kesalahan saat memuat data LPJ.'
+        ], 500);
     }
-    
-    
+}
+public function updateLpj(Request $request, $notification_number)
+{
+    // short-lived lock key untuk mencegah double processing (5 detik)
+    $lockKey = "lpj_lock_{$notification_number}";
+
+    // kalau sudah ada lock, tolak request kedua
+    if (! Cache::add($lockKey, true, 5)) {
+        Log::warning("Duplicate LPJ request blocked for {$notification_number}", ['ip' => $request->ip()]);
+        return back()->with('error', 'Permintaan sudah dikirim — tunggu sebentar dan cek kembali.')->setStatusCode(429);
+    }
+
+    // log awal (debug)
+    Log::info('LPJ update request received', [
+        'notification' => $notification_number,
+        'ip' => $request->ip(),
+        'time' => now()->toDateTimeString(),
+        'has_lpj_file' => $request->hasFile('lpj_document') ? 'yes' : 'no',
+        'has_ppl_file' => $request->hasFile('ppl_document') ? 'yes' : 'no',
+    ]);
+
+    try {
+        $request->validate([
+            'lpj_number'      => 'required|string',
+            'lpj_document'    => 'nullable|file|mimes:pdf,doc,docx|max:2048',
+            'ppl_number'      => 'nullable|string',
+            'ppl_document'    => 'nullable|file|mimes:pdf,doc,docx|max:2048',
+            'termin1'         => 'nullable|in:belum,sudah',
+            'termin2'         => 'nullable|in:belum,sudah',
+            'garansi_months'  => 'nullable|integer|min:1|max:12',
+            'garansi_label'   => 'nullable|string|max:255',
+        ]);
+
+        // ambil model (atau buat baru, belum disimpan)
+        $lpj = Lpj::firstOrNew(['notification_number' => $notification_number]);
+
+        // handle LPJ file: hanya simpan jika ada file baru
+        if ($request->hasFile('lpj_document')) {
+            if ($lpj->lpj_document_path && \Storage::disk('public')->exists($lpj->lpj_document_path)) {
+                \Storage::disk('public')->delete($lpj->lpj_document_path);
+            }
+            $lpjExtension = $request->file('lpj_document')->getClientOriginalExtension();
+            $lpjFileName  = "LPJ_BMS_{$notification_number}." . $lpjExtension;
+            $lpj->lpj_document_path = $request->file('lpj_document')->storeAs('lpj_documents', $lpjFileName, 'public');
+        }
+
+        // handle PPL file: hanya simpan jika ada file baru
+        if ($request->hasFile('ppl_document')) {
+            if ($lpj->ppl_document_path && \Storage::disk('public')->exists($lpj->ppl_document_path)) {
+                \Storage::disk('public')->delete($lpj->ppl_document_path);
+            }
+            $pplExtension = $request->file('ppl_document')->getClientOriginalExtension();
+            $pplFileName  = "PPL_BMS_{$notification_number}." . $pplExtension;
+            $lpj->ppl_document_path = $request->file('ppl_document')->storeAs('ppl_documents', $pplFileName, 'public');
+        }
+
+        // set atribut lain
+        $lpj->lpj_number     = $request->lpj_number;
+        $lpj->ppl_number     = $request->ppl_number ?? $lpj->ppl_number;
+        $lpj->termin1        = $request->input('termin1', $lpj->termin1 ?? 'belum');
+        $lpj->termin2        = $request->input('termin2', $lpj->termin2 ?? 'belum');
+        $lpj->garansi_months = $request->input('garansi_months');
+        $lpj->garansi_label  = $request->input('garansi_label');
+        $lpj->update_date    = now();
+
+        // simpan model sekali
+        $lpj->save();
+
+        return redirect()->route('admin.lpj')->with('success', 'Data LPJ berhasil diupdate!');
+    } catch (\Exception $e) {
+        Log::error('Error di updateLpj(): ' . $e->getMessage(), ['notif' => $notification_number]);
+        return back()->with('error', 'Gagal memperbarui LPJ.')->setStatusCode(500);
+    } finally {
+        // pastikan lock dibersihkan agar tidak terkunci selamanya
+        Cache::forget($lockKey);
+    }
+}
+
+
+    public function updateOA(Request $request)
+{
+    // Cek apakah ada parameter 'new' untuk membuat OA baru
+    $latestData = $request->has('new') ? null : KuotaAnggaranOA::latest()->first();
+
+    return view('admin.updateoa', compact('latestData'));
+}
+
+public function storeOA(Request $request)
+{
+    $request->validate([
+        'outline_agreement'       => 'required|string',
+        'unit_work'               => 'required|string',
+        'jenis_kontrak'           => 'required|string',
+        'nama_kontrak'            => 'required|string',
+        'nilai_kontrak'           => 'required|numeric',
+        'tambahan_kuota_kontrak'  => 'nullable|numeric',
+        'total_kuota_kontrak'     => 'required|numeric',
+        'periode_kontrak_start'   => 'required|date',
+        'periode_kontrak_end'     => 'required|date',
+        'adendum_end'             => 'nullable|date',
+        'target_biaya_pemeliharaan' => 'nullable|numeric', // ⬅️ baru
+    ]);
+
+    KuotaAnggaranOA::updateOrCreate(
+        ['outline_agreement' => $request->outline_agreement],
+        [
+            'unit_work'               => $request->unit_work,
+            'jenis_kontrak'           => $request->jenis_kontrak,
+            'nama_kontrak'            => $request->nama_kontrak,
+            'nilai_kontrak'           => $request->nilai_kontrak,
+            'tambahan_kuota_kontrak'  => $request->tambahan_kuota_kontrak,
+            // tetap pakai perhitungan lama:
+            'total_kuota_kontrak'     => $request->nilai_kontrak + ($request->tambahan_kuota_kontrak ?? 0),
+            'periode_kontrak_start'   => $request->periode_kontrak_start,
+            'periode_kontrak_end'     => $request->periode_kontrak_end,
+            'adendum_end'             => $request->adendum_end,
+            'periode_kontrak_final'   => $request->periode_kontrak_final ?? $request->periode_kontrak_end,
+            'target_biaya_pemeliharaan' => $request->target_biaya_pemeliharaan, // ⬅️ baru
+        ]
+    );
+
+    return redirect()->route('admin.updateoa')->with('success', 'Data Outline Agreement berhasil disimpan!');
+}
+
 }
 
 

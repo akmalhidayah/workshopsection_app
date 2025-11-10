@@ -22,7 +22,8 @@ class KuotaAnggaranOA extends Model
         'periode_kontrak_start',
         'periode_kontrak_end',
         'adendum_end',
-        'periode_kontrak_final'
+        'periode_kontrak_final',
+        'target_biaya_pemeliharaan'
     ];
 
     public function calculateTotalKuota()

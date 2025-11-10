@@ -23,7 +23,7 @@
             <!-- Bagian Tabel -->
             <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
                 <div class="overflow-x-auto">
-                    <table class="min-w-full bg-white text-sm rounded-lg shadow-lg">
+                    <table class="min-w-full bg-white text-[11px] rounded-lg shadow-lg">
                         <thead class="bg-orange-400 text-white">
                             <tr>
                                 <th class="px-6 py-3 text-left font-semibold">Nomor Order</th>
@@ -40,17 +40,17 @@
                         @foreach ($lhpps as $lhpp)
                             <tr class="hover:bg-gray-100 transition duration-150">
                                 <!-- Baris Pertama: Informasi Umum -->
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $lhpp->notification_number }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $lhpp->purchase_order_number }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $lhpp->unit_kerja }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $lhpp->tanggal_selesai }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $lhpp->waktu_pengerjaan }} Hari</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($lhpp->total_biaya, 2, ',', '.') }}</td>
-                                <td class="px-6 py-4 whitespace-normal text-sm text-gray-900 break-words">
+                                <td class="px-6 py-4 whitespace-nowrap text-[11px] text-gray-900">{{ $lhpp->notification_number }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-[11px] text-gray-900">{{ $lhpp->purchase_order_number }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-[11px] text-gray-900">{{ $lhpp->unit_kerja }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-[11px] text-gray-900">{{ $lhpp->tanggal_selesai }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-[11px] text-gray-900">{{ $lhpp->waktu_pengerjaan }} Hari</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-[11px] text-gray-900">{{ number_format($lhpp->total_biaya, 2, ',', '.') }}</td>
+                                <td class="px-6 py-4 whitespace-normal text-[9px] text-gray-900 break-words">
                                     <div class="text-red-500">
-                                        @if (is_null($lhpp->manager_signature))
-                                            <span>Menunggu Tanda Tangan dari Manager Bengkel Mesin</span>
-                                        @elseif (is_null($lhpp->manager_signature_requesting))
+                                        @if (is_null($lhpp->manager_signature_requesting))
+                                            <span>Menunggu Tanda Tangan dari Manager Bengkel User</span>
+                                        @elseif (is_null($lhpp->manager_signature))
                                             <span>Menunggu Tanda Tangan dari Manager User</span>
                                         @elseif (is_null($lhpp->manager_pkm_signature))
                                             <span>Menunggu Tanda Tangan dari Manager PKM</span>
@@ -59,13 +59,7 @@
                                         @endif
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium flex justify-center space-x-2">
-                        <!-- Tombol 
-                        <a href="{{ route('pkm.lhpp.show', $lhpp->notification_number) }}" 
-                        class="bg-blue-500 text-white px-2 py-1 rounded-lg hover:bg-blue-700 text-xs flex items-center justify-center" 
-                        target="_blank">
-                            <i class="fas fa-eye"></i> 
-                        </a>Lihat -->
+                                <td class="px-6 py-4 whitespace-nowrap text-center text-[9px] font-medium flex justify-center space-x-2">
                         <!-- Tombol Edit -->
                         <a href="{{ route('pkm.lhpp.edit', $lhpp->notification_number) }}" class="bg-green-500 text-white px-3 py-2 rounded-md hover:bg-green-600">
                         <i class="fas fa-edit"></i>

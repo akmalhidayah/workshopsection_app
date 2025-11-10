@@ -1,104 +1,175 @@
 // public/js/custom-notification.js
 
+// fallback jika window.NotificationBase tidak diset dari Blade
+if (!window.NotificationBase) {
+    window.NotificationBase = '/notifikasi';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    // init select2 jika tersedia
+    if (typeof $ !== 'undefined' && $.fn && $.fn.select2) {
+        $('.select2').select2({ width: '100%' });
+    }
+
+    // open create modal
+    const openCreateBtn = document.getElementById('openCreateBtn');
+    if (openCreateBtn) openCreateBtn.addEventListener('click', confirmCreate);
+
+    // attach edit button listeners
+    document.querySelectorAll('.btn-edit').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const number = this.getAttribute('data-number');
+            openEditForm(number);
+        });
+    });
+
+    // delete confirm
+    document.querySelectorAll('form[data-number]').forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const f = this;
+            Swal.fire({
+                title: 'Anda yakin?',
+                text: "Data ini akan dihapus dan tidak dapat dikembalikan!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, hapus!',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    f.submit();
+                }
+            });
+        });
+    });
+
+    // flash success
+    const flash = document.getElementById('flash-success');
+    if (flash) {
+        const msg = flash.dataset.message;
+        if (msg) {
+            Swal.fire({ icon: 'success', title: 'Sukses', text: msg, timer: 2000, showConfirmButton: false });
+        }
+    }
+});
+
+/* ---------- Create modal ---------- */
 function confirmCreate() {
     Swal.fire({
         title: 'Apakah Anda yakin?',
         text: "Anda akan membuat Order baru.",
-        icon: 'warning',
+        icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#d33',
         confirmButtonText: 'Ya, buat!',
         cancelButtonText: 'Batal'
     }).then((result) => {
-        if (result.isConfirmed) {
-            openForm(); // Panggil fungsi untuk membuka form
-        }
+        if (result.isConfirmed) openCreate();
     });
 }
-
-function openForm() {
-    // Tampilkan modal form create notifikasi
-    document.getElementById('dataForm').classList.remove('hidden');
+function openCreate() {
+    const m = document.getElementById('modalCreate');
+    if (m) m.classList.remove('hidden');
+}
+function closeCreate() {
+    const m = document.getElementById('modalCreate');
+    if (m) m.classList.add('hidden');
 }
 
-function closeForm() {
-    // Tutup modal form create notifikasi
-    document.getElementById('dataForm').classList.add('hidden');
-}
-
+/* ---------- Edit modal: fetch data from server and open modal ---------- */
 function openEditForm(notification_number) {
-    fetch(`/notifikasi/${notification_number}/edit`)
-        .then(response => response.json())
-        .then(notification => {
-            document.getElementById('editNotifikasiNo').value = notification.notification_number;
-            document.getElementById('editNamaPekerjaan').value = notification.job_name;
-            document.getElementById('editUnitKerja').value = notification.unit_work;
-            document.getElementById('priority').value = notification.priority;
-            document.getElementById('editInputDate').value = notification.input_date;
+    if (!notification_number) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Nomor notifikasi tidak valid.' });
+        return;
+    }
 
-            // Set jenis kontrak
-            document.getElementById('jenisKontrak').value = notification.jenis_kontrak;
+    // build url: /notifikasi/{id}/edit
+    const url = `${window.NotificationBase}/${encodeURIComponent(notification_number)}/edit`;
 
-            // Panggil fungsi untuk memuat nama kontrak berdasarkan jenis kontrak
-            handleJenisKontrakChange(); 
-
-            // Tunggu sampai dropdown terisi baru tetapkan nilai nama kontrak
-            setTimeout(() => {
-                document.getElementById('namaKontrak').value = notification.nama_kontrak;
-            }, 100); // Timeout 100 ms untuk memastikan nama kontrak terisi
-
-            // Set form action untuk update
-            document.getElementById('editNotificationForm').action = `/notifikasi/${notification.notification_number}`;
-
-            // Tampilkan modal edit
-            document.getElementById('editForm').classList.remove('hidden');
+    fetch(url, { headers: { 'Accept': 'application/json' } })
+        .then(response => {
+            if (!response.ok) {
+                // show different message for 404 vs 500
+                if (response.status === 404) {
+                    throw new Error('NotFound');
+                } else if (response.status === 403) {
+                    throw new Error('Forbidden');
+                } else {
+                    throw new Error('Network');
+                }
+            }
+            return response.json();
         })
-        .catch(error => console.error('Error:', error));
+        .then(notification => {
+            // populate edit fields (make sure element IDs exist)
+            const setIf = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.value = val ?? '';
+            };
+
+            setIf('editNotifikasiNo', notification.notification_number);
+            setIf('editNamaPekerjaan', notification.job_name);
+            setIf('editUnitKerja', notification.unit_work);
+
+            // priority: ensure priority_edit exists
+            const prEl = document.getElementById('priority_edit');
+            if (prEl) prEl.value = notification.priority ?? 'Medium';
+
+            // dates
+            setIf('editInputDate', notification.input_date ?? '');
+            setIf('editRencanaPemakaian', notification.usage_plan_date ?? '');
+
+            // Set form action to PATCH /notifikasi/{id}
+            const editForm = document.getElementById('editForm');
+            if (editForm) {
+                editForm.action = `${window.NotificationBase}/${encodeURIComponent(notification.notification_number)}`;
+            }
+
+            // show modal
+            const m = document.getElementById('modalEdit');
+            if (m) m.classList.remove('hidden');
+        })
+        .catch(err => {
+            console.error('Fetch edit error', err);
+            if (err.message === 'NotFound') {
+                Swal.fire({ icon: 'error', title: 'Tidak ditemukan', text: 'Notifikasi tidak ditemukan atau Anda tidak punya akses.' });
+            } else if (err.message === 'Forbidden') {
+                Swal.fire({ icon: 'error', title: 'Akses ditolak', text: 'Anda tidak memiliki izin untuk melihat data ini.' });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal mengambil data notifikasi. Cek console untuk detail.' });
+            }
+        });
 }
 
-function closeEditForm() {
-    document.getElementById('editForm').classList.add('hidden');
+function closeEdit() {
+    const m = document.getElementById('modalEdit');
+    if (m) m.classList.add('hidden');
 }
 
-function confirmDelete(form) {
-    Swal.fire({
-        title: 'Anda yakin?',
-        text: "Data ini akan dihapus dan tidak dapat dikembalikan!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Ya, hapus!',
-        cancelButtonText: 'Batal'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            form.submit(); // Lanjutkan penghapusan data
-        }
-    });
+/* ---------- Helper: jenisKontrak -> namaKontrak (create only) ---------- */
+function handleJenisKontrakChange(mode = 'create') {
+    const jenisEl = (mode === 'create') ? document.getElementById('jenisKontrak') : null;
+    const namaContainer = document.getElementById('namaKontrakContainer');
+    const namaSelect = document.getElementById('namaKontrak');
 
-    return false; // Mencegah form dikirim secara otomatis sebelum konfirmasi
-}
-function handleJenisKontrakChange() {
-    const jenisKontrak = document.getElementById('jenisKontrak').value;
-    const namaKontrakContainer = document.getElementById('namaKontrakContainer');
-    const namaKontrakSelect = document.getElementById('namaKontrak');
+    if (!jenisEl || !namaSelect || !namaContainer) return;
 
-    // Reset options setiap kali jenis kontrak berubah
-    namaKontrakSelect.innerHTML = '';
+    const jenis = jenisEl.value;
+    namaSelect.innerHTML = '';
 
-    if (jenisKontrak === 'Bengkel Mesin') {
-        namaKontrakSelect.innerHTML = `
-            <option value="Fabrikasi_Konstruksi_Pengerjaan_Mesin">Fabrikasi, Konstruksi dan Pengerjaan Mesin</option>
-        `;
-    } else if (jenisKontrak === 'Bengkel Listrik') {
-        namaKontrakSelect.innerHTML = `
+    if (jenis === 'Bengkel Mesin') {
+        namaSelect.innerHTML = `<option value="Fabrikasi_Konstruksi_Pengerjaan_Mesin">Fabrikasi, Konstruksi dan Pengerjaan Mesin</option>`;
+    } else if (jenis === 'Bengkel Listrik') {
+        namaSelect.innerHTML = `
             <option value="Maintenance">Maintenance</option>
             <option value="Perbaikan">Perbaikan</option>
             <option value="Listrik">Listrik</option>
         `;
-    } else if (jenisKontrak === 'Field Supporting') {
-        namaKontrakSelect.innerHTML = `
+    } else if (jenis === 'Field Supporting') {
+        namaSelect.innerHTML = `
             <option value="Kontrak Jasa OVH Packer">Kontrak Jasa OVH Packer</option>
             <option value="Kontrak Service">Kontrak Service</option>
             <option value="Kontrak Jasa Area Kiln">Kontrak Jasa Area Kiln</option>
@@ -106,11 +177,5 @@ function handleJenisKontrakChange() {
         `;
     }
 
-    // Tampilkan container Nama Kontrak jika Jenis Kontrak sudah dipilih
-    if (jenisKontrak) {
-        namaKontrakContainer.style.display = 'block';
-    } else {
-        namaKontrakContainer.style.display = 'none';
-    }
+    namaContainer.style.display = jenis ? 'block' : 'none';
 }
-

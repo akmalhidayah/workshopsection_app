@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Abnormalitas;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Notification;
 use App\Models\Abnormal;
 
@@ -11,78 +12,123 @@ class AbnormalitasController extends Controller
 {
     public function index(Request $request)
     {
-        // Ambil nilai dari search dan filter
         $search = $request->input('search');
-        $sortOrder = $request->input('sortOrder', 'latest'); // Default ke 'latest'
-        $entries = $request->input('entries', 10); // Default ke 10 entries
-    
-        // Query dasar, hanya notifikasi milik user yang sedang login
+        $sortOrder = $request->input('sortOrder', 'latest');
+        $entries = $request->input('entries', 10);
+
         $query = Notification::where('user_id', auth()->id())
-                             ->with('abnormal', 'scopeOfWork', 'gambarTeknik');
-    
-        // Jika ada input search, tambahkan kondisi pencarian
+            ->with('abnormal');
+
         if ($search) {
             $query->where(function ($query) use ($search) {
                 $query->where('notification_number', 'like', "%{$search}%")
                       ->orWhere('job_name', 'like', "%{$search}%");
             });
         }
-    
-        // Sortir berdasarkan order yang dipilih
+
         $query->orderBy('created_at', $sortOrder === 'latest' ? 'desc' : 'asc');
-    
-        // Ambil jumlah entries sesuai pilihan user
         $abnormalitas = $query->paginate($entries);
-    
-        // Mengirim data ke view
+
         return view('abnormalitas.index', compact('abnormalitas', 'search', 'sortOrder', 'entries'));
     }
-    
 
-    public function edit($notificationNumber)
+    public function upload(Request $request)
     {
-        $abnormal = Abnormal::where('notification_number', $notificationNumber)->firstOrFail();
-        $notification = Notification::where('notification_number', $notificationNumber)->firstOrFail();
-    
-        return view('abnormal.edit', compact('abnormal', 'notification'));
-    }
-    
-
-    public function update(Request $request, $id)
-    {
-        // Validasi data yang diterima dari form
         $request->validate([
-            'notification_number' => 'required|unique:notifications,notification_number,' . $id,
-            'job_name' => 'required',
-            'unit_work' => 'required',
-            'input_date' => 'required|date',
+            'notification_number' => 'required|string',
+            'abnormal_file' => 'required|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:4096',
         ]);
 
-        // Mengambil data yang akan diupdate berdasarkan ID
-        $abnormalitas = Notification::findOrFail($id);
+        $path = $request->file('abnormal_file')->store('abnormalitas', 'public');
 
-        // Mengupdate data di database
-        $abnormalitas->update($request->all());
+        $abnormal = Abnormal::where('notification_number', $request->notification_number)->first();
 
-        // Redirect ke halaman index dengan pesan sukses
-        return redirect()->route('abnormalitas.index')->with('success', 'Abnormalitas updated successfully.');
+        if ($abnormal) {
+            $files = json_decode($abnormal->files, true) ?? [];
+            $files[] = [
+                'file_path' => $path,
+                'keterangan' => 'Upload manual',
+            ];
+            $abnormal->update([
+                'files' => json_encode($files),
+            ]);
+        } else {
+            Abnormal::create([
+                'notification_number' => $request->notification_number,
+                'files' => json_encode([[
+                    'file_path' => $path,
+                    'keterangan' => 'Upload manual',
+                ]]),
+            ]);
+        }
+
+        return redirect()->route('abnormalitas.index')
+            ->with('success', 'File Abnormalitas berhasil diupload.');
     }
 
-    public function destroy($id)
+    /**
+     * Lihat semua file abnormalitas dari notifikasi
+     */
+    public function viewFiles($notificationNumber)
     {
-        // Menghapus data berdasarkan ID
-        $abnormalitas = Notification::findOrFail($id);
-        $abnormalitas->delete();
+        $abnormal = Abnormal::where('notification_number', $notificationNumber)->first();
 
-        // Redirect ke halaman index dengan pesan sukses
-        return redirect()->route('abnormalitas.index')->with('success', 'Abnormalitas deleted successfully.');
+        if (!$abnormal || empty($abnormal->files)) {
+            return redirect()->route('abnormalitas.index')
+                ->with('error', 'File tidak ditemukan.');
+        }
+
+        $files = json_decode($abnormal->files, true) ?? [];
+
+        return view('abnormalitas.files', compact('abnormal', 'files'));
     }
-    public function show($notificationNumber)
-{
-    $abnormal = Abnormal::where('notification_number', $notificationNumber)->firstOrFail();
-    $notification = Notification::where('notification_number', $notificationNumber)->firstOrFail();
 
-    return view('abnormal.view', compact('abnormal', 'notification'));
-}
+    /**
+     * Download file berdasarkan index
+     */
+    public function downloadFile($notificationNumber, $index)
+    {
+        $abnormal = Abnormal::where('notification_number', $notificationNumber)->firstOrFail();
+        $files = json_decode($abnormal->files, true);
 
+        if (!isset($files[$index])) {
+            return back()->with('error', 'File tidak ditemukan.');
+        }
+
+        $filePath = $files[$index]['file_path'];
+
+        if (!Storage::disk('public')->exists($filePath)) {
+            return back()->with('error', 'File sudah tidak tersedia di storage.');
+        }
+
+        return Storage::disk('public')->download($filePath);
+    }
+
+    /**
+     * Hapus file per item
+     */
+    public function destroyFile($notificationNumber, $index)
+    {
+        $abnormal = Abnormal::where('notification_number', $notificationNumber)->firstOrFail();
+        $files = json_decode($abnormal->files, true);
+
+        if (!isset($files[$index])) {
+            return back()->with('error', 'File tidak ditemukan.');
+        }
+
+        $filePath = $files[$index]['file_path'];
+
+        // Hapus fisik file
+        if (Storage::disk('public')->exists($filePath)) {
+            Storage::disk('public')->delete($filePath);
+        }
+
+        // Hapus dari array
+        unset($files[$index]);
+        $abnormal->update([
+            'files' => json_encode(array_values($files)), // reindex array
+        ]);
+
+        return back()->with('success', 'File berhasil dihapus.');
+    }
 }

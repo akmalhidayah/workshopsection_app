@@ -64,173 +64,268 @@
             </a>
         </div>
     </div>
-<!-- Additional Information and Future Content Containers -->
-<div class="max-w-6xl mx-auto mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-    <!-- Left Container for Additional Information (Potensi Biaya) -->
-    <div class="bg-white rounded-lg p-6">
+<!-- ============== Bottom consolidated card ============== -->
+<div class="max-w-6xl mx-auto mt-6">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+
+    <!-- 2 kolom responsif: stack di mobile, sejajar di md+ -->
+    <div class="flex flex-col md:flex-row gap-6">
+
+      {{-- ================= Potensi Biaya (kiri) ================= --}}
+      <section class="flex-1 md:pr-6">
         <div class="flex items-center mb-4">
-            <i data-feather="dollar-sign" class="text-green-500 text-2xl mr-2"></i>
-            <h3 class="text-md font-semibold text-gray-700">Potensi Biaya (Cost)</h3>
+          <i data-feather="dollar-sign" class="text-green-500 text-2xl mr-2"></i>
+          <h3 class="text-md font-semibold text-gray-700">Potensi Biaya (Cost)</h3>
         </div>
-        
-        <!-- Menyusun item Potensi Biaya dalam tiga kolom untuk kompak -->
-        <ul class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-gray-600">
-    <!-- Document On Process (HPP) -->
-    <li class="shadow-sm flex flex-col justify-between">
-        <div class="flex items-center">
-            <i data-feather="file-text" class="text-gray-700 mr-2"></i> 
-            <span>Document On Process (HPP)</span>
-        </div>
-        <div class="text-right">
-            <div class="text-gray-800 font-semibold p-1 rounded-md">
+
+        <ul class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-gray-700">
+          <!-- Document On Process (HPP) -->
+          <li class="rounded border border-gray-200 p-3 shadow-sm">
+            <div class="flex items-center">
+              <i data-feather="file-text" class="text-gray-700 mr-2"></i>
+              <span class="font-medium" title="HPP belum ditandatangani GM. Tidak mengurangi kuota.">
+                Document On Process (HPP)
+              </span>
+            </div>
+            <div class="mt-2 text-right">
+              <div class="inline-block bg-gray-50 px-2 py-1 rounded font-semibold text-gray-800">
                 Rp. {{ number_format($documentOnProcessHPPAmount, 0, ',', '.') }}
+              </div>
             </div>
-        </div>
-    </li>
+          </li>
 
-    <!-- Document Process Approval (HPP) -->
-    <li class="shadow-sm flex flex-col justify-between">
-        <div class="flex items-center">
-            <i data-feather="check-circle" class="text-gray-700 mr-2"></i> 
-            <span>Document Process Approval (HPP)</span>
-        </div>
-        <div class="text-right">
-            <div class="text-gray-800 font-semibold p-1 rounded-md">
+          <!-- Approval Process (HPP) -->
+          <li class="rounded border border-gray-200 p-3 shadow-sm">
+            <div class="flex items-center">
+              <i data-feather="check-circle" class="text-gray-700 mr-2"></i>
+              <span class="font-medium" title="HPP sudah approved, belum LPJ/PPL. Tidak mengurangi kuota.">
+                Approval Process (HPP)
+              </span>
+            </div>
+            <div class="mt-2 text-right">
+              <div class="inline-block bg-gray-50 px-2 py-1 rounded font-semibold text-gray-800">
                 Rp. {{ number_format($approvalProcessHPPAmount, 0, ',', '.') }}
+              </div>
             </div>
-        </div>
-    </li>
+          </li>
 
-    <!-- Document On Process PR/PO -->
-    <li class="shadow-sm flex flex-col justify-between">
-        <div class="flex items-center">
-            <i data-feather="alert-triangle" class="text-gray-700 mr-2"></i> 
-            <span>Document On Process PR/PO</span>
-        </div>
-        <div class="text-right">
-            <div class="text-gray-800 font-semibold p-1 rounded-md">
+          <!-- On Process PR/PO -->
+          <li class="rounded border border-gray-200 p-3 shadow-sm">
+            <div class="flex items-center">
+              <i data-feather="alert-triangle" class="text-gray-700 mr-2"></i>
+              <span class="font-medium" title="Sudah PR/PO, belum LPJ+PPL. Tidak mengurangi kuota.">
+                On Process PR/PO
+              </span>
+            </div>
+            <div class="mt-2 text-right">
+              <div class="inline-block bg-gray-50 px-2 py-1 rounded font-semibold text-gray-800">
                 Rp. {{ number_format($documentOnProcessPOAmount, 0, ',', '.') }}
+              </div>
             </div>
-        </div>
-    </li>
-</ul>
-        <!-- Total Pertama -->
-        <div class="mt-2 mb-4 text-right font-bold text-sm text-gray-800">
-            Total: Rp. {{ number_format($totalAmount1, 0, ',', '.') }}
-        </div>
-
-        <!-- Section 2: Dua Kartu di Bawah -->
-        <ul class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-600">
-            <li class="shadow-sm flex flex-col justify-between">
-                <div class="flex items-center">
-                    <i data-feather="folder" class="text-gray-700 mr-2"></i> 
-                    <span>Document PR/PO</span>
-                </div>
-                <div class="text-right">
-                    <div class="text-gray-800 font-semibold p-1 rounded-md">{{ number_format($documentPRPOAmount, 0, ',', '.') }}</div>
-                </div>
-            </li>
-
-            <li class="shadow-sm flex flex-col justify-between">
-                <div class="flex items-center">
-                    <i data-feather="zap" class="text-gray-700 mr-2"></i> 
-                    <span>Pekerjaan Urgent</span>
-                </div>
-                <div class="text-right">
-                    <div class="text-gray-800 font-semibold p-1 rounded-md">  Rp. {{ number_format($urgentAmount, 0, ',', '.') }}</div>
-                </div>
-            </li>
+          </li>
         </ul>
 
-        <!-- Total Kedua -->
-        <div class="mt-2 mb-4 text-right font-bold text-sm text-gray-800">
-            Total : {{ number_format($totalAmount2, 0, ',', '.') }}
+        <div class="mt-3 text-right">
+          <span class="text-[11px] text-gray-500 mr-2">Subtotal potensi</span>
+          <span class="font-bold text-sm text-gray-800">
+            Rp. {{ number_format($totalAmount1, 0, ',', '.') }}
+          </span>
+        </div>
+      </section>
+
+      {{-- ======= separator: horizontal di mobile, vertikal di md+ ======= --}}
+      <div class="block md:hidden h-px bg-gray-200"></div>
+      <div class="hidden md:block w-px bg-gray-200 self-stretch"></div>
+
+      {{-- ================= Realisasi / menuju realisasi (kanan) ================= --}}
+      <section class="flex-1 md:pl-6">
+        <div class="flex items-center mb-4">
+          <i data-feather="pie-chart" class="text-blue-500 text-2xl mr-2"></i>
+          <h3 class="text-md font-semibold text-gray-700">Realisasi Biaya (LPJ)</h3>
         </div>
 
-        <!-- Total Keseluruhan -->
-        <div class="mt-4 p-4 bg-green-400 rounded-lg text-center font-bold text-lg text-gray-800 shadow-sm">
-            Total Keseluruhan: Rp. {{ number_format($totalSeluruhAmount, 0, ',', '.') }}
+        <ul class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-700">
+          <!-- Document PR/PO (LHPP) -->
+          <li class="rounded border border-gray-200 p-3 shadow-sm">
+            <div class="flex items-center">
+              <i data-feather="folder" class="text-gray-700 mr-2"></i>
+              <span class="font-medium" title="Tercatat di LHPP (menuju realisasi). Mengurangi kuota saat LPJ+PPL.">
+                Document PR/PO (LHPP)
+              </span>
+            </div>
+            <div class="mt-2 text-right">
+              <div class="inline-block bg-gray-50 px-2 py-1 rounded font-semibold text-gray-800">
+                Rp. {{ number_format($documentPRPOAmount, 0, ',', '.') }}
+              </div>
+            </div>
+          </li>
+
+          <!-- Pekerjaan Urgent -->
+          <li class="rounded border border-gray-200 p-3 shadow-sm">
+            <div class="flex items-center">
+              <i data-feather="zap" class="text-gray-700 mr-2"></i>
+              <span class="font-medium" title="Pekerjaan berstatus Urgent (masih potensi sampai LPJ+PPL).">
+                Pekerjaan Urgent
+              </span>
+            </div>
+            <div class="mt-2 text-right">
+              <div class="inline-block bg-gray-50 px-2 py-1 rounded font-semibold text-gray-800">
+                Rp. {{ number_format($urgentAmount, 0, ',', '.') }}
+              </div>
+            </div>
+          </li>
+        </ul>
+
+        <div class="mt-3 text-right">
+          <span class="text-[11px] text-gray-500 mr-2">Subtotal potensi</span>
+          <span class="font-bold text-sm text-gray-800">
+            Rp. {{ number_format($totalAmount2, 0, ',', '.') }}
+          </span>
         </div>
-        <!-- Total Kuota Kontrak -->
-        <div class="mt-4 p-4 rounded-lg text-center font-medium text-base text-gray-800 shadow-sm">
-            <p>Total Kuota Kontrak: Rp.{{ number_format($totalKuotaKontrak, 0, ',', '.') }}</p>
-            <p>
-                Periode Kontrak:
-                {{ $periodeKontrak['start'] ? \Carbon\Carbon::parse($periodeKontrak['start'])->format('d M Y') : '-' }}
-                sampai
-                {{ $periodeKontrak['end'] ? \Carbon\Carbon::parse($periodeKontrak['end'])->format('d M Y') : '-' }}
-                @if ($periodeKontrak['adendum'])
-                    , diperpanjang sampai
-                    {{ \Carbon\Carbon::parse($periodeKontrak['adendum'])->format('d M Y') }}
-                @endif
+      </section>
+
+    </div>
+  </div>
+</div>
+<!-- ============== Exposure & Kuota + Realisasi (combined container) ============== -->
+<div class="max-w-6xl mx-auto mt-6">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+
+    <div class="flex flex-col md:flex-row gap-6">
+
+      <!-- ================= LEFT: Exposure & Kuota (compact) ================= -->
+      <section class="flex-1 md:pr-4">
+        <div class="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+
+          <!-- Header kecil -->
+          <div class="flex items-center">
+            <svg class="w-4 h-4 text-gray-600 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20h.01M12 12h.01M4 4h16v16H4z"/>
+            </svg>
+            <h4 class="text-sm font-semibold text-gray-700 tracking-wide">Ringkasan Kuota Anggaran</h4>
+          </div>
+
+          <!-- Exposure -->
+          <div class="rounded-md bg-blue-50 border border-blue-200 p-2.5">
+            <p class="text-sm font-bold text-blue-900">
+              Potensi Biaya + Realisasi Biaya:
+              <span class="text-gray-900">Rp. {{ number_format($totalSeluruhAmount, 0, ',', '.') }}</span>
             </p>
+          </div>
+
+          {{-- Kuota Kontrak Actual = Total Kuota - (Potensi + Realisasi) --}}
+          @php
+              $kuotaKontrakActual = ($totalKuotaKontrak ?? 0) - ($totalSeluruhAmount ?? 0);
+          @endphp
+          <div class="rounded-md bg-sky-50 border border-sky-200 p-2.5">
+            <p class="text-[11px] font-semibold uppercase text-sky-700">Kuota Kontrak Actual</p>
+            <p class="text-sm font-bold text-sky-900">
+              Rp. {{ number_format($kuotaKontrakActual, 0, ',', '.') }}
+            </p>
+            <p class="text-[11px] text-sky-700 mt-0.5 leading-tight">
+              = Total Kuota (Rp. {{ number_format($totalKuotaKontrak, 0, ',', '.') }})
+              − (Potensi + Realisasi) (Rp. {{ number_format($totalSeluruhAmount, 0, ',', '.') }})
+            </p>
+          </div>
+
+          <!-- Total Kuota -->
+          <div class="rounded-md border border-gray-200 p-2.5">
+            <p class="text-[11px] font-semibold uppercase text-gray-700">Total Kuota Kontrak</p>
+            <p class="text-sm font-bold text-gray-900">Rp. {{ number_format($totalKuotaKontrak, 0, ',', '.') }}</p>
+            <p class="text-[11px] text-gray-600 mt-1 leading-tight">
+              Periode:
+              {{ $periodeKontrak['start'] ? \Carbon\Carbon::parse($periodeKontrak['start'])->format('d M Y') : '-' }}
+              s/d
+              {{ $periodeKontrak['end'] ? \Carbon\Carbon::parse($periodeKontrak['end'])->format('d M Y') : '-' }}
+              @if ($periodeKontrak['adendum'])
+                <span class="text-gray-500">, adendum s/d {{ \Carbon\Carbon::parse($periodeKontrak['adendum'])->format('d M Y') }}</span>
+              @endif
+            </p>
+          </div>
+
+          {{-- Target Biaya Jasa Pemeliharaan (dari OA) --}}
+          @if(!is_null($targetPemeliharaan))
+            <div class="rounded-md bg-emerald-50 border border-emerald-200 p-2.5">
+              <p class="text-[11px] font-semibold uppercase text-emerald-700">Target Biaya Pemeliharaan</p>
+              <p class="text-sm font-bold text-emerald-900">
+                Rp. {{ number_format($targetPemeliharaan, 0, ',', '.') }}
+              </p>
+            </div>
+          @endif
+
+          <!-- Sisa Kuota -->
+          <div class="rounded-md bg-yellow-100 border border-yellow-200 p-2.5">
+            <p class="text-[11px] font-semibold uppercase text-yellow-800">Sisa Kuota Kontrak</p>
+            <p class="text-sm font-bold text-yellow-900">
+              Rp. {{ number_format($sisaKuotaKontrak, 0, ',', '.') }}
+            </p>
+          </div>
+
         </div>
-        <!-- Total Sisa Kuota Kontrak -->
-        <div class="mt-4 p-4 bg-yellow-200 rounded-lg text-center font-bold text-lg text-gray-800 shadow-sm">
-            Sisa Kuota Kontrak: Rp. {{ number_format($sisaKuotaKontrak, 0, ',', '.') }}
+      </section>
+
+      <!-- Separator: horizontal on mobile, vertical on md+ -->
+      <div class="block md:hidden h-px bg-gray-200"></div>
+      <div class="hidden md:block w-px bg-gray-200 self-stretch"></div>
+
+      <!-- ================= RIGHT: Realisasi & Filter (logic tetap) ================= -->
+      <section class="flex-1 md:pl-4">
+        <!-- Total Realisasi Biaya -->
+        <div class="w-full text-center mb-3 p-2.5 bg-green-200 rounded-md font-bold text-gray-800 text-xs">
+          Total Realisasi Biaya: Rp {{ number_format($totalRealisasiBiaya, 0, ',', '.') }}
         </div>
 
+        <!-- Dropdown Rentang Tahun -->
+        <p class="text-[11px] text-gray-600 mb-1.5">Sortir per rentang tahun untuk menampilkan data realisasi biaya.</p>
+        <div class="flex flex-wrap items-center gap-2 mb-3 text-[11px]">
+          <div>
+            <label for="startYear" class="text-gray-600">Dari Tahun:</label>
+            <select id="startYear" class="bg-gray-100 border border-gray-300 rounded p-1 text-[11px] w-28">
+              <option value="" selected disabled>Pilih Tahun</option>
+            </select>
+          </div>
+          <span class="text-gray-600">sampai</span>
+          <div>
+            <label for="endYear" class="text-gray-600">Sampai Tahun:</label>
+            <select id="endYear" class="bg-gray-100 border border-gray-300 rounded p-1 text-[11px] w-28">
+              <option value="" selected disabled>Pilih Tahun</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Dropdown Rentang Bulan -->
+        <p class="text-[11px] text-gray-600 mb-1.5">Sortir per rentang bulan untuk menampilkan data realisasi biaya.</p>
+        <div class="flex flex-wrap items-center gap-2 mb-2 text-[11px]">
+          <div>
+            <label for="startMonth" class="text-gray-600">Dari Bulan:</label>
+            <select id="startMonth" class="bg-gray-100 border border-gray-300 rounded p-1 text-[11px] w-28">
+              <option value="" selected disabled>Pilih Bulan</option>
+            </select>
+          </div>
+          <span class="text-gray-600">sampai</span>
+          <div>
+            <label for="endMonth" class="text-gray-600">Sampai Bulan:</label>
+            <select id="endMonth" class="bg-gray-100 border border-gray-300 rounded p-1 text-[11px] w-28">
+              <option value="" selected disabled>Pilih Bulan</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex justify-start mt-2 mb-4">
+          <button id="applyFilters" class="bg-blue-500 text-white text-[11px] font-semibold py-1 px-3 rounded">
+            Terapkan
+          </button>
+        </div>
+
+        <!-- Chart Section (JANGAN DIUBAH LOGIC) -->
+        <div class="flex items-center">
+          <canvas id="realisasiBiayaPieChart" style="max-width: 160px; max-height: 160px; margin-right: 16px;"></canvas>
+          <div id="chartLegend" class="ml-6 text-[11px] flex flex-col space-y-1"></div>
+        </div>
+      </section>
     </div>
 
-    <!-- Right Container for Additional Information (Realisasi Biaya) -->
-    <div class="bg-white rounded-lg p-4 flex flex-col items-start">
-    <!-- Header Section -->
-    <div class="flex items-center mb-4">
-        <i data-feather="pie-chart" class="text-blue-500 text-2xl mr-2"></i>
-        <h3 class="text-lg font-semibold text-gray-700">Realisasi Biaya (LPJ)</h3>
-    </div>
-
-<!-- Total Realisasi Biaya Keseluruhan -->
-<div class="w-full text-center mb-4 p-3 bg-green-200 rounded-lg font-bold text-gray-800 text-xs">
-    Total Realisasi Biaya: Rp {{ number_format($totalRealisasiBiaya, 0, ',', '.') }}
-</div>
-
-<!-- Dropdown Rentang Tahun -->
-<p class="text-xs text-gray-600 mb-4">Sortir per rentang tahun untuk menampilkan data realisasi biaya.</p>
-<div class="flex flex-wrap items-center space-x-2 mb-4 text-xs">
-    <div>
-        <label for="startYear" class="text-gray-600">Dari Tahun:</label>
-        <select id="startYear" class="bg-gray-100 border border-gray-300 rounded p-1 text-xs w-28">
-            <option value="" selected disabled>Pilih Tahun</option>
-        </select>
-    </div>
-    <span class="text-gray-600">sampai</span>
-    <div>
-        <label for="endYear" class="text-gray-600">Sampai Tahun:</label>
-        <select id="endYear" class="bg-gray-100 border border-gray-300 rounded p-1 text-xs w-28">
-            <option value="" selected disabled>Pilih Tahun</option>
-        </select>
-    </div>
-</div>
-
-<!-- Dropdown Rentang Bulan -->
-<p class="text-xs text-gray-600 mb-4">Sortir per rentang bulan untuk menampilkan data realisasi biaya.</p>
-<div class="flex flex-wrap items-center space-x-2 mb-4 text-xs">
-    <div>
-        <label for="startMonth" class="text-gray-600">Dari Bulan:</label>
-        <select id="startMonth" class="bg-gray-100 border border-gray-300 rounded p-1 text-xs w-28">
-            <option value="" selected disabled>Pilih Bulan</option>
-        </select>
-    </div>
-    <span class="text-gray-600">sampai</span>
-    <div>
-        <label for="endMonth" class="text-gray-600">Sampai Bulan:</label>
-        <select id="endMonth" class="bg-gray-100 border border-gray-300 rounded p-1 text-xs w-28">
-            <option value="" selected disabled>Pilih Bulan</option>
-        </select>
-    </div>
-</div>
-<div class="flex justify-start mt-2">
-    <button id="applyFilters" class="bg-blue-500 text-white text-xs font-semibold py-1 px-3 rounded">
-        Terapkan
-    </button>
-</div>
-
-
-<!-- Chart Section -->
-<div class="flex items-center">
-    <canvas id="realisasiBiayaPieChart" style="max-width: 160px; max-height: 160px; margin-right: 16px;"></canvas>
-    <div id="chartLegend" class="ml-6 text-xs flex flex-col space-y-1"></div>
+  </div>
 </div>
 
 <!-- Feather Icons and Chart.js -->

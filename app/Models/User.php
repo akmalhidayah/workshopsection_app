@@ -66,4 +66,46 @@ class User extends Authenticatable
     {
         return $this->hasMany(Hpp1::class, 'notification_number', 'notification_number');
     }
+    public function getDisplayTitleAttribute()
+{
+    $name = $this->name;
+
+    switch (strtolower($this->jabatan)) {
+
+        case 'manager':
+            return "{$name} (Manager — {$this->seksi})";
+
+        case 'senior manager':
+            return "{$name} (Senior Manager — {$this->unit_work})";
+
+        case 'general manager':
+            return "{$name} (General Manager — {$this->departemen})";
+
+        case 'operational director':
+        case 'operational direction':
+        case 'director':
+            return "{$name} (Operational Director — PT Semen Tonasa)";
+
+        default:
+            // fallback
+            return "{$name} ({$this->jabatan})";
+    }
+}
+/**
+ * Scope: Cocokkan unit dengan unit utama / related units
+ */
+public function scopeMatchUnit($q, string $unit)
+{
+    $unit = strtolower(trim($unit));
+
+    return $q->where(function ($q) use ($unit) {
+        // Unit utama
+        $q->whereRaw('LOWER(unit_work) LIKE ?', [$unit.'%'])
+
+          // Related units JSON array
+          ->orWhereJsonContains('related_units', $unit);
+    });
+}
+
+
 }

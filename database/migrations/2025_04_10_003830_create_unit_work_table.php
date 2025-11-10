@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('unit_work', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique(); // Nama unit kerja
+            $table->string('name')->unique(); 
+            $table->json('seksi')->nullable();
             $table->timestamps();
         });
     }    

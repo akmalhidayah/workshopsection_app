@@ -13,7 +13,7 @@
             <div class="inline-flex bg-gray-200 rounded-md">
                 <a href="{{ route('admin.users.index', ['usertype' => 'user']) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-l-md {{ $usertype === 'user' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-300' }}">
-                    User
+                    Pembuat Order
                 </a>
                 <a href="{{ route('admin.users.index', ['usertype' => 'approval']) }}"
                     class="px-4 py-2 text-sm font-semibold {{ $usertype === 'approval' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-300' }}">
@@ -21,7 +21,7 @@
                 </a>
                 <a href="{{ route('admin.users.index', ['usertype' => 'pkm']) }}"
                     class="px-4 py-2 text-sm font-semibold rounded-r-md {{ $usertype === 'pkm' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-300' }}">
-                    PKM
+                    Vendor
                 </a>
             </div>
         </div>
@@ -95,22 +95,24 @@
                     <td class="py-2 px-4 text-left">{{ $user->jabatan }}</td>
                     <td class="py-2 px-4 text-center">
                         <!-- Tombol Edit -->
-                        <button onclick='openEditForm(
-                                "{{ $user->id }}",
-                                "{{ $user->name }}",
-                                "{{ $user->email }}",
-                                "{{ $user->usertype }}",
-                                "{{ $user->departemen }}",
-                                "{{ $user->unit_work }}",
-                                "{{ $user->seksi }}",
-                                "{{ $user->jabatan }}",
-                                "{{ $user->whatsapp_number }}",
-                                "{{ $user->initials }}",
-                                {!! json_encode($user->related_units ?? []) !!}
-                            )'
-                            class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-700 text-xs">
-                            <i class="fas fa-edit"></i>
-                        </button>
+                      <!-- Tombol Edit -->
+<button onclick='openEditForm(
+        "{{ $user->id }}",
+        "{{ $user->name }}",
+        "{{ $user->email }}",
+        "{{ $user->usertype }}",
+        "{{ $user->departemen }}",
+        "{{ $user->unit_work }}",
+        "{{ $user->seksi }}",
+        "{{ $user->jabatan }}",
+        "{{ $user->whatsapp_number }}",
+        "{{ $user->initials }}",
+        {!! json_encode($user->related_units ?? []) !!}
+    )'
+    class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-700 text-xs">
+    <i class="fas fa-edit"></i>
+</button>
+
                         <!-- Tombol Hapus -->
                         <form action="{{ route('admin.users.destroy', $user->id) }}" method="POST"
                             onsubmit="return confirm('Apakah Anda yakin ingin menghapus pengguna ini?');"
@@ -182,14 +184,27 @@
 </div>
 <div>
     <label for="editUnitWork" class="block text-sm font-medium text-gray-300 text-left">Unit Kerja</label>
-    <input type="text" id="editUnitWork" name="unit_work" placeholder="Unit Kerja"
-        class="mt-1 block w-full px-3 py-2 border border-gray-500 rounded-md shadow-sm bg-blue-900 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+    <select id="editUnitWork" name="unit_work"
+        class="tom-select w-full"
+        placeholder="Pilih Unit Kerja...">
+        @foreach ($units as $unit)
+            <option value="{{ $unit->name }}">{{ $unit->name }}</option>
+        @endforeach
+    </select>
 </div>
+
 <div>
-    <label for="editRelatedUnits" class="block text-sm font-medium text-gray-300 text-left">Related Units</label>
-    <textarea id="editRelatedUnits" name="related_units" placeholder="Pisahkan dengan koma, contoh: Unit A, Unit B"
-        class="mt-1 block w-full px-3 py-2 border border-gray-500 rounded-md shadow-sm bg-blue-900 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
+    <label for="editRelatedUnits" class="block text-sm font-medium text-gray-300 text-left">
+        Related Units
+    </label>
+    <select id="editRelatedUnits" multiple class="tom-select w-full">
+        @foreach ($units as $unit)
+            <option value="{{ $unit->name }}">{{ $unit->name }}</option>
+        @endforeach
+    </select>
+    <input type="hidden" id="hiddenRelatedUnits" name="related_units">
 </div>
+
 
 <div>
     <label for="editSeksi" class="block text-sm font-medium text-gray-300 text-left">Seksi</label>
@@ -224,31 +239,113 @@
         </div>
     </div>
 </div>
+<style>
+/* ===== Styling TomSelect biar nyatu dengan modal biru ===== */
+.ts-wrapper {
+    background-color: #1e3a8a !important; /* bg-blue-900 */
+    border: 1px solid #3b82f6 !important; /* border biru */
+    border-radius: 0.375rem; /* rounded-md */
+    color: #fff !important;
+    text-align: left !important;
+    font-size: 0.875rem; /* sm */
+}
 
-    <script>
-function openEditForm(id, name, email, usertype, departemen, unit_work, seksi, jabatan, whatsapp_number, initials, related_units = '') {
+.ts-control {
+    background-color: #1e3a8a !important; 
+    border: none !important;
+    color: #fff !important;
+    text-align: left !important;
+    padding: 0.5rem 0.75rem; /* px-3 py-2 */
+}
+
+.ts-control input {
+    color: #fff !important;
+}
+
+.ts-dropdown {
+    background-color: #1e40af; /* bg-blue-800 */
+    color: #fff;
+    border-radius: 0.375rem;
+    text-align: left !important;
+}
+
+.ts-dropdown .option {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+}
+
+.ts-dropdown .option:hover {
+    background-color: #2563eb; /* hover:bg-blue-600 */
+    color: #fff;
+}
+
+/* Tag/Chip untuk multi-select (Related Units) */
+.ts-wrapper.multi .ts-control > div {
+    background-color: #2563eb !important; /* bg-blue-600 */
+    border-radius: 0.375rem;
+    padding: 0.2rem 0.5rem;
+    color: #fff !important;
+    font-size: 0.75rem;
+}
+</style>
+
+<script>
+// Inisialisasi TomSelect
+document.addEventListener("DOMContentLoaded", function () {
+    // Unit Kerja (single)
+    new TomSelect("#editUnitWork", {
+        plugins: ['dropdown_input'],
+        create: false,
+        sortField: { field: "text", direction: "asc" }
+    });
+
+    // Related Units (multi)
+    const relatedUnitsSelect = new TomSelect("#editRelatedUnits", {
+        plugins: ['remove_button'],
+        persist: false,
+        create: false,
+        hideSelected: true,
+        sortField: { field: "text", direction: "asc" }
+    });
+
+    // Simpan pilihan ke hidden input sebelum submit
     const form = document.getElementById('editUserForm');
-    if (form) {
-        form.action = `/admin/users/${id}`;
+    form.addEventListener("submit", function () {
+        const values = relatedUnitsSelect.getValue();
+        document.getElementById('hiddenRelatedUnits').value = JSON.stringify(values);
+    });
+
+    // Override openEditForm agar isi TomSelect juga
+    window.openEditForm = function (
+        id, name, email, usertype, departemen, unit_work, seksi, jabatan,
+        whatsapp_number, initials, related_units = []
+    ) {
+        if (form) form.action = `/admin/users/${id}`;
+
+        document.getElementById('editName').value = name || '';
+        document.getElementById('editEmail').value = email || '';
+        document.getElementById('editUsertype').value = usertype || '';
+        document.getElementById('editDepartemen').value = departemen || '';
+        document.getElementById('editUnitWork').tomselect.setValue(unit_work || '');
+        document.getElementById('editSeksi').value = seksi || '';
+        document.getElementById('editJabatan').value = jabatan || '';
+        document.getElementById('editWhatsAppNumber').value = whatsapp_number || '';
+        document.getElementById('editInitials').value = initials || '';
+
+        // reset related units
+        relatedUnitsSelect.clear();
+        if (Array.isArray(related_units)) {
+            relatedUnitsSelect.setValue(related_units);
+        }
+
+        document.getElementById('editForm').classList.remove('hidden');
     }
 
-    document.getElementById('editName').value = name || '';
-    document.getElementById('editEmail').value = email || '';
-    document.getElementById('editUsertype').value = usertype || '';
-    document.getElementById('editDepartemen').value = departemen || '';
-    document.getElementById('editUnitWork').value = unit_work || '';
-    document.getElementById('editSeksi').value = seksi || '';
-    document.getElementById('editJabatan').value = jabatan || '';
-    document.getElementById('editWhatsAppNumber').value = whatsapp_number || '';
-    document.getElementById('editInitials').value = initials || '';
-    document.getElementById('editRelatedUnits').value = related_units ? related_units.join(', ') : '';
+    window.closeEditForm = function () {
+        document.getElementById('editForm').classList.add('hidden');
+    }
+});
+</script>
 
-    document.getElementById('editForm').classList.remove('hidden');
-}
 
-function closeEditForm() {
-    document.getElementById('editForm').classList.add('hidden');
-}
-
-    </script>
 </x-admin-layout>

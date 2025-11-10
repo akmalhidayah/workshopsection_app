@@ -43,6 +43,14 @@ return [
             'visibility' => 'public',
             'throw' => false,
         ],
+           // ⬇️ Tambahkan ini
+    'signatures' => [
+        'driver'     => 'local',
+        'root'       => storage_path('app/signatures'), // PRIVATE (tidak ter-link ke public)
+        'visibility' => 'private',
+        'throw'      => false,
+    ],
+
 
         's3' => [
             'driver' => 's3',

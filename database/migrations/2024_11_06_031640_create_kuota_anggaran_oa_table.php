@@ -18,13 +18,23 @@ class CreateKuotaAnggaranOaTable extends Migration
             $table->string('unit_work')->default('Workshop & Construction'); // Default value
             $table->string('jenis_kontrak'); // Jenis Kontrak
             $table->string('nama_kontrak'); // Nama Kontrak
+
+            // Nilai dan kuota kontrak
             $table->decimal('nilai_kontrak', 15, 2); // Nilai Kontrak
             $table->decimal('tambahan_kuota_kontrak', 15, 2)->nullable(); // Tambahan Kuota Kontrak (Opsional)
             $table->decimal('total_kuota_kontrak', 15, 2); // Total Kuota Kontrak (hasil dari nilai_kontrak + tambahan_kuota_kontrak)
+
+            // Periode dan adendum
             $table->date('periode_kontrak_start'); // Tanggal Mulai Kontrak
             $table->date('periode_kontrak_end'); // Tanggal Akhir Kontrak
             $table->date('adendum_end')->nullable(); // Tanggal Akhir Adendum (Opsional)
             $table->date('periode_kontrak_final')->nullable(); // Tanggal akhir kontrak termasuk adendum jika ada
+
+            // 🔹 Tambahan kolom baru
+            $table->unsignedBigInteger('target_biaya_pemeliharaan')
+                  ->nullable()
+                  ->comment('Target biaya jasa pemeliharaan');
+
             $table->timestamps();
         });
     }

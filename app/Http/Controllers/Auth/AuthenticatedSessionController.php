@@ -8,6 +8,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Route; // <- ditambahkan
+use Illuminate\Support\Facades\Log;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -18,6 +20,7 @@ class AuthenticatedSessionController extends Controller
     {
         return view('auth.login');
     }
+
     /**
      * Handle an incoming authentication request.
      */
@@ -25,21 +28,62 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
         $request->session()->regenerate();
-    
-    // Redirect berdasarkan usertype
-    if ($request->user()->usertype === 'admin') {
-        // Redirect ke halaman terakhir yang diakses atau default ke dashboard admin
-        return redirect()->intended(route('admin.dashboard'));
-        } elseif ($request->user()->usertype === 'approval') {
-            // Redirect to the last accessed page or fallback to '/approval'
-            return redirect()->intended(route('approval.index', ['unit_work' => $request->user()->unit_work]));
-        } elseif ($request->user()->usertype === 'pkm') {
-            return redirect()->route('pkm.dashboard');
+
+        $user = $request->user();
+
+        try {
+            // Admin - langsung ke dashboard admin
+            if ($user->usertype === 'admin') {
+                return redirect()->intended(route('admin.dashboard'));
+            }
+
+            // Approval - kita coba beberapa fallback tanpa melempar exception
+            if ($user->usertype === 'approval') {
+                // coba arahkan ke named route approval.index (kalau ada), kirim unit_work jika tersedia
+                try {
+                    // Lebih aman memasukkan parameter di dalam try/catch.
+                    // Kalau route tidak ada, akan masuk ke catch.
+                    $params = [];
+                    if (!empty($user->unit_work)) {
+                        $params['unit_work'] = $user->unit_work;
+                    }
+
+                    if (Route::has('approval.index')) {
+                        return redirect()->intended(route('approval.index', $params));
+                    }
+
+                    // fallback: approval.hpp.index jika ada
+                    if (Route::has('approval.hpp.index')) {
+                        return redirect()->intended(route('approval.hpp.index'));
+                    }
+
+                    // fallback berikutnya: admin dashboard
+                    return redirect()->intended(route('admin.dashboard'));
+                } catch (\Throwable $e) {
+                    // Log error kecil agar mudah ditrace bila terjadi sesuatu di redirect
+                    Log::warning('Redirect to approval route failed: ' . $e->getMessage());
+                    // Pastikan tetap redirect ke sesuatu yang valid
+                    if (Route::has('approval.hpp.index')) {
+                        return redirect()->intended(route('approval.hpp.index'));
+                    }
+                    return redirect()->intended(route('admin.dashboard'));
+                }
+            }
+
+            // PKM
+            if ($user->usertype === 'pkm') {
+                return redirect()->route('pkm.dashboard');
+            }
+
+            // Default: user biasa ke dashboard
+            return redirect()->intended(route('dashboard'));
+        } catch (\Throwable $e) {
+            // Kalau ada error tak terduga selama proses redirect, log dan fallback ke dashboard utama
+            Log::error('Auth redirect error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return redirect()->route('dashboard');
         }
-    
-        return redirect()->intended(route('dashboard'));
     }
-    
+
     /**
      * Destroy an authenticated session.
      */
@@ -53,5 +97,4 @@ class AuthenticatedSessionController extends Controller
 
         return redirect('/');
     }
-    
 }

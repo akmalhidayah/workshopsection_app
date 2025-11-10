@@ -15,10 +15,9 @@ return new class extends Migration
             $table->string('notification_number')->primary(); // Menjadikan notification_number sebagai primary key
             $table->string('job_name');
             $table->string('unit_work');
+            $table->string('seksi')->nullable();
             $table->date('input_date');
             $table->string('status')->default('Pending');
-            $table->string('jenis_kontrak')->nullable();  
-            $table->string('nama_kontrak')->nullable(); 
             $table->string('priority'); 
             $table->string('status_anggaran')->default('Tersedia'); // Kolom baru untuk status verifikasi anggaran
             $table->timestamp('update_date')->nullable();
@@ -36,5 +35,5 @@ return new class extends Migration
             $table->dropColumn('update_date'); // Menghapus kolom jika rollback
         });
     }
-};
+};  
 

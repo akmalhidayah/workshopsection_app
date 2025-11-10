@@ -21,10 +21,10 @@
                             <label for="notifikasi" class="block text-sm font-medium text-gray-700">Order</label>
                             <input type="text" name="notification_number" id="notification_number" value="{{ $lhpp->notification_number }}" readonly class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                         </div>
-                        <div>
+                        <!-- <div>
                             <label for="nomor_order" class="block text-sm font-medium text-gray-700">Nomor Order</label>
                             <input type="text" name="nomor_order" id="nomor_order" value="{{ $lhpp->nomor_order }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                        </div>
+                        </div> -->
                     </div>
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
