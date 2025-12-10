@@ -43,7 +43,15 @@ return [
             'visibility' => 'public',
             'throw' => false,
         ],
-           // ⬇️ Tambahkan ini
+
+          // ➜ Tambahkan disk PRIVATE ini
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+        
     'signatures' => [
         'driver'     => 'local',
         'root'       => storage_path('app/signatures'), // PRIVATE (tidak ter-link ke public)

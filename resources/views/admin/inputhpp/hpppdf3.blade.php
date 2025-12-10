@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HPP - {{ $hpp->notification_number }}</title>
     <style>
-
+        @page {
+    margin: 5mm; /* Mengurangi margin agar lebih banyak konten muat */
+}
         body {
             font-family: Arial, sans-serif;
-            font-size: 11px; /* Perkecil ukuran font secara keseluruhan */
+            font-size: 10px; /* Perkecil ukuran font secara keseluruhan */
             margin: 0;
             padding: 0;
         }
@@ -63,7 +65,7 @@
         }
         /* Perkecil ukuran font hanya untuk tabel HPP */
 .table-hpp {
-    font-size: 10px; /* Sesuaikan ukuran */
+    font-size: 8px; /* Sesuaikan ukuran */
 }
 
 .table-hpp th, .table-hpp td {
@@ -79,9 +81,243 @@
 .table-hpp tr {
     page-break-inside: avoid; /* Hindari pemisahan halaman saat dicetak */
 }
+/* ==== SIGNATURE (TTD) – Global classes (final, compact + overscale safe) ==== */
+
+/* -------------------------
+   1) SLOT (container) umum
+   -------------------------
+   - width:100% agar mengikuti lebar cell.
+   - height: preferensi area; kecil agar tidak meninggalkan ruang kosong.
+   - display:flex memudahkan alignment vertikal/horizontal.
+   - overflow:visible membolehkan gambar 'menonjol' tanpa menambah height baris.
+*/
+.sig-slot{
+  width:100%;
+  height:72px;            /* area preferensi, bisa disesuaikan */
+  display:flex;
+  align-items:flex-end;   /* nempel ke bawah cell */
+  justify-content:center; /* default: tengah */
+  overflow:visible;
+}
+.sig-slot--right{ justify-content:flex-end; } /* helper: rata kanan */
+
+/* -------------------------
+   2) Gambar TTD (ukuran normal)
+   -------------------------
+   - max-height supaya tidak melebihi slot saat tidak overscale.
+   - filter untuk meningkatkan kontras saat render PDF.
+*/
+.sig-img{
+  max-height:48px;        /* ukuran tanda tangan normal */
+  width:auto;
+  object-fit:contain;
+  display:block;
+  filter:
+    brightness(0)
+    contrast(750%)
+    saturate(160%)
+    drop-shadow(.8px .8px .8px rgba(0,0,0,.55));
+}
+
+/* Variant: slot sedikit lebih tinggi untuk tanda tangan yang butuh ruang lebih */
+.sig-slot--sm {
+  height:50px;
+  align-items:flex-end;
+  justify-content:center;
+  padding-bottom:2px;
+}
+
+/* Variant: gambar tanda tangan besar (display lebih menonjol namun masih terkendali) */
+.sig-img--lg{
+  max-height:95px;         /* batas maksimum ketika tidak di-overscale */
+  width:auto;
+  transform: translateY(0);
+  image-rendering: -webkit-optimize-contrast;
+  filter:
+    brightness(0)
+    contrast(820%)
+    drop-shadow(.9px .9px .9px rgba(0,0,0,.55));
+}
+
+/* -------------------------
+   3) COMPACT BOX + OVERSCALE
+   -------------------------
+   Tujuan: memungkinkan gambar tampil lebih besar (visual kuat)
+   tanpa menambah tinggi baris table (menggunakan absolute positioning).
+*/
+
+/* compact container yang menjadi bounding box (tetap kecil) */
+.sig-box{
+  position: relative;
+  height: 46px;         /* kecil sehingga baris tabel tidak bertambah tinggi */
+  overflow: visible;    /* biarkan gambar menonjol keluar */
+  padding-bottom: 0;
+}
+
+/* gambar di dalam .sig-box diletakkan absolute bottom-center
+   sehingga tidak mempengaruhi flow (tidak mengubah height row) */
+.sig-box > img{
+  position: absolute;
+  left: 50%;
+  bottom: -10px;      /* lebih turun agar proporsional */
+  transform: translateX(-50%);
+  height: 240px;      /* >>> BESARKAN UKURAN TTD <<< */
+  max-width: 100%;
+  width: auto;
+  object-fit: contain;
+  display: block;
+  z-index: 2;
+  filter:
+    brightness(0)
+    contrast(860%)
+    drop-shadow(.8px .8px .8px rgba(0,0,0,.5));
+}
+
+
+/* Fallback teks TTD (dipakai bila image tidak tersedia) */
+.sig-fallback{
+  font-size:18px;
+  font-weight:700;
+  position:absolute;
+  left:50%;
+  bottom:4px;
+  transform:translateX(-50%);
+  z-index: 2;
+}
+
+/* Nama / jabatan di bawah tanda tangan
+   - padding-top memberi ruang agar nama tidak tertutup gambar yang menonjol.
+*/
+.sig-name{
+  font-size:10px;
+  font-weight:700;
+  text-align:center;
+  padding-top:34px;   /* sesuaikan angka ini jika gambar lebih/kurang menonjol */
+  margin:0;
+  line-height:1;
+}
+
+/* -------------------------
+   4) AUX: tanggal kecil & mini-slot
+   -------------------------
+*/
+
+/* tanggal kecil yang biasanya diletakkan pojok kanan atas slot */
+.sig-date{
+  font-size:9px;
+  text-align:right;
+  color:#333;
+  margin: 0px 4px 2px 0;
+  line-height:1;
+  z-index:3;
+}
+
+/* mini-slot untuk panel peminta (lebih kecil) */
+.sig-box--mini{
+  position:relative;
+  height:48px;
+  overflow: visible;
+}
+.sig-mini{
+  position:absolute;
+  left:50%;
+  bottom:-4px;
+  transform:translateX(-50%);
+  height:84px;
+  max-width:92%;
+  width:auto;
+  object-fit:contain;
+  display:block;
+  z-index:2;
+}
+.sig-mini-fallback{
+  position:absolute;
+  left:50%;
+  bottom:6px;
+  transform:translateX(-50%);
+  font-size:16px;
+  font-weight:bolder;
+}
+
+/* -------------------------
+   5) INLINE small signature (footer) — tidak berubah besar
+   -------------------------
+*/
+.sig-inline{
+  height:20px;
+  width:auto;
+  object-fit:contain;
+  vertical-align:middle;
+  margin-right:2px;
+  filter:
+    brightness(0)
+    contrast(650%)
+    drop-shadow(.6px .6px .8px rgba(0,0,0,.5));
+}
+.sig-initial{
+  font-size:9px;
+  margin-right:4px;
+  vertical-align:middle;
+}
 
     </style>
 </head>
+@php
+use Illuminate\Support\Facades\Storage;
+
+/** Ambil absolute path file tanda tangan di disk 'signatures' */
+$sigPath = function (?string $rel) {
+    return ($rel && Storage::disk('signatures')->exists($rel))
+        ? Storage::disk('signatures')->path($rel)
+        : null;
+};
+
+/* Fungsi PENGENDALI (kolom kanan bawah) */
+$SIG_DIR = $sigPath($hpp->director_signature ?? null);
+$SIG_GM  = $sigPath($hpp->general_manager_signature ?? null);
+$SIG_SM  = $sigPath($hpp->senior_manager_signature ?? null);
+$SIG_MG = $sigPath($hpp->manager_signature ?? null);
+
+/* Fungsi PEMINTA (panel kanan atas kecil) kalau kamu pakai */
+$SIG_REQ_GM = $sigPath($hpp->general_manager_signature_requesting_unit ?? null);
+$SIG_REQ_SM = $sigPath($hpp->senior_manager_signature_requesting_unit ?? null);
+$SIG_REQ_MG = $sigPath($hpp->manager_signature_requesting_unit ?? null);
+
+// langsung array dari cast
+$reqNotes  = $hpp->requesting_notes ?? [];
+$ctrlNotes = $hpp->controlling_notes ?? [];
+
+// kumpulkan user_id untuk 1x query
+$allIds = collect([$reqNotes, $ctrlNotes])->flatten(1)->pluck('user_id')->filter()->unique()->values();
+$users  = \App\Models\User::whereIn('id', $allIds)->get()->keyBy('id');
+
+$fmtTime = function($n) {
+    $raw = $n['at'] ?? $n['created_at'] ?? null;
+    if (!$raw) return null;
+    try { return \Carbon\Carbon::parse($raw)->format('d/m/Y'); } // hanya tanggal
+    catch (\Throwable $e) { return (string)$raw; }
+};
+
+$dateFmt = function ($v) {
+    if (empty($v)) return null;
+    try { return \Carbon\Carbon::parse($v)->format('d/m/Y'); } // hanya tanggal
+    catch (\Throwable $e) { return (string)$v; }
+};
+
+/* siapkan label tanggal untuk tiap role */
+$DT_DIR = $dateFmt($hpp->director_signed_at ?? null);
+$DT_GM  = $dateFmt($hpp->general_manager_signed_at ?? null);
+$DT_SM  = $dateFmt($hpp->senior_manager_signed_at ?? null);
+$DT_MG = $dateFmt($hpp->manager_signed_at ?? null);
+
+$DT_REQ_GM = $dateFmt($hpp->general_manager_requesting_signed_at ?? null);
+$DT_REQ_SM = $dateFmt($hpp->senior_manager_requesting_signed_at ?? null);
+$DT_REQ_MG = $dateFmt($hpp->manager_requesting_signed_at ?? null);
+
+@endphp
+
+
+
 <body>
 <div class="container">
     <!-- HEADER -->
@@ -133,293 +369,324 @@
             </table>
         </td>
 
-        <!-- Kolom FUNGSI PEMINTA -->
-        <td style="width: 40%; vertical-align: top; padding: 4px; border-left: 1px solid black;">
-            <div style="border: 1px solid black; padding: 4px;">
-                <div style="text-align: center; font-weight: bold; border-bottom: 1px solid black; padding-bottom: 4px;">
-                    FUNGSI PEMINTA
-                </div>
-                <table style="width: 100%; border-collapse: collapse; text-align: center;">
-                    <tr>
-                        <td style="width: 50%; border-right: 1px solid black; padding: 4px;">
-                            <strong>SM Of Unit Of Workshop</strong>
-                        </td>
-                        <td style="width: 50%; padding: 4px;">
-                            <strong>Mgr Of Workshop Machine</strong>
-                        </td>
-                    </tr>
-                    <tr>
-                       <!-- Tanda Tangan SM -->
-                        <td style="border-right: 1px solid black; padding: 4px; text-align: center; vertical-align: bottom; height: 70px;">
-                            @if(file_exists(storage_path("app/public/signatures/hpp/senior_manager_signature_{$hpp->notification_number}.png")))
-                                <img src="{{ storage_path("app/public/signatures/hpp/senior_manager_signature_{$hpp->notification_number}.png") }}" 
-                                    alt="TTD SM" 
-                                    style="width: 150px; height: 70px; object-fit: contain;">
-                            @else
-                                <strong style="font-size: 20px; font-weight: bold;">TTD</strong>
-                            @endif
-                        </td>
+     <!-- Kolom FUNGSI PEMINTA -->
+<td style="width: 40%; vertical-align: top; padding: 4px; border-left: 1px solid black;">
+    <div style="border: 1px solid black; padding: 4px;">
+        <div style="text-align: center; font-weight: bold; border-bottom: 1px solid black; padding-bottom: 4px;">
+            FUNGSI PEMINTA
+        </div>
+        <table style="width: 100%; border-collapse: collapse; text-align: center;">
+            <tr>
+                <td style="width: 50%; border-right: 1px solid black; padding: 4px;">
+                    <strong>SM Of Unit Of Workshop</strong>
+                </td>
+                <td style="width: 50%; padding: 4px;">
+                    <strong>Mgr Of Workshop Machine</strong>
+                </td>
+            </tr>
 
-                        <!-- Tanda Tangan MGR -->
-                        <td style="padding: 4px; text-align: center; vertical-align: bottom; height: 70px;">
-                            @if(file_exists(storage_path("app/public/signatures/hpp/manager_signature_{$hpp->notification_number}.png")))
-                                <img src="{{ storage_path("app/public/signatures/hpp/manager_signature_{$hpp->notification_number}.png") }}" 
-                                    alt="TTD MGR" 
-                                    style="width: 150px; height: 70px; object-fit: contain;">
-                            @else
-                                <strong style="font-size: 20px; font-weight: bold;">TTD</strong>
-                            @endif
-                        </td>
-                    </tr>
-                    <tr>
-                        <!-- Nama SM -->
-                        <td style="border-right: 1px solid black; border-bottom: 1px solid black; padding: 4px; font-size: 10px;">
-                            <strong>{{ $hpp->seniorManagerSignatureUser ? $hpp->seniorManagerSignatureUser->name : 'N/A' }}</strong>
-                        </td>
+            {{-- BARIS TTD + TANGGAL --}}
+            <tr>
+                <!-- Tanda Tangan SM -->
+                <td style="border-right: 1px solid black; padding: 4px; text-align: center; vertical-align: bottom; height: 70px;">
+                    <div class="sig-box">
+                        {{-- tanggal kecil di pojok kanan atas slot SM --}}
+                        <div class="sig-date">{{ $DT_SM ?? '-' }}</div>
 
-                        <!-- Nama MGR -->
-                        <td style="border-bottom: 1px solid black; padding: 4px; font-size: 10px;">
-                            <strong>{{ $hpp->managerSignatureUser ? $hpp->managerSignatureUser->name : 'N/A' }}</strong>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        </td>
+                        @if($SIG_SM)
+                            <img src="{{ $SIG_SM }}" alt="SM Signature" class="sig-img--lg">
+                        @else
+                            <strong class="sig-fallback">TTD</strong>
+                        @endif
+                    </div>
+                </td>
+
+                <!-- Tanda Tangan MGR -->
+                <td style="padding: 4px; text-align: center; vertical-align: bottom; height: 70px;">
+                    <div class="sig-box">
+                        {{-- tanggal kecil di pojok kanan atas slot Manager --}}
+                        <div class="sig-date">{{ $DT_MG ?? '-' }}</div>
+
+                        @if($SIG_MG)
+                            <img src="{{ $SIG_MG }}" alt="Manager Signature" class="sig-img--lg">
+                        @else
+                            <strong class="sig-fallback">TTD</strong>
+                        @endif
+                    </div>
+                </td>
+            </tr>
+
+            {{-- BARIS NAMA --}}
+            <tr>
+                <!-- Nama SM -->
+                <td style="border-right: 1px solid black; border-bottom: 1px solid black; padding: 4px; font-size: 10px;">
+                    <strong>{{ $hpp->seniorManagerSignatureUser ? $hpp->seniorManagerSignatureUser->name : 'N/A' }}</strong>
+                </td>
+
+                <!-- Nama MGR -->
+                <td style="border-bottom: 1px solid black; padding: 4px; font-size: 10px;">
+                    <strong>{{ $hpp->managerSignatureUser ? $hpp->managerSignatureUser->name : 'N/A' }}</strong>
+                </td>
+            </tr>
+        </table>
+    </div>
+</td>
+
     </tr>
 </table>
 
-<!-- TABEL HPP (final + nomor jenis + indent grup) -->
+
+<!-- TABEL HPP (group by jenis -> A. Jasa  - item1, - item2 ...) -->
 <div class="overflow-x-auto">
 @php
-$groups        = $hpp->uraian_pekerjaan ?? [];
-$jenis         = $hpp->jenis_item ?? [];
-$nama          = $hpp->nama_item ?? [];
-$qty           = $hpp->qty ?? [];
-$satuan        = $hpp->satuan ?? [];
-$harga_satuan  = $hpp->harga_satuan ?? [];
-$harga_total   = $hpp->harga_total ?? [];
-$keterangan    = $hpp->keterangan ?? [];
+    $groupsByJenis = [];   // key = jenis label ('' => 'Lainnya')
+    $nama         = $hpp->nama_item ?? [];
+    $jumlah       = $hpp->jumlah_item ?? [];
+    $jenis        = $hpp->jenis_item ?? [];
+    $qty          = $hpp->qty ?? [];
+    $satuan       = $hpp->satuan ?? [];
+    $harga_satuan = $hpp->harga_satuan ?? [];
+    $harga_total  = $hpp->harga_total ?? [];
+    $keterangan   = $hpp->keterangan ?? [];
 
-/*
- * Rowspan OA = (judul grup) + (jumlah label jenis unik) + (jumlah item) untuk
- * setiap grup, lalu dijumlahkan untuk semua grup.
- */
-$rowspanOA = 0;
-foreach ($groups as $gIdx => $gTitle) {
-    $rowCount = is_array($nama[$gIdx] ?? null) ? count($nama[$gIdx]) : 0;
-
-    // hitung label unik sesuai data jenis_item; kosong -> "Lainnya"
-    $labels = [];
-    for ($i = 0; $i < $rowCount; $i++) {
-        $lab = trim($jenis[$gIdx][$i] ?? '');
-        $lab = ($lab === '') ? 'Lainnya' : $lab;
-        if (!in_array($lab, $labels, true)) $labels[] = $lab;
-    }
-
-    $rowspanOA += 1 /*judul grup*/ + count($labels) + $rowCount;
-}
-if ($rowspanOA === 0) $rowspanOA = 1;
-@endphp
-
-
-    <table class="table-hpp" style="width:100%; border-collapse:collapse; border:1px solid black; font-size:9px;">
-        <thead style="background-color:#B0C4DE; color:#333;">
-            <tr>
-                <th style="border:1px solid black; padding:5px; text-align:center; width:14%;">OUTLINE AGREEMENT (OA)</th>
-                <th style="border:1px solid black; padding:5px; text-align:center;">URAIAN PEKERJAAN</th>
-                <th style="border:1px solid black; padding:5px; text-align:center; width:6%;">QTY</th>
-                <th style="border:1px solid black; padding:5px; text-align:center; width:10%;">SATUAN (EA/LOT/JAM/M2/KG)</th>
-                <th style="border:1px solid black; padding:5px; text-align:center; width:12%;">HARGA SATUAN</th>
-                <th style="border:1px solid black; padding:5px; text-align:center; width:12%;">JUMLAH</th>
-                <th style="border:1px solid black; padding:5px; text-align:center; width:18%;">KETERANGAN</th>
-            </tr>
-        </thead>
-<tbody>
-@php $printedOA = false; @endphp
-
-@forelse ($groups as $g => $groupTitle)
-    {{-- BARIS JUDUL GRUP --}}
-    <tr>
-        @if (!$printedOA)
-            <td style="border:1px solid black; text-align:center; vertical-align:top;" rowspan="{{ $rowspanOA }}">
-                {{ $hpp->outline_agreement ?? '' }}
-            </td>
-            @php $printedOA = true; @endphp
-        @endif
-        <td style="border:1px solid black; padding:3px; font-size:8.5px; font-weight:bold;">
-            {{ chr(65 + $g) }}. {{ $groupTitle }}
-        </td>
-        <td style="border:1px solid black;"></td>
-        <td style="border:1px solid black;"></td>
-        <td style="border:1px solid black;"></td>
-        <td style="border:1px solid black;"></td>
-        <td style="border:1px solid black;"></td>
-    </tr>
-
-    @php
-        $rowCount = is_array($nama[$g] ?? null) ? count($nama[$g]) : 0;
-
-        // bucket dinamis: label -> daftar index item
-        $buckets = [];
-        for ($i = 0; $i < $rowCount; $i++) {
+    // kumpulkan items ke dalam bucket berdasarkan jenis (urut kemunculan)
+    foreach ($nama as $g => $items) {
+        if (!is_array($items)) continue;
+        foreach ($items as $i => $nm) {
             $lab = trim($jenis[$g][$i] ?? '');
             $key = ($lab === '') ? 'Lainnya' : $lab;
-            $buckets[$key] = $buckets[$key] ?? [];
-            $buckets[$key][] = $i;
+            $groupsByJenis[$key][] = [
+                'g' => $g,
+                'i' => $i,
+                'nama' => $nm ?? '',
+                'jumlah' => $jumlah[$g][$i] ?? null,
+                'qty' => $qty[$g][$i] ?? null,
+                'satuan' => $satuan[$g][$i] ?? '',
+                'harga_satuan' => $harga_satuan[$g][$i] ?? null,
+                'harga_total' => $harga_total[$g][$i] ?? null,
+                'keterangan' => $keterangan[$g][$i] ?? '',
+            ];
         }
-        // urutan label mengikuti urutan kemunculan
-        $order = array_keys($buckets);
-        $noJenis = 1;
-    @endphp
+    }
 
-    @foreach ($order as $label)
-        {{-- LABEL JENIS (opsional, bebas) --}}
+    // helper index -> letter (A, B, ..., Z, AA, AB...)
+    $indexToLetters = function(int $index) {
+        $s = '';
+        $n = $index + 1;
+        while ($n > 0) {
+            $r = ($n - 1) % 26;
+            $s = chr(65 + $r) . $s;
+            $n = intdiv($n - 1, 26);
+        }
+        return $s;
+    };
+
+    // hitung rowspan OA: total baris yang akan dibuat untuk semua group (header grup + tiap item)
+    $totalRows = 0;
+    foreach ($groupsByJenis as $label => $rows) {
+        $totalRows += 1; // header grup (A. Jasa)
+        $totalRows += count($rows); // item - Plate ...
+    }
+    if ($totalRows === 0) $totalRows = 1;
+@endphp
+
+<table class="table-hpp" style="width:100%; border-collapse:collapse; border:1px solid black; font-size:9px;">
+    <thead style="background-color:#B0C4DE; color:#333;">
         <tr>
-            <td style="border:1px solid black; padding:4px 4px 4px 12px; font-weight:bold;">
-                {{ $noJenis }}. {{ $label }}
-            </td>
-            <td style="border:1px solid black;"></td>
-            <td style="border:1px solid black;"></td>
-            <td style="border:1px solid black;"></td>
-            <td style="border:1px solid black;"></td>
-            <td style="border:1px solid black;"></td>
+            <th style="border:1px solid black; padding:5px; text-align:center; width:14%;">OUTLINE AGREEMENT (OA)</th>
+            <th style="border:1px solid black; padding:5px; text-align:center;">URAIAN PEKERJAAN</th>
+            <th style="border:1px solid black; padding:5px; text-align:center; width:6%;">QTY</th>
+            <th style="border:1px solid black; padding:5px; text-align:center; width:10%;">SATUAN (EA/LOT/JAM/M2/KG)</th>
+            <th style="border:1px solid black; padding:5px; text-align:center; width:12%;">HARGA SATUAN</th>
+            <th style="border:1px solid black; padding:5px; text-align:center; width:12%;">JUMLAH</th>
+            <th style="border:1px solid black; padding:5px; text-align:center; width:18%;">KETERANGAN</th>
         </tr>
-        @php $noJenis++; @endphp
+    </thead>
+    <tbody>
+    @if(empty($groupsByJenis))
+        <tr>
+            <td style="border:1px solid black; text-align:center;">{{ $hpp->outline_agreement ?? '' }}</td>
+            <td colspan="6" style="border:1px solid black; text-align:center; padding:6px;">Tidak ada data</td>
+        </tr>
+    @else
+        @php $printedOA = false; $groupIndex = 0; @endphp
 
-        {{-- ITEM DI BAWAH LABEL TERKAIT --}}
-        @foreach ($buckets[$label] as $i)
+        @foreach ($groupsByJenis as $label => $items)
+            {{-- baris header grup: "A. Jasa" --}}
             <tr>
-                <td style="border:1px solid black; padding:4px 4px 4px 16px;">
-                    {{ $nama[$g][$i] ?? '' }}
+                @if (!$printedOA)
+                    <td style="border:1px solid black; text-align:center; vertical-align:top;" rowspan="{{ $totalRows }}">
+                        {{ $hpp->outline_agreement ?? '' }}
+                    </td>
+                    @php $printedOA = true; @endphp
+                @endif
+
+                <td style="border:1px solid black; padding:4px 8px; font-weight:bold;">
+                    {{ $indexToLetters($groupIndex) }}. {{ $label }}
                 </td>
-                <td style="border:1px solid black; text-align:center;">
-                    {{ isset($qty[$g][$i]) ? rtrim(rtrim(number_format((float)$qty[$g][$i], 3, ',', '.'), '0'), ',') : '' }}
-                </td>
-                <td style="border:1px solid black; text-align:center;">
-                    {{ $satuan[$g][$i] ?? '' }}
-                </td>
-                <td style="border:1px solid black; text-align:right; padding-right:6px;">
-                    {{ isset($harga_satuan[$g][$i]) ? number_format((float)$harga_satuan[$g][$i], 0, ',', '.') : '' }}
-                </td>
-                <td style="border:1px solid black; text-align:right; padding-right:6px;">
-                    {{ isset($harga_total[$g][$i]) ? number_format((float)$harga_total[$g][$i], 0, ',', '.') : '' }}
-                </td>
-                <td style="border:1px solid black; padding:4px;">
-                    {{ $keterangan[$g][$i] ?? '' }}
-                </td>
+                <td style="border:1px solid black;"></td>
+                <td style="border:1px solid black;"></td>
+                <td style="border:1px solid black;"></td>
+                <td style="border:1px solid black;"></td>
+                <td style="border:1px solid black;"></td>
             </tr>
+
+            {{-- baris item di bawah header grup, tampilkan sebagai "- Nama Item" --}}
+            @foreach ($items as $it)
+                <tr>
+                 <td style="border:1px solid black; padding:3px 12px;">
+    &nbsp;&nbsp;&nbsp;- {{ $it['nama'] }} Ø {{ $it['jumlah'] }}</td>
+
+                    <td style="border:1px solid black; text-align:center;">
+                        {{ isset($it['qty']) ? rtrim(rtrim(number_format((float)$it['qty'], 3, ',', '.'), '0'), ',') : '' }}
+                    </td>
+                    <td style="border:1px solid black; text-align:center;">
+                        {{ $it['satuan'] ?? '' }}
+                    </td>
+                    <td style="border:1px solid black; text-align:right; padding-right:6px;">
+                        {{ isset($it['harga_satuan']) ? number_format((float)$it['harga_satuan'], 0, ',', '.') : '' }}
+                    </td>
+                    <td style="border:1px solid black; text-align:right; padding-right:6px;">
+                        {{ isset($it['harga_total']) ? number_format((float)$it['harga_total'], 0, ',', '.') : '' }}
+                    </td>
+                    <td style="border:1px solid black; padding:4px;">
+                        {{ $it['keterangan'] ?? '' }}
+                    </td>
+                </tr>
+            @endforeach
+
+            @php $groupIndex++; @endphp
         @endforeach
-    @endforeach
+    @endif
 
-@empty
-    <tr>
-        <td style="border:1px solid black; text-align:center;">{{ $hpp->outline_agreement ?? '' }}</td>
-        <td colspan="6" style="border:1px solid black; text-align:center; padding:6px;">Tidak ada data</td>
+    {{-- TOTAL --}}
+    <tr style="font-weight:bold; background-color:#DCDCDC;">
+        <td colspan="5" style="border:1px solid black; text-align:center;">TOTAL</td>
+        <td style="border:1px solid black; text-align:right; padding-right:6px;">
+            {{ ($hpp->total_amount ?? 0) ? number_format((float)$hpp->total_amount, 0, ',', '.') : '' }}
+        </td>
+        <td style="border:1px solid black;"></td>
     </tr>
-@endforelse
-
-{{-- TOTAL --}}
-<tr style="font-weight:bold; background-color:#DCDCDC;">
-    <td colspan="5" style="border:1px solid black; text-align:center;">TOTAL</td>
-    <td style="border:1px solid black; text-align:right; padding-right:6px;">
-        {{ ($hpp->total_amount ?? 0) ? number_format((float)$hpp->total_amount, 0, ',', '.') : '' }}
-    </td>
-    <td style="border:1px solid black;"></td>
-</tr>
-</tbody>
-
-    </table>
+    </tbody>
+</table>
 </div>
+
 <!-- Informasi Catatan dan Tanda Tangan -->
 <table style="width: 100%; border: 1px solid black; border-collapse: collapse;">
     <tr>
-        <!-- Kolom Catatan User Peminta -->
-        <td style="width: 30%; border: 1px solid black; vertical-align: top; padding: 10px;">
-            <strong>Catatan User Peminta (jika ada):</strong>
-            <br>
-            @if(!empty($hpp->requesting_notes))
-                @foreach(json_decode($hpp->requesting_notes, true) as $index => $noteData)
-                    <div style="margin-bottom: 5px;">
-                        <strong>{{ $index + 1 }}.</strong> {{ $noteData['note'] ?? 'Tidak ada catatan' }}
-                        <br>
-                        <small>
-                            @php
-                                $user = \App\Models\User::find($noteData['user_id']);
-                            @endphp
-                            @if($user)
-                                <em>Ditambahkan oleh: {{ $user->jabatan }}</em>
-                            @else
-                                <em>Nama User Tidak Tersedia</em>
-                            @endif
-                        </small>
+        {{-- Catatan User Peminta --}}
+        <td style="width: 30%; border: 1px solid black; vertical-align: top; padding: 8px;">
+            <strong>Catatan User Peminta:</strong><br>
+            @if(!empty($reqNotes))
+                @foreach($reqNotes as $i => $n)
+                    @php $u = isset($n['user_id']) ? $users->get($n['user_id']) : null; @endphp
+                    <div style="margin: 4px 0 8px;">
+                        <div style="margin-bottom:2px;">{{ $i+1 }}. {{ $n['note'] ?? '-' }}</div>
+                        @if($u)
+                            <div style="font-size:10px;color:#444;">— {{ $u->name ?? 'N/A' }} ({{ $u->jabatan ?? '-' }})</div>
+                        @endif
                     </div>
                 @endforeach
             @else
-                <br><br><br><br> <!-- Jika tidak ada catatan, tambahkan spasi -->
+                <div style="color:#666; font-size:10px;">-</div>
             @endif
         </td>
 
-        <!-- Kolom Catatan Pengendali -->
-        <td style="width: 30%; border: 1px solid black; vertical-align: top; padding: 10px;">
-            <strong>Catatan Pengendali (jika ada):</strong>
-            <br>
-            @if(!empty($hpp->controlling_notes))
-                @foreach(json_decode($hpp->controlling_notes, true) as $index => $noteData)
-                    <div style="margin-bottom: 5px;">
-                        <strong>{{ $index + 1 }}.</strong> {{ $noteData['note'] ?? 'Tidak ada catatan' }}
-                        <br>
-                        <small>
-                            @php
-                                $user = \App\Models\User::find($noteData['user_id']);
-                            @endphp
-                            @if($user)
-                                <em>Ditambahkan oleh: {{ $user->jabatan }}</em>
-                            @else
-                                <em>Nama User Tidak Tersedia</em>
-                            @endif
-                        </small>
+        {{-- Catatan Pengendali --}}
+        <td style="width: 30%; border: 1px solid black; vertical-align: top; padding: 8px;">
+            <strong>Catatan Pengendali:</strong><br>
+            @if(!empty($ctrlNotes))
+                @foreach($ctrlNotes as $i => $n)
+                    @php $u = isset($n['user_id']) ? $users->get($n['user_id']) : null; @endphp
+                    <div style="margin: 4px 0 8px;">
+                        <div style="margin-bottom:2px;">{{ $i+1 }}. {{ $n['note'] ?? '-' }}</div>
+                        @if($u)
+                            <div style="font-size:10px;color:#444;">— {{ $u->name ?? 'N/A' }} ({{ $u->jabatan ?? '-' }})</div>
+                        @endif
                     </div>
                 @endforeach
             @else
-                <br><br><br><br> <!-- Jika tidak ada catatan, tambahkan spasi -->
+                <div style="color:#666; font-size:10px;">-</div>
             @endif
         </td>
 
-        <!-- Kolom Tanda Tangan GM Saja -->
-        <td class="px-2 py-2" style="width: 30%; border: 1px solid black;">
+        {{-- Kolom Tanda Tangan FUNGSI PENGENDALI (Director + GM) --}}
+        <td class="px-2 py-2" style="width: 40%; border: 1px solid black;">
             <table style="width: 100%; border-collapse: collapse;">
+                {{-- Header --}}
                 <tr>
-                    <td class="px-2 py-2 text-center" style="border-bottom: 1px solid black; font-weight: bold; font-style: italic;">
+                    <td colspan="2" class="px-2 py-2 text-center"
+                        style="border-bottom: 1px solid black; font-weight: bold; font-style: italic;">
                         FUNGSI PENGENDALI
                     </td>
                 </tr>
+
+                {{-- Jabatan --}}
                 <tr>
-                    <td class="px-2 py-4 text-center" style="border-bottom: 1px solid black;">
-                        <strong>GM OF</strong> {{ $hpp->generalManagerSignatureUser ? $hpp->generalManagerSignatureUser->departemen : 'N/A' }}
+                    <td class="px-2 py-4 text-center" style="width: 50%; border-right: 1px solid black;">
+                        <strong>Director</strong> of Operation
+                    </td>
+                    <td class="px-2 py-4 text-center" style="width: 50%;">
+                        <strong>GM of</strong>
+                        {{ optional($hpp->generalManagerSignatureUser)->departemen ?? 'N/A' }}
                     </td>
                 </tr>
+
+                {{-- Tanggal tanda tangan --}}
                 <tr>
-                    <!-- Tanda tangan GM -->
-                    <td class="px-2 py-3 text-center" style="vertical-align: bottom;">
-                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 90px; min-height: 90px;">
-                        @if(file_exists(storage_path("app/public/signatures/hpp/general_manager_signature_{$hpp->notification_number}.png")))
-                            <img src="{{ storage_path("app/public/signatures/hpp/general_manager_signature_{$hpp->notification_number}.png") }}" 
-                                style="width: 180px; height: 100px; object-fit: contain;">
-                        @else
-                            <strong style="font-size: 20px; font-weight: bold;">TTD</strong>
-                        @endif
+                    <td style="width:50%; border-right:1px solid black; padding:4px 6px;
+                               font-size:10px; text-align:right; vertical-align:top; color:#333;">
+                        {{ $DT_DIR ?? '-' }}
+                    </td>
+                    <td style="width:50%; padding:4px 6px;
+                               font-size:10px; text-align:right; vertical-align:top; color:#333;">
+                        {{ $DT_GM ?? '-' }}
+                    </td>
+                </tr>
+
+                {{-- Tanda tangan --}}
+                <tr>
+                    {{-- Director --}}
+                    <td class="px-2 py-3 text-center"
+                        style="width: 50%; border-right: 1px solid black; vertical-align: bottom;">
+                        <div class="sig-box">
+                            @if($SIG_DIR)
+                                <img src="{{ $SIG_DIR }}" alt="Director Signature" class="sig-img--lg">
+                            @else
+                                <strong class="sig-fallback">TTD</strong>
+                            @endif
+                        </div>
+                    </td>
+
+                    {{-- GM --}}
+                    <td class="px-2 py-3 text-center"
+                        style="width: 50%; vertical-align: bottom;">
+                        <div class="sig-box">
+                            @if($SIG_GM)
+                                <img src="{{ $SIG_GM }}" alt="GM Signature" class="sig-img--lg">
+                            @else
+                                <strong class="sig-fallback">TTD</strong>
+                            @endif
                         </div>
                     </td>
                 </tr>
+
+                {{-- Nama penandatangan --}}
                 <tr>
-                    <td class="px-2 py-2 text-center" style="border-bottom: 1px solid black;">
-                        <strong>{{ $hpp->generalManagerSignatureUser ? $hpp->generalManagerSignatureUser->name : 'N/A / TTD' }}</strong>
+                    <td class="px-2 py-2 text-center"
+                        style="width: 50%; border-right: 1px solid black; border-bottom: 1px solid black;">
+                        <strong>{{ optional($hpp->directorSignatureUser)->name ?? 'N/A' }}</strong>
+                    </td>
+                    <td class="px-2 py-2 text-center"
+                        style="width: 50%; border-bottom: 1px solid black;">
+                        <strong>{{ optional($hpp->generalManagerSignatureUser)->name ?? 'N/A / TTD' }}</strong>
                     </td>
                 </tr>
             </table>
         </td>
     </tr>
 </table>
+
 
 </body>
 </html>

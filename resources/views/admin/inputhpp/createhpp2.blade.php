@@ -46,7 +46,7 @@
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700">Deskripsi</label>
                             <textarea name="description" id="deskripsi" rows="3"
-                                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm bg-gray-50" required></textarea>
+                                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm bg-gray-50" readonly></textarea>
                         </div>
                     </div>
 
@@ -60,7 +60,7 @@
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Unit Kerja Pengendali</label>
-                            <input type="text" name="controlling_unit" value="Section of Workshop Machine" readonly
+                            <input type="text" name="controlling_unit" value="Unit of Workshop & Design" readonly
                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-gray-100 focus:ring-blue-500 focus:border-blue-500 text-sm">
                         </div>
                     </div>
@@ -77,24 +77,17 @@
                         </p>
                     </div>
 
-                    <!-- Tambah Uraian Pekerjaan -->
+                    <!-- Kontrol: Tambah Jenis (GROUP) -->
                     <div class="mt-8 flex gap-3 items-center">
-                        <button type="button" id="tambah-pekerjaan-btn"
+                        <button type="button" id="tambah-jenis-btn"
                                 class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm shadow flex items-center gap-2">
-                            <i class="fas fa-plus"></i> Tambah Uraian Pekerjaan
+                            <i class="fas fa-plus"></i> Tambah Jenis (mis. Jasa)
                         </button>
+                        <span class="text-sm text-gray-500">Tambahkan jenis, lalu tambahkan item di dalamnya.</span>
                     </div>
 
-                    <!--
-                      Catatan:
-                      - Script partial akan membangkitkan field:
-                        uraian_pekerjaan[g]
-                        jenis_item[g][i]    -> material|consumable|upah
-                        nama_item[g][i]     -> NAMA BARANG/JASA
-                        qty[g][i], satuan[g][i], harga_satuan[g][i], harga_total[g][i]
-                        keterangan[g][i]    -> catatan item (opsional)
-                    -->
-                    <div id="pekerjaan-container" class="mt-6 space-y-6"></div>
+                    <!-- KONTEN GROUPS -->
+                    <div id="jenis-container" class="mt-6 space-y-6"></div>
 
                     <!-- Total Keseluruhan -->
                     <div class="mt-6 border-t pt-4">
@@ -103,17 +96,9 @@
                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-50 text-sm" readonly>
                     </div>
 
-                    <!-- Keterangan Umum (masuk ke requesting_notes) -->
-                    <div class="mt-6">
-                        <label class="block text-sm font-medium text-gray-700">Keterangan Umum</label>
-                        <textarea name="requesting_notes" id="requesting_notes" rows="3"
-                                  placeholder="Tambahkan catatan/keterangan umum terkait pekerjaan..."
-                                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm bg-gray-50"></textarea>
-                    </div>
-
                     <!-- Submit -->
-                    <div class="mt-6">
-                                             <button type="submit" name="action" value="draft"
+                    <div class="mt-6 flex gap-3">
+                       <button type="submit" name="action" value="draft"
     class="bg-gray-500 text-white px-3 py-1 rounded">
     Simpan Draft
 </button>
@@ -128,7 +113,12 @@
         </div>
     </div>
 
-    {{-- Pastikan partial JS yang dipanggil SUDAH versi terbaru (pakai nama_item[g][]) --}}
+    {{-- inject edit data kalau ada --}}
+    <script>
+      window.hppEditData = @json($hpp ?? null);
+    </script>
+
+    {{-- include new script (atau paste di bawah) --}}
     @include('admin.inputhpp.partials._hpp_form_script')
 
     @if(session('error'))

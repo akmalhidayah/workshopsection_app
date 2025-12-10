@@ -8,27 +8,35 @@ class CreateLpjsTable extends Migration
 {
     public function up()
     {
+        // Hapus tabel lama bila ada (sesuai permintaan: replace toàn table)
+        Schema::dropIfExists('lpjs');
+
         Schema::create('lpjs', function (Blueprint $table) {
-            $table->string('notification_number')->primary(); // Menjadikan notification_number sebagai primary key
-            $table->string('lpj_number'); // Nomor LPJ
-            $table->string('lpj_document_path'); // Path dokumen LPJ
-            $table->string('ppl_number')->nullable(); // Nomor PPL
-            $table->string('ppl_document_path')->nullable(); // Path dokumen PPL
+            // Primary
+            $table->string('notification_number')->primary();
 
-            // Kolom tambahan untuk pembayaran termin
-            $table->enum('termin1', ['belum', 'sudah'])->default('belum')->comment('Status pembayaran termin pertama');
-            $table->enum('termin2', ['belum', 'sudah'])->default('belum')->comment('Status pembayaran termin kedua');
+            // --- Nomor per-termin (LPJ & PPL) ---
+            $table->string('lpj_number_termin1')->nullable()->comment('Nomor LPJ termin 1');
+            $table->string('ppl_number_termin1')->nullable()->comment('Nomor PPL termin 1');
 
-            // -----------------------
-            // Kolom garansi (sederhana)
-            // Hanya menyimpan jumlah bulan (1..12). Nullable agar backward-compatible.
-            $table->unsignedTinyInteger('garansi_months')->nullable()->comment('Masa garansi dalam bulan (1..12). Pilihan dropdown');
-            // Opsional label/catatan singkat
-            $table->string('garansi_label')->nullable()->comment('Keterangan/catatan garansi (opsional)');
-            // -----------------------
+            $table->string('lpj_number_termin2')->nullable()->comment('Nomor LPJ termin 2');
+            $table->string('ppl_number_termin2')->nullable()->comment('Nomor PPL termin 2');
 
-            $table->timestamp('update_date')->nullable(); // Kolom update date
-            $table->timestamps(); // created_at dan updated_at
+            // --- File path per-termin (LPJ & PPL) ---
+            $table->string('lpj_document_path_termin1')->nullable()->comment('Path dokumen LPJ termin 1');
+            $table->string('ppl_document_path_termin1')->nullable()->comment('Path dokumen PPL termin 1');
+
+            $table->string('lpj_document_path_termin2')->nullable()->comment('Path dokumen LPJ termin 2');
+            $table->string('ppl_document_path_termin2')->nullable()->comment('Path dokumen PPL termin 2');
+
+            // --- Status pembayaran per termin ---
+            $table->enum('termin1', ['belum', 'sudah'])->default('belum')->comment('Status pembayaran termin 1');
+            $table->enum('termin2', ['belum', 'sudah'])->default('belum')->comment('Status pembayaran termin 2');
+
+
+            // --- Meta ---
+            $table->timestamp('update_date')->nullable()->comment('Waktu update terakhir');
+            $table->timestamps();
         });
     }
 

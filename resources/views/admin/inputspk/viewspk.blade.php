@@ -1,4 +1,4 @@
-<x-document>
+<x-admin-layout>
     <div class="p-6 border rounded-lg shadow-lg">
         <!-- Kop Surat -->
         <div class="flex items-left border-b-2 pb-4 mb-4">
@@ -115,4 +115,4 @@
     </div>
 </div>
 
-</x-document>
+</x-admin-layout>

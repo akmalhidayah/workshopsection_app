@@ -6,9 +6,12 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\LHPP;
-use App\Models\User; // <-- Tambahkan ini
+use App\Models\User; 
+use App\Models\Garansi;
 use Illuminate\Support\Facades\Http; // Untuk API Fonnte
 use Illuminate\Support\Facades\Log; // Untuk logging
+use Carbon\Carbon;           // <<-- tambah
+use Illuminate\Support\Facades\Auth;
 
 class LHPPAdminController extends Controller
 {
@@ -60,6 +63,104 @@ class LHPPAdminController extends Controller
    /**
  * Approve LHPP dari Admin.
  */
+/**
+ * Simpan / update / hapus garansi yang dipicu dari halaman LHPP.
+ *
+ * - Jika input garansi_months kosong => hapus record garansi (jika ada)
+ * - Jika ada nilai (0..12) => createOrUpdate garansi dan hitung end_date bila memungkinkan
+ */
+public function storeGaransi(Request $request, $notification_number)
+{
+    $request->validate([
+        'garansi_months' => 'nullable|integer|min:0|max:120', // allow up to 120 bulan jika dimau
+        'garansi_label'  => 'nullable|string|max:255',
+        'lpj_number'     => 'nullable|string', // hidden field dari blade (tidak wajib)
+        'redirect_to'    => 'nullable|string',
+    ]);
+
+    try {
+        $lhpp = LHPP::where('notification_number', $notification_number)->firstOrFail();
+
+        // Ambil value; treat empty string as null (karena select bisa mengirim "")
+        $monthsRaw = $request->input('garansi_months', null);
+        $garansiMonths = ($monthsRaw === '' ? null : (is_null($monthsRaw) ? null : (int)$monthsRaw));
+        $garansiLabel  = $request->input('garansi_label', null);
+
+        // Jika tidak ada nilai garansi (user memilih kosong) -> hapus record garansi (jika ada)
+        if ($garansiMonths === null) {
+            $deleted = Garansi::where('notification_number', $notification_number)->delete();
+            $msg = $deleted ? 'Garansi dihapus.' : 'Tidak ada data garansi untuk dihapus.';
+            $redirect = $request->input('redirect_to') ?? route('admin.lhpp.index');
+            return redirect($redirect)->with('success', $msg);
+        }
+
+        // Tentukan start_date: ambil dari LHPP.tanggal_selesai bila tersedia
+        $startDate = null;
+        if (!empty($lhpp->tanggal_selesai)) {
+            // Jika LHPP->tanggal_selesai string, biar Carbon parsing
+            try {
+                $startDate = Carbon::parse($lhpp->tanggal_selesai)->startOfDay();
+            } catch (\Throwable $e) {
+                $startDate = null;
+            }
+        }
+
+        // Hitung end_date kalau start_date ada; jika tidak ada, end_date tetap null
+        $endDate = null;
+        if ($startDate) {
+            // jika months = 0, kita set end_date = startDate (sesuai kebijakan)
+            try {
+                $endDate = (clone $startDate)->addMonthsNoOverflow($garansiMonths);
+            } catch (\Throwable $e) {
+                // fallback
+                try {
+                    $endDate = (clone $startDate)->addMonths($garansiMonths);
+                } catch (\Throwable $e2) {
+                    $endDate = null;
+                }
+            }
+        }
+
+        // tentukan status
+        $status = 'belum_dimulai';
+        if ($startDate && $endDate) {
+            $now = Carbon::now()->startOfDay();
+            $status = $now->lessThanOrEqualTo($endDate) ? 'masih_berlaku' : 'habis';
+        } elseif ($startDate && $garansiMonths === 0) {
+            // months == 0 treated as same-day end -> masih_berlaku jika today == startDate
+            $now = Carbon::now()->startOfDay();
+            $status = $now->lessThanOrEqualTo($startDate) ? 'masih_berlaku' : 'habis';
+        }
+
+        // simpan ke tabel garansis (create or update by notification_number)
+        $garansi = Garansi::updateOrCreate(
+            ['notification_number' => $notification_number],
+            [
+                'garansi_months' => $garansiMonths,
+                'garansi_label'  => $garansiLabel,
+                'start_date'     => $startDate ? $startDate->toDateString() : null,
+                'end_date'       => $endDate ? $endDate->toDateString() : null,
+                'status'         => $status,
+                'created_by'     => Auth::id() ?? null,
+                'updated_by'     => Auth::id() ?? null,
+            ]
+        );
+
+        $redirect = $request->input('redirect_to') ?? route('admin.lhpp.index');
+        return redirect($redirect)->with('success', 'Data garansi berhasil disimpan.');
+
+    } catch (\Exception $e) {
+        Log::error('storeGaransi failed for '.$notification_number, [
+            'err' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'request' => $request->all()
+        ]);
+
+        $redirect = $request->input('redirect_to') ?? route('admin.lhpp.index');
+        return redirect($redirect)->with('error', 'Gagal menyimpan data garansi. Cek log.');
+    }
+}
+
 public function approve($notification_number)
 {
     $lhpp = LHPP::where('notification_number', $notification_number)->firstOrFail();

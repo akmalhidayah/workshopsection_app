@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\KawatLas;
 use App\Models\KawatLasDetail;
-use App\Models\JenisKawatLas; // 🔥 tambahkan ini
+use App\Models\JenisKawatLas;
 use App\Models\UnitWork;
 use Illuminate\Support\Facades\DB;
 
@@ -14,47 +14,45 @@ class KawatLasController extends Controller
     /**
      * Menampilkan daftar kawat las dengan filter, pencarian, dan pagination
      */
-public function index(Request $request)
-{
-    $query = KawatLas::with('details', 'user');
+    public function index(Request $request)
+    {
+        $query = KawatLas::with('details', 'user');
 
-    // 🔒 Filter user (non-admin hanya lihat miliknya sendiri)
-    if (auth()->user()->usertype !== 'admin') {
-        $query->where('user_id', auth()->id());
+        // 🔒 Filter user (non-admin hanya lihat miliknya sendiri)
+        if (auth()->user()->usertype !== 'admin') {
+            $query->where('user_id', auth()->id());
+        }
+
+        // 🔍 Search by jenis kawat
+        if ($request->filled('search')) {
+            $query->whereHas('details', function ($q) use ($request) {
+                $q->where('jenis_kawat', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        // 🔍 Filter unit kerja
+        if ($request->filled('unit')) {
+            $query->where('unit_work', $request->unit);
+        }
+
+        // Sorting
+        $sortOrder = $request->sortOrder === 'oldest' ? 'asc' : 'desc';
+        $query->orderBy('created_at', $sortOrder);
+
+        // Pagination
+        $entries = $request->entries ?? 10;
+        $kawatlas = $query->paginate($entries)->withQueryString();
+
+        // Data master
+        $units = UnitWork::orderBy('name')->get();
+        $jenisList = JenisKawatLas::orderBy('kode')->get();
+
+        return view('kawatlas.index', compact('kawatlas', 'units', 'jenisList'));
     }
-
-    // 🔍 Pencarian berdasarkan jenis kawat di detail
-    if ($request->filled('search')) {
-        $query->whereHas('details', function ($q) use ($request) {
-            $q->where('jenis_kawat', 'like', '%' . $request->search . '%');
-        });
-    }
-
-    // 🔍 Filter berdasarkan unit kerja
-    if ($request->filled('unit')) {
-        $query->where('unit_work', $request->unit);
-    }
-
-    // 🔽 Sorting (default: terbaru)
-    $sortOrder = $request->sortOrder === 'oldest' ? 'asc' : 'desc';
-    $query->orderBy('created_at', $sortOrder);
-
-    // 📄 Pagination
-    $entries = $request->entries ?? 10;
-    $kawatlas = $query->paginate($entries)->withQueryString();
-
-    // ✅ Ambil daftar unit kerja dari tabel unit_work (model UnitWork)
-    $units = UnitWork::orderBy('name')->get();
-
-    // 🔥 Ambil semua jenis kawat untuk dropdown dinamis
-    $jenisList = JenisKawatLas::orderBy('kode')->get();
-
-    return view('kawatlas.index', compact('kawatlas', 'units', 'jenisList'));
-}
 
 
     /**
-     * Simpan order baru + detail
+     * STORE: Simpan order baru + detail
      */
     public function store(Request $request)
     {
@@ -62,9 +60,22 @@ public function index(Request $request)
             'order_number'               => 'required|string|max:50|unique:kawat_las,order_number',
             'tanggal'                    => 'required|date',
             'unit_work'                  => 'required|string|max:100',
+            'seksi'                      => 'nullable|string|max:100', // tambahan
             'detail_kawat.*.jenis_kawat' => 'required|string|max:50',
             'detail_kawat.*.jumlah'      => 'required|integer|min:1',
         ]);
+
+        // 🔍 Validasi seksi harus sesuai unit_work
+        if ($request->filled('seksi')) {
+            $unit = UnitWork::where('name', $request->unit_work)->first();
+            $validSeksiList = $unit ? ($unit->seksi_list ?? []) : [];
+
+            if (!in_array($request->seksi, $validSeksiList, true)) {
+                return back()->withErrors([
+                    'seksi' => 'Seksi tidak sesuai dengan unit kerja yang dipilih.'
+                ])->withInput();
+            }
+        }
 
         DB::beginTransaction();
         try {
@@ -72,6 +83,7 @@ public function index(Request $request)
                 'order_number' => $request->order_number,
                 'tanggal'      => $request->tanggal,
                 'unit_work'    => $request->unit_work,
+                'seksi'        => $request->seksi, // simpan seksi
                 'user_id'      => auth()->id(),
             ]);
 
@@ -83,12 +95,14 @@ public function index(Request $request)
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
-                             ->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data. ' . $e->getMessage()]);
+                             ->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data. ' . $e->getMessage()])
+                             ->withInput();
         }
     }
 
+
     /**
-     * Ambil data untuk form edit (AJAX)
+     * Ambil data untuk modal Edit (AJAX)
      */
     public function edit($id)
     {
@@ -101,8 +115,9 @@ public function index(Request $request)
         return response()->json($kawatlas);
     }
 
+
     /**
-     * Update order + detail
+     * UPDATE order + detail
      */
     public function update(Request $request, $id)
     {
@@ -110,9 +125,22 @@ public function index(Request $request)
             'order_number'               => 'required|string|max:50|unique:kawat_las,order_number,' . $id,
             'tanggal'                    => 'required|date',
             'unit_work'                  => 'required|string|max:100',
+            'seksi'                      => 'nullable|string|max:100', // tambahan
             'detail_kawat.*.jenis_kawat' => 'required|string|max:50',
             'detail_kawat.*.jumlah'      => 'required|integer|min:1',
         ]);
+
+        // 🔍 Validasi seksi harus sesuai unit_work
+        if ($request->filled('seksi')) {
+            $unit = UnitWork::where('name', $request->unit_work)->first();
+            $validSeksiList = $unit ? ($unit->seksi_list ?? []) : [];
+
+            if (!in_array($request->seksi, $validSeksiList, true)) {
+                return back()->withErrors([
+                    'seksi' => 'Seksi tidak sesuai dengan unit kerja yang dipilih.'
+                ])->withInput();
+            }
+        }
 
         $kawatlas = KawatLas::with('details')->findOrFail($id);
 
@@ -126,6 +154,7 @@ public function index(Request $request)
                 'order_number' => $request->order_number,
                 'tanggal'      => $request->tanggal,
                 'unit_work'    => $request->unit_work,
+                'seksi'        => $request->seksi, // update seksi
             ]);
 
             $kawatlas->details()->delete();
@@ -139,6 +168,7 @@ public function index(Request $request)
             return redirect()->back()->withErrors(['error' => 'Terjadi kesalahan saat memperbarui data. ' . $e->getMessage()]);
         }
     }
+
 
     /**
      * Hapus order beserta detail
@@ -156,69 +186,70 @@ public function index(Request $request)
         return redirect()->route('kawatlas.index')
                          ->with('success', 'Data berhasil dihapus.');
     }
-public function updateJumlah(Request $request, $id)
-{
-    // Validasi input jumlah
-    $request->validate([
-        'jumlah' => 'required|integer|min:1',
-    ]);
 
-    // Ambil detail order
-    $detail = \App\Models\KawatLasDetail::findOrFail($id);
 
-    // Update jumlah baru tanpa mengubah stok
-    $detail->jumlah = $request->jumlah;
-    $detail->save();
-
-    // Simpan siapa yang mengubah (opsional, kalau mau tampil di UI)
-    session()->flash('updated_by', auth()->user()->name ?? 'Admin');
-
-    return redirect()
-        ->back()
-        ->with('success', 'Jumlah permintaan berhasil diperbarui (stok tidak berubah).');
-}
-
-public function updateStatus(Request $request, $id)
-{
-    $request->validate([
-        'status'  => 'required|string|in:Waiting List,Good Issue',
-        'catatan' => 'nullable|string|max:500',
-    ]);
-
-    DB::beginTransaction();
-    try {
-        $order = KawatLas::with('details')->findOrFail($id);
-
-        // Jika status berubah ke "Good Issue", kurangi stok
-        if ($request->status === 'Good Issue' && $order->status !== 'Good Issue') {
-            foreach ($order->details as $detail) {
-                $jenis = JenisKawatLas::where('kode', $detail->jenis_kawat)->first();
-                if ($jenis) {
-                    // Kurangi stok sesuai jumlah permintaan
-                    $jenis->stok = max(0, $jenis->stok - $detail->jumlah);
-                    $jenis->save();
-                }
-            }
-        }
-
-        // Update status dan catatan
-        $order->update([
-            'status'  => $request->status,
-            'catatan' => $request->catatan,
+    /**
+     * Update jumlah item pada detail (tidak mempengaruhi stok)
+     */
+    public function updateJumlah(Request $request, $id)
+    {
+        $request->validate([
+            'jumlah' => 'required|integer|min:1',
         ]);
 
-        DB::commit();
+        $detail = KawatLasDetail::findOrFail($id);
+        $detail->jumlah = $request->jumlah;
+        $detail->save();
 
-        return redirect()
-            ->route('notifikasi.index', ['tab' => 'kawatlas'])
-            ->with('success', 'Status dan catatan berhasil diperbarui.');
-    } catch (\Exception $e) {
-        DB::rollBack();
+        session()->flash('updated_by', auth()->user()->name ?? 'Admin');
+
         return redirect()
             ->back()
-            ->withErrors(['error' => 'Gagal memperbarui status: ' . $e->getMessage()]);
+            ->with('success', 'Jumlah permintaan berhasil diperbarui (stok tidak berubah).');
     }
-}
 
 
+    /**
+     * Update status order (Waiting → Good Issue) + Kurangi stok
+     */
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status'  => 'required|string|in:Waiting List,Good Issue',
+            'catatan' => 'nullable|string|max:500',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $order = KawatLas::with('details')->findOrFail($id);
+
+            // Kurangi stok jika baru berubah menjadi Good Issue
+            if ($request->status === 'Good Issue' && $order->status !== 'Good Issue') {
+                foreach ($order->details as $detail) {
+                    $jenis = JenisKawatLas::where('kode', $detail->jenis_kawat)->first();
+                    if ($jenis) {
+                        $jenis->stok = max(0, $jenis->stok - $detail->jumlah);
+                        $jenis->save();
+                    }
+                }
+            }
+
+            $order->update([
+                'status'  => $request->status,
+                'catatan' => $request->catatan,
+            ]);
+
+            DB::commit();
+
+            return redirect()
+                ->route('notifikasi.index', ['tab' => 'kawatlas'])
+                ->with('success', 'Status dan catatan berhasil diperbarui.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()
+                ->back()
+                ->withErrors(['error' => 'Gagal memperbarui status: ' . $e->getMessage()]);
+        }
+    }
 }

@@ -162,10 +162,25 @@
         required>
 </div>
 <div>
-    <label for="editWhatsAppNumber" class="block text-sm font-medium text-gray-300 text-left">WhatsApp Number</label>
-    <input type="text" id="editWhatsAppNumber" name="whatsapp_number" placeholder="Nomor WhatsApp"
-        class="mt-1 block w-full px-3 py-2 border border-gray-500 rounded-md shadow-sm bg-blue-900 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+    <label for="editWhatsAppNumber" class="block text-sm font-medium text-gray-300 text-left">
+        WhatsApp Number
+    </label>
+
+    <input 
+        type="text" 
+        id="editWhatsAppNumber" 
+        name="whatsapp_number" 
+        placeholder="Contoh: 0812-3456-789 (otomatis jadi +62)"
+        value="{{ old('whatsapp_number', $user->whatsapp_number_display) }}"
+        class="mt-1 block w-full px-3 py-2 border border-gray-500 rounded-md shadow-sm bg-blue-900 text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+    >
+
+    <p class="mt-1 text-xs text-gray-400">
+        Masukkan nomor Indonesia seperti <strong>0812xxxxxxx</strong> atau <strong>+62812xxxxxxx</strong>.  
+        Sistem akan otomatis menyesuaikan format untuk WhatsApp API.
+    </p>
 </div>
+
 <div>
     <label for="editUsertype" class="block text-sm font-medium text-gray-300 text-left">Usertype</label>
     <select id="editUsertype" name="usertype"

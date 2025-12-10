@@ -5,10 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="csrf-token" content="{{ csrf_token() }}" />
   <title>{{ $title ?? 'Approval Center — '.config('app.name') }}</title>
+
+  <!-- Icons / UI libs -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- Vite (tailwind + app js) -->
   @vite(['resources/css/app.css','resources/js/app.js'])
+
   <style>
     .chip{ @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium; }
     .chip-blue{ @apply bg-blue-50 text-blue-700 ring-1 ring-blue-200; }
@@ -35,20 +40,20 @@
 
           <!-- Search slot (optional) -->
           @isset($search)
-          <div class="flex-1 max-w-xl mx-4 hidden md:block">{{ $search }}</div>
+            <div class="flex-1 max-w-xl mx-4 hidden md:block">{{ $search }}</div>
           @endisset
 
           <div class="flex items-center gap-3">
             <span class="hidden sm:block text-sm leading-tight text-slate-600">
-    {{ Auth::user()->name }}<br>
-    <span class="text-xs text-slate-400">{{ Auth::user()->display_title }}</span>
-</span>
+              {{ Auth::user()->name }}<br>
+              <span class="text-xs text-slate-400">{{ Auth::user()->display_title }}</span>
+            </span>
 
             <x-dropdown align="right" width="48">
               <x-slot name="trigger">
                 <button class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm hover:bg-slate-50">
                   <i class="fa-regular fa-user"></i>
-                  <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+                  <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
                 </button>
               </x-slot>
               <x-slot name="content">
@@ -58,15 +63,19 @@
                 </form>
               </x-slot>
             </x-dropdown>
-            <button id="mobile-menu-button" class="md:hidden inline-flex items-center justify-center rounded-md p-2 text-slate-600 hover:bg-slate-100"><i class="fa-solid fa-bars"></i></button>
+
+            <button id="mobile-menu-button" class="md:hidden inline-flex items-center justify-center rounded-md p-2 text-slate-600 hover:bg-slate-100">
+              <i class="fa-solid fa-bars"></i>
+            </button>
           </div>
         </div>
       </div>
+
       <!-- Mobile quick actions -->
       <div id="mobile-menu" class="md:hidden hidden border-t border-slate-200">
         <div class="px-4 py-3 space-y-2">
           @isset($search)
-          <div>{{ $search }}</div>
+            <div>{{ $search }}</div>
           @endisset
           <form method="POST" action="{{ route('logout') }}">@csrf
             <button class="w-full text-left rounded-md border border-slate-300 bg-white px-3 py-2 text-sm hover:bg-slate-50">Log Out</button>
@@ -77,11 +86,11 @@
 
     <!-- Page header slot -->
     @isset($header)
-    <header class="bg-gradient-to-r from-slate-50 to-white border-b border-slate-200">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-        {{ $header }}
-      </div>
-    </header>
+      <header class="bg-gradient-to-r from-slate-50 to-white border-b border-slate-200">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+          {{ $header }}
+        </div>
+      </header>
     @endisset
 
     <!-- Main -->
@@ -90,10 +99,123 @@
     </main>
   </div>
 
+  <!-- minimal mobile toggler -->
   <script>
     const btn = document.getElementById('mobile-menu-button');
     const mob = document.getElementById('mobile-menu');
-    if (btn) btn.addEventListener('click',()=> mob.classList.toggle('hidden'));
+    if (btn) btn.addEventListener('click', ()=> mob.classList.toggle('hidden'));
+  </script>
+
+  <!-- SweetAlert flash + safe submit handler -->
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // ===== Flash messages (server -> SweetAlert) =====
+    @if(session('success'))
+      Swal.fire({ icon: 'success', title: 'Sukses', text: {!! json_encode(session('success')) !!}, confirmButtonText: 'OK' });
+    @endif
+
+    @if(session('warning'))
+      Swal.fire({ icon: 'warning', title: 'Peringatan', text: {!! json_encode(session('warning')) !!}, confirmButtonText: 'OK' });
+    @endif
+
+    @if(session('error'))
+      Swal.fire({ icon: 'error', title: 'Gagal', text: {!! json_encode(session('error')) !!}, confirmButtonText: 'OK' });
+    @endif
+
+    @if($errors->any())
+      Swal.fire({
+        icon: 'error',
+        title: 'Validasi',
+        html: {!! json_encode(implode('<br>', $errors->all())) !!},
+        confirmButtonText: 'Tutup'
+      });
+    @endif
+
+    // ===== Generic form submit UX (prevent double-submit + preserve submitter) =====
+    // NOTE: selector currently targets all POST forms. If you want to limit to approval form only,
+    // change selector to 'form[data-swal="true"]' and add data-swal="true" to the specific form.
+    document.querySelectorAll('form[method="POST"]').forEach(function(form){
+      if (form.dataset.swalDisabled === "true") return;
+
+      // capture click to know which button was pressed (fallback for older browsers)
+      form.addEventListener('click', function(e){
+        const t = e.target;
+        if (!(t instanceof HTMLButtonElement || (t instanceof HTMLInputElement && t.type === 'submit'))) return;
+        form.dataset._lastSubmitName = t.name || '';
+        form.dataset._lastSubmitValue = t.value || '';
+        form.dataset._lastSubmitId = t.id || '';
+      });
+
+      form.addEventListener('submit', function(e){
+        try {
+          // Respect your canvas signature validator (submitSignature)
+          if (typeof window.submitSignature === 'function') {
+            const ok = window.submitSignature();
+            if (!ok) {
+              e.preventDefault();
+              return false;
+            }
+          }
+
+          // Determine submitter (modern browsers expose e.submitter)
+          let submitter = e.submitter || null;
+          let submitName = '';
+          let submitValue = '';
+
+          if (submitter && (submitter.name || submitter.value)) {
+            submitName = submitter.name || '';
+            submitValue = submitter.value || '';
+          } else {
+            // fallback: use captured dataset from click handler
+            submitName = form.dataset._lastSubmitName || '';
+            submitValue = form.dataset._lastSubmitValue || '';
+            const sid = form.dataset._lastSubmitId;
+            if (!submitter && sid) {
+              const maybe = document.getElementById(sid);
+              if (maybe) submitter = maybe;
+            }
+          }
+
+          // Ensure the submit button's name/value is included in the POST (create/update hidden input)
+          if (submitName) {
+            let hidden = form.querySelector('input[type="hidden"][name="' + submitName + '"]');
+            if (!hidden) {
+              hidden = document.createElement('input');
+              hidden.type = 'hidden';
+              hidden.name = submitName;
+              form.appendChild(hidden);
+            }
+            hidden.value = submitValue;
+          }
+
+          // Disable other buttons but keep the clicked one enabled (so browser sends it)
+          form.querySelectorAll('button, input[type="submit"]').forEach(function(btn){
+            if (submitter && btn === submitter) return;
+            if (!submitter) {
+              const sid = form.dataset._lastSubmitId;
+              if (sid && btn.id === sid) return;
+              if (btn.name && btn.name === submitName && btn.value === submitValue) return;
+            }
+            btn.disabled = true;
+          });
+
+          // Show loading modal
+          Swal.fire({
+            title: 'Mengirim...',
+            html: 'Mohon tunggu, permintaan Anda sedang diproses.',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+          });
+
+        } catch (err) {
+          console.error('Error in submit handler:', err);
+          // Don't block submit on JS error
+        }
+      }, { once: true });
+
+      form.dataset.swalDisabled = "true";
+    });
+  });
   </script>
 </body>
 </html>

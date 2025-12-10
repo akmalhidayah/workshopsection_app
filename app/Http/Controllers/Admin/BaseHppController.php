@@ -201,7 +201,6 @@ protected function cleanData2D(?array $arr2d): array
     {
         try {
             // Dengan casts di model, kolom sudah berupa array. Kita bersihkan saja.
-            $hpp->uraian_pekerjaan = $this->cleanData($hpp->uraian_pekerjaan);
             $hpp->jenis_item       = $this->cleanData2D($hpp->jenis_item);
              $hpp->nama_item       = $this->cleanData2D($hpp->nama_item);
             $hpp->qty              = $this->cleanData2D($hpp->qty);

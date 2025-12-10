@@ -15,7 +15,7 @@
                     <!-- Order No -->
                     <div class="mb-4">
                         <label class="block mb-1 text-sm">Nomor Order</label>
-                        <input type="text" name="order_number" class="w-full border rounded p-2" required>
+                        <input type="text" name="order_number" class="w-full border rounded p-2" required value="{{ old('order_number') }}">
                     </div>
 
                     <!-- Tanggal -->
@@ -24,12 +24,25 @@
                     <!-- Unit Kerja -->
                     <div class="mb-4">
                         <label class="block mb-1 text-sm">Unit Kerja</label>
-                        <select name="unit_work" class="w-full border rounded p-2" required>
+                        <select name="unit_work" id="unitKerjaCreate" class="w-full border rounded p-2" required>
                             <option value="">Pilih Unit</option>
                             @foreach ($units as $unit)
-                                <option value="{{ $unit->name }}">{{ $unit->name }}</option>
+                                <option value="{{ $unit->name }}" data-seksi='@json($unit->seksi_list)'>
+                                    {{ $unit->name }}
+                                </option>
                             @endforeach
                         </select>
+                        @error('unit_work') <div class="text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
+                    </div>
+
+                    <!-- Seksi (dynamic, muncul ketika unit memiliki seksi) -->
+                    <div id="wrapSeksiCreate" class="mb-4" style="display: none;">
+                        <label class="block mb-1 text-sm">Seksi</label>
+                        <select name="seksi" id="seksiCreate" class="w-full border rounded p-2">
+                            <option value="">Pilih Seksi</option>
+                            <!-- opsi akan diisi oleh JS -->
+                        </select>
+                        @error('seksi') <div class="text-sm text-red-600 mt-1">{{ $message }}</div> @enderror
                     </div>
 
                     <!-- Detail -->

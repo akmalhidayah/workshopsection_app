@@ -9,22 +9,35 @@ use Symfony\Component\HttpFoundation\Response;
 
 class HppApprovalLinkService
 {
-    public function issue(string $notificationNumber, string $signType, int $userId, int $minutes = 60): string
-    {
-        $tok = new HppApprovalToken();
-        $tok->id                  = (string) Str::uuid();
-        $tok->notification_number = $notificationNumber;
-        $tok->sign_type           = $signType;           // manager|sm|gm|dir
-        $tok->user_id             = $userId;
-        $tok->issued_by           = auth()->id() ?? 0;
-        $tok->issued_channel      = 'system';
-        $tok->ip_issued           = request()->ip();
-        $tok->ua_issued           = request()->userAgent();
-        $tok->expires_at          = Carbon::now()->addMinutes($minutes);
-        $tok->save();
+/**
+ * Issue token.
+ *
+ * @param string $notificationNumber
+ * @param string $signType
+ * @param int $userId
+ * @param int|null $minutes  If null => token will NOT expire (not used here by default)
+ * @return string token id (UUID)
+ */
+public function issue(string $notificationNumber, string $signType, int $userId, ?int $minutes = 60*24*30): string
+{
+    $tok = new HppApprovalToken();
+    $tok->id                  = (string) Str::uuid();
+    $tok->notification_number = $notificationNumber;
+    $tok->sign_type           = $signType;           // manager|sm|gm|dir
+    $tok->user_id             = $userId;
+    $tok->issued_by           = auth()->id() ?? 0;
+    $tok->issued_channel      = 'system';
+    $tok->ip_issued           = request()->ip();
+    $tok->ua_issued           = request()->userAgent();
 
-        return $tok->id;
-    }
+    // default: 30 hari (in minutes). If caller passes null, expires_at is null (permanent).
+    $tok->expires_at = is_null($minutes) ? null : Carbon::now()->addMinutes($minutes);
+
+    $tok->save();
+
+    return $tok->id;
+}
+
 
     /** Kembalikan full URL ke halaman approve (GET) */
     public function url(string $token): string

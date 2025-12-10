@@ -77,24 +77,17 @@
                         </p>
                     </div>
 
-                    <!-- Tambah Uraian Pekerjaan -->
+                    <!-- Kontrol: Tambah Jenis (GROUP) -->
                     <div class="mt-8 flex gap-3 items-center">
-                        <button type="button" id="tambah-pekerjaan-btn"
+                        <button type="button" id="tambah-jenis-btn"
                                 class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm shadow flex items-center gap-2">
-                            <i class="fas fa-plus"></i> Tambah Uraian Pekerjaan
+                            <i class="fas fa-plus"></i> Tambah Jenis (mis. Jasa)
                         </button>
+                        <span class="text-sm text-gray-500">Tambahkan jenis, lalu tambahkan item di dalamnya.</span>
                     </div>
 
-                    <!--
-                      Catatan:
-                      - Script partial akan membangkitkan field:
-                        uraian_pekerjaan[g]
-                        jenis_item[g][i]    -> material|consumable|upah
-                        nama_item[g][i]     -> NAMA BARANG/JASA
-                        qty[g][i], satuan[g][i], harga_satuan[g][i], harga_total[g][i]
-                        keterangan[g][i]    -> catatan item (opsional)
-                    -->
-                    <div id="pekerjaan-container" class="mt-6 space-y-6"></div>
+                    <!-- KONTEN GROUPS -->
+                    <div id="jenis-container" class="mt-6 space-y-6"></div>
 
                     <!-- Total Keseluruhan -->
                     <div class="mt-6 border-t pt-4">
@@ -104,7 +97,7 @@
                     </div>
 
                     <!-- Submit -->
-                    <div class="mt-6">
+                    <div class="mt-6 flex gap-3">
                        <button type="submit" name="action" value="draft"
     class="bg-gray-500 text-white px-3 py-1 rounded">
     Simpan Draft
@@ -114,14 +107,18 @@
     class="bg-indigo-600 text-white px-3 py-1 rounded">
     Submit
 </button>
-
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    {{-- Pastikan partial JS yang dipanggil SUDAH versi terbaru (pakai nama_item[g][]) --}}
+    {{-- inject edit data kalau ada --}}
+    <script>
+      window.hppEditData = @json($hpp ?? null);
+    </script>
+
+    {{-- include new script (atau paste di bawah) --}}
     @include('admin.inputhpp.partials._hpp_form_script')
 
     @if(session('error'))

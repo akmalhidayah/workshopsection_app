@@ -39,7 +39,7 @@ return new class extends Migration
                   ->nullable()
                   ->unique()
                   ->comment('Nomor E-KORIN (bila ada)');
-            $table->enum('status_e_korin', ['waiting_korin', 'waiting_transfer', 'complete_transfer'])
+            $table->enum('status_e_korin', ['waiting_korin','waiting_approval', 'waiting_transfer', 'complete_transfer'])
                   ->nullable()
                   ->comment('Status E-KORIN: waiting_korin / waiting_transfer / complete_transfer');
 

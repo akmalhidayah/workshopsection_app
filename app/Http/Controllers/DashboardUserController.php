@@ -25,7 +25,8 @@ class DashboardUserController extends Controller
             'purchaseOrder',
             'lhpp',
             'lpj',
-            'verifikasiAnggaran'
+            'verifikasiAnggaran',
+             'garansi' 
         ]);
 
         if ($request->filled('notification_number')) {

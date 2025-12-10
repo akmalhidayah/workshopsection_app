@@ -23,7 +23,20 @@ class KuotaAnggaranOA extends Model
         'periode_kontrak_end',
         'adendum_end',
         'periode_kontrak_final',
+        'tahun',
         'target_biaya_pemeliharaan'
+    ];
+
+    protected $casts = [
+        'nilai_kontrak' => 'decimal:2',
+        'tambahan_kuota_kontrak' => 'decimal:2',
+        'total_kuota_kontrak' => 'decimal:2',
+ 'periode_kontrak_start' => 'date:Y-m-d',
+    'periode_kontrak_end'   => 'date:Y-m-d',
+    'adendum_end'           => 'date:Y-m-d',
+    'periode_kontrak_final' => 'date:Y-m-d',
+        'tahun' => 'array',
+        'target_biaya_pemeliharaan' => 'array',
     ];
 
     public function calculateTotalKuota()
@@ -31,4 +44,3 @@ class KuotaAnggaranOA extends Model
         return ($this->nilai_kontrak ?? 0) + ($this->tambahan_kuota_kontrak ?? 0);
     }
 }
-

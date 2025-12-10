@@ -15,6 +15,7 @@ class KawatLas extends Model
         'order_number',
         'tanggal',
         'unit_work',
+        'seksi',
             'status',
     'catatan',
         'user_id',

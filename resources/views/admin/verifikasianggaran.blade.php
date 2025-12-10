@@ -121,7 +121,7 @@
                                 <th class="px-2 py-1 text-left font-semibold">Dana</th>        {{-- HPP + status_anggaran --}}
                                 <th class="px-2 py-1 text-left font-semibold">Kategori Item</th>    {{-- kategori_item --}}
                                 <th class="px-2 py-1 text-left font-semibold">E-KORIN</th>     {{-- nomor + status_e_korin --}}
-                                <th class="px-2 py-1 text-left font-semibold">Cost</th>        {{-- cost_element --}}
+                                <th class="px-2 py-1 text-left font-semibold">Cost Element</th>        {{-- cost_element --}}
                                 <th class="px-2 py-1 text-left font-semibold">Kategori Biaya</th>       {{-- kategori_biaya --}}
                                 <th class="px-2 py-1 text-left font-semibold">Catatan</th>
                                 <th class="px-2 py-1 text-left font-semibold">Update</th>
@@ -210,6 +210,7 @@
                                     @php
                                         $statusMap = [
                                             'waiting_korin'     => 'Waiting Korin',
+                                            'waiting_approval'     => 'Waiting Approval',
                                             'waiting_transfer'  => 'Waiting Transfer',
                                             'complete_transfer' => 'Complete Transfer',
                                         ];

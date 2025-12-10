@@ -13,6 +13,7 @@ return new class extends Migration
             $table->string('order_number', 50)->unique();
             $table->date('tanggal');
             $table->string('unit_work', 100);
+            $table->string('seksi', 100);
 
             // ✅ Status order: Waiting Budget / Good Issue
             $table->enum('status', ['Waiting Budget', 'Good Issue'])

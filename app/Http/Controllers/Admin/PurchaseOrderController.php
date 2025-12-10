@@ -12,136 +12,192 @@ use Illuminate\Support\Facades\Log;
 class PurchaseOrderController extends Controller
 {
     public function index(Request $request)
-    {
-        try {
-            $entries = $request->input('entries', 10);
-            $search  = $request->input('search');
-            $status  = $request->input('status'); // setuju / tidak_setuju
-            $unit    = $request->input('unit');
-            $from    = $request->input('from');
-            $to      = $request->input('to');
+{
+    try {
+        $entries = $request->input('entries', 10);
+        $search  = $request->input('search');
+        $status  = $request->input('status'); // setuju / tidak_setuju
+        $unit    = $request->input('unit');
+        $from    = $request->input('from');
+        $to      = $request->input('to');
 
-            // ✅ Query Notification + eager load relasi
-            $query = Notification::with(['dokumenOrders', 'scopeOfWork', 'hpp1', 'purchaseOrder']);
+        /*
+        |--------------------------------------------------------------------------
+        | 1. Ambil Data Notifikasi (Awal)
+        |--------------------------------------------------------------------------
+        | Tetap pakai query awal seperti punyamu, lalu nanti difilter 
+        | dokumen-lengkapnya di tahap 2.
+        |--------------------------------------------------------------------------
+        */
 
-            // 🔎 Filter: Search berdasarkan nomor notifikasi / nama pekerjaan
-            if ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('notification_number', 'LIKE', "%{$search}%")
-                      ->orWhere('job_name', 'LIKE', "%{$search}%");
-                });
+        $query = Notification::with(['dokumenOrders', 'scopeOfWork', 'hpp1', 'purchaseOrder']);
+
+        // Filter Search
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('notification_number', 'LIKE', "%{$search}%")
+                  ->orWhere('job_name', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Filter Unit kerja
+        if ($unit) {
+            $query->where('unit_work', $unit);
+        }
+
+        // Filter rentang tanggal
+        if ($from && $to) {
+            $query->whereBetween('created_at', [$from, $to]);
+        } elseif ($from) {
+            $query->whereDate('created_at', '>=', $from);
+        } elseif ($to) {
+            $query->whereDate('created_at', '<=', $to);
+        }
+
+        // Filter status persetujuan PO
+        if ($status) {
+            $query->whereHas('purchaseOrder', function ($poQuery) use ($status) {
+                $poQuery->where('approval_target', $status);
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | 2. Ambil hasil Query dulu → kemudian FILTER hanya notifikasi
+        |    yang: dokumennya lengkap & ada HPP
+        |--------------------------------------------------------------------------
+        */
+
+        $rawNotifications = $query->orderBy('created_at', 'desc')->paginate($entries);
+
+        // Ambil items halaman ini
+        $pageItems = collect($rawNotifications->items());
+
+        // Filter manual: dokumen harus lengkap & ada HPP
+        $filtered = $pageItems->filter(function ($n) {
+
+            $hasAbnormal = $n->dokumenOrders->where('jenis_dokumen', 'abnormalitas')->isNotEmpty();
+            $hasGambar   = $n->dokumenOrders->where('jenis_dokumen', 'gambar_teknik')->isNotEmpty();
+            $hasScope    = $n->scopeOfWork !== null;
+            $hasHpp      = $n->hpp1 !== null;
+
+            return $hasAbnormal && $hasGambar && $hasScope && $hasHpp;
+        })->values();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 3. Bungkus ulang hasil filter jadi paginator baru
+        |    agar pagination tetap berfungsi normal
+        |--------------------------------------------------------------------------
+        */
+
+        $notifications = new \Illuminate\Pagination\LengthAwarePaginator(
+            $filtered->forPage($rawNotifications->currentPage(), $rawNotifications->perPage()),
+            $filtered->count(),
+            $rawNotifications->perPage(),
+            $rawNotifications->currentPage(),
+            ['path' => $rawNotifications->path()]
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | 4. Logic Lama (Approval & Flag Dokumen)
+        |    — TIDAK DIUBAH SAMA SEKALI
+        |--------------------------------------------------------------------------
+        */
+        foreach ($notifications as $notification) {
+
+            // Dokumen Abnormal
+            $notification->isAbnormalAvailable = $notification->dokumenOrders
+                ->where('jenis_dokumen', 'abnormalitas')->isNotEmpty();
+
+            // Scope of Work
+            $notification->isScopeOfWorkAvailable = $notification->scopeOfWork !== null;
+
+            // Gambar Teknik
+            $notification->isGambarTeknikAvailable = $notification->dokumenOrders
+                ->where('jenis_dokumen', 'gambar_teknik')->isNotEmpty();
+
+            // HPP
+            if ($notification->hpp1) {
+                $notification->isHppAvailable = true;
+                $notification->source_form   = $notification->hpp1->source_form;
+                $notification->total_amount  = $notification->hpp1->total_amount;
+            } else {
+                $notification->isHppAvailable = false;
             }
 
-            // 🔎 Filter: Unit kerja
-            if ($unit) {
-                $query->where('unit_work', $unit);
-            }
+            // Status Approval PO
+            if ($notification->purchaseOrder) {
+                $po = $notification->purchaseOrder;
+                $allApproved = true;
 
-            // 🔎 Filter: Rentang tanggal pembuatan notifikasi
-            if ($from && $to) {
-                $query->whereBetween('created_at', [$from, $to]);
-            } elseif ($from) {
-                $query->whereDate('created_at', '>=', $from);
-            } elseif ($to) {
-                $query->whereDate('created_at', '<=', $to);
-            }
+                $approvalStatuses = ($notification->source_form === 'createhpp1')
+                    ? [
+                        $po->approve_manager,
+                        $po->approve_senior_manager,
+                        $po->approve_general_manager,
+                        $po->approve_direktur_operasional,
+                    ]
+                    : [
+                        $po->approve_manager,
+                        $po->approve_senior_manager,
+                        $po->approve_general_manager,
+                    ];
 
-            // 🔎 Filter: Status persetujuan PO (setuju/tidak_setuju)
-            if ($status) {
-                $query->whereHas('purchaseOrder', function ($poQuery) use ($status) {
-                    $poQuery->where('approval_target', $status);
-                });
-            }
-
-            // 🔹 Ambil data dengan pagination
-            $notifications = $query->orderBy('created_at', 'desc')->paginate($entries);
-
-            // 🔹 Proses tiap notifikasi untuk data tambahan
-            foreach ($notifications as $notification) {
-                // ✅ Cek dokumen abnormalitas
-                $notification->isAbnormalAvailable = $notification->dokumenOrders
-                    ->where('jenis_dokumen', 'abnormalitas')->isNotEmpty();
-
-                // ✅ Scope of work
-                $notification->isScopeOfWorkAvailable = $notification->scopeOfWork !== null;
-
-                // ✅ Cek gambar teknik
-                $notification->isGambarTeknikAvailable = $notification->dokumenOrders
-                    ->where('jenis_dokumen', 'gambar_teknik')->isNotEmpty();
-
-                // ✅ Cek HPP
-                if ($notification->hpp1) {
-                    $notification->isHppAvailable = true;
-                    $notification->source_form   = $notification->hpp1->source_form;
-                    $notification->total_amount  = $notification->hpp1->total_amount;
-                } else {
-                    $notification->isHppAvailable = false;
+                foreach ($approvalStatuses as $statusApproval) {
+                    if (!$statusApproval) {
+                        $allApproved = false;
+                        break;
+                    }
                 }
 
-                // ✅ Status Approval PO
-                if ($notification->purchaseOrder) {
-                    $po = $notification->purchaseOrder;
-                    $allApproved = true;
-
-                    $approvalStatuses = ($notification->source_form === 'createhpp1')
-                        ? [
-                            $po->approve_manager,
-                            $po->approve_senior_manager,
-                            $po->approve_general_manager,
-                            $po->approve_direktur_operasional,
-                        ]
-                        : [
-                            $po->approve_manager,
-                            $po->approve_senior_manager,
-                            $po->approve_general_manager,
-                        ];
-
-                    foreach ($approvalStatuses as $statusApproval) {
-                        if (!$statusApproval) {
-                            $allApproved = false;
-                            break;
-                        }
-                    }
-
-                    if ($allApproved) {
-                        $notification->status_approval = 'Approved';
-                    } else {
-                        $notification->status_approval = 'Pending';
-                        $approvalWaitList = [];
-
-                        if (!$po->approve_manager) $approvalWaitList[] = 'Manager';
-                        if (!$po->approve_senior_manager) $approvalWaitList[] = 'Senior Manager';
-                        if (!$po->approve_general_manager) $approvalWaitList[] = 'General Manager';
-                        if ($notification->source_form === 'createhpp1' && !$po->approve_direktur_operasional) {
-                            $approvalWaitList[] = 'Direktur Operasional';
-                        }
-
-                        $notification->waiting_for = implode(', ', $approvalWaitList);
-                    }
+                if ($allApproved) {
+                    $notification->status_approval = 'Approved';
                 } else {
                     $notification->status_approval = 'Pending';
+                    $approvalWaitList = [];
+
+                    if (!$po->approve_manager) $approvalWaitList[] = 'Manager';
+                    if (!$po->approve_senior_manager) $approvalWaitList[] = 'Senior Manager';
+                    if (!$po->approve_general_manager) $approvalWaitList[] = 'General Manager';
+                    if ($notification->source_form === 'createhpp1' && !$po->approve_direktur_operasional) {
+                        $approvalWaitList[] = 'Direktur Operasional';
+                    }
+
+                    $notification->waiting_for = implode(', ', $approvalWaitList);
                 }
+            } else {
+                $notification->status_approval = 'Pending';
             }
-
-            return view('admin.purchaseorder', compact(
-                'notifications',
-                'search',
-                'entries',
-                'status',
-                'unit',
-                'from',
-                'to'
-            ));
-        } catch (\Throwable $e) {
-            Log::error('Error di PurchaseOrderController@index: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->view('errors.500', [
-                'message' => 'Terjadi kesalahan saat memuat data Purchase Order.'
-            ], 500);
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | 5. Render ke View
+        |--------------------------------------------------------------------------
+        */
+        return view('admin.purchaseorder', compact(
+            'notifications',
+            'search',
+            'entries',
+            'status',
+            'unit',
+            'from',
+            'to'
+        ));
+
+    } catch (\Throwable $e) {
+        Log::error('Error di PurchaseOrderController@index: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return response()->view('errors.500', [
+            'message' => 'Terjadi kesalahan saat memuat data Purchase Order.'
+        ], 500);
     }
+}
 
     public function update(Request $request, $notification_number)
     {

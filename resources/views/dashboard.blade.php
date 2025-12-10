@@ -132,208 +132,316 @@
                                 <th class="px-3 py-2 text-left font-semibold uppercase">Job Name</th>
                                 <th class="px-3 py-2 text-left font-semibold uppercase">Informasi Order</th>
                                 <th class="px-3 py-2 text-left font-semibold uppercase">Approval HPP</th>
-                                <th class="px-3 py-2 text-left font-semibold uppercase">Dokumen PR/PO</th>
                                 <th class="px-3 py-2 text-left font-semibold uppercase">Progress Pekerjaan</th>
                                 <th class="px-3 py-2 text-left font-semibold uppercase">Total Biaya (LHPP)</th>
                                 <th class="px-3 py-2 text-left font-semibold uppercase">Dokumen Laporan</th>
                             </tr>
                         </thead>
+<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+@forelse($notifications as $index => $notification)
+    <tr class="{{ $index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900' }} hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+        {{-- Order Number --}}
+        <td class="px-3 py-2 text-gray-800 dark:text-gray-200 font-medium">
+            {{ $notification->notification_number }}
+        </td>
 
-                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                            @forelse($notifications as $index => $notification)
-                                <tr class="{{ $index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900' }} hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-                                    <td class="px-3 py-2 text-gray-800 dark:text-gray-200 font-medium">
-                                        {{ $notification->notification_number }}
-                                    </td>
-                                   <!-- Job Name + Unit Work (Spotlight Style) -->
-<td class="px-4 py-3 align-top">
-    <div class="space-y-2">
         {{-- Job Name --}}
-        <span class="block text-sm font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
-            {{ Str::limit($notification->job_name, 70) }}
-        </span>
-
-        {{-- Single composite badge: Unit Kerja + Seksi --}}
-        <span class="inline-flex items-start w-full max-w-[34rem] px-3 py-2 rounded-2xl ring-1
-                     bg-blue-50 ring-blue-200 text-blue-800
-                     dark:bg-slate-800 dark:ring-slate-700 dark:text-blue-300">
-            <i class="fas fa-building mt-0.5 text-[12px] opacity-90"></i>
-            <span class="ml-2 leading-tight">
-                {{-- Unit Kerja (headline in badge) --}}
-                <span class="block text-[12.5px] font-semibold">
-                    {{ $notification->unit_work }}
+        <td class="px-4 py-3 align-top">
+            <div class="space-y-2">
+                <span class="block text-sm font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
+                    {{ Str::limit($notification->job_name, 70) }}
                 </span>
 
-                {{-- Seksi (subline) --}}
-                @if(!empty($notification->seksi))
-                    <span class="block text-[11px] font-medium text-blue-700/90 dark:text-blue-300/80">
-                        <i class="fas fa-sitemap text-[10px] mr-1 opacity-80"></i>
-                        {{ $notification->seksi }}
+                <span class="inline-flex items-start w-full max-w-[34rem] px-3 py-2 rounded-2xl ring-1
+                             bg-blue-50 ring-blue-200 text-blue-800
+                             dark:bg-slate-800 dark:ring-slate-700 dark:text-blue-300">
+                    <i class="fas fa-building mt-0.5 text-[12px] opacity-90"></i>
+                    <span class="ml-2 leading-tight">
+                        <span class="block text-[12.5px] font-semibold">
+                            {{ $notification->unit_work }}
+                        </span>
+
+                        @if(!empty($notification->seksi))
+                            <span class="block text-[11px] font-medium text-blue-700/90 dark:text-blue-300/80">
+                                <i class="fas fa-sitemap text-[10px] mr-1 opacity-80"></i>
+                                {{ $notification->seksi }}
+                            </span>
+                        @endif
                     </span>
+                </span>
+            </div>
+        </td>
+
+        {{-- Informasi Order + Verifikasi Anggaran --}}
+        <td class="px-4 py-3 align-top">
+            @php
+                $status = $notification->status ?? 'Pending';
+                $verif = $notification->verifikasiAnggaran ?? null;
+            @endphp
+
+            <div class="flex items-start gap-2 mb-2">
+                <span class="px-2 py-1 rounded text-white text-xs
+                    {{ $status === 'Pending' ? 'bg-yellow-500' : ($status === 'Reject' ? 'bg-red-500' : 'bg-green-500') }}">
+                    {{ $status }}
+                </span>
+                <div class="text-[12px] leading-tight text-gray-600 dark:text-gray-300">
+                    <div><strong>Catatan:</strong> {{ $notification->catatan ?? 'Tidak Ada Catatan' }}</div>
+                </div>
+            </div>
+
+            <hr class="border-gray-300 dark:border-gray-700 my-2">
+
+            @if($verif)
+                <div class="flex flex-col gap-1">
+                    <span class="inline-flex items-center px-2 py-1 rounded text-white text-xs
+                        {{ ($verif->status_anggaran ?? '') === 'Tersedia' ? 'bg-green-500' : ((($verif->status_anggaran ?? '') === 'Tidak Tersedia') ? 'bg-red-500' : 'bg-yellow-400') }}">
+                        {{ $verif->status_anggaran ?? 'Menunggu' }}
+                    </span>
+
+                    <div class="text-[12px] text-gray-600 dark:text-gray-300">
+                        <div><strong>Cost Element:</strong> {{ $verif->cost_element ?? '-' }}</div>
+                        <div><strong>Catatan:</strong> {{ $verif->catatan ?? '-' }}</div>
+                    </div>
+                </div>
+            @else
+                <div class="flex flex-col gap-1">
+                    <span class="px-2 py-1 rounded text-white bg-gray-400 text-xs">Menunggu</span>
+                    <div class="text-[12px] text-gray-500 italic">Belum diverifikasi</div>
+                </div>
+            @endif
+        </td>
+
+        {{-- Approval HPP --}}
+        <td class="px-3 py-2 text-gray-700 dark:text-gray-300 text-sm leading-tight">
+            @php $hpp = $notification->hpp1 ?? null; @endphp
+
+            @if(!$hpp)
+                <span class="text-gray-500 italic">Belum dibuat</span>
+            @else
+                @php $source = $hpp->source_form ?? ''; @endphp
+
+                @if ($source === 'createhpp1')
+                    @php
+                        $steps = [
+                            ['field'=>'manager_signature','label'=>'Manager Bengkel Mesin'],
+                            ['field'=>'senior_manager_signature','label'=>'Senior Manager Workshop'],
+                            ['field'=>'manager_signature_requesting_unit','label'=>'Manager Peminta'],
+                            ['field'=>'senior_manager_signature_requesting_unit','label'=>'Senior Manager Peminta'],
+                            ['field'=>'general_manager_signature_requesting_unit','label'=>'General Manager Peminta'],
+                            ['field'=>'general_manager_signature','label'=>'General Manager'],
+                            ['field'=>'__director__','label'=>'Direktur Operasional'],
+                        ];
+                        $pending = null;
+                        foreach ($steps as $s) {
+                            $f = $s['field']; $label = $s['label'];
+                            if ($f === '__director__') {
+                                $done = !empty($hpp->director_signature) || !empty($hpp->director_uploaded_file);
+                                if (! $done) $pending = $label;
+                                break;
+                            }
+                            if (empty($hpp->{$f})) { $pending = $label; break; }
+                        }
+                    @endphp
+
+                    @if ($pending)
+                        <span class="text-red-500">Menunggu TTD: {{ $pending }}</span>
+                    @else
+                        <span class="text-green-600 font-semibold">Telah Ditandatangani Semua</span>
+                    @endif
+
+                @elseif ($source === 'createhpp2')
+                    @include('admin.inputhpp.partials._status_hpp2', ['data' => $hpp])
+                @elseif ($source === 'createhpp3')
+                    @include('admin.inputhpp.partials._status_hpp3', ['data' => $hpp])
+                @elseif ($source === 'createhpp4')
+                    @include('admin.inputhpp.partials._status_hpp4', ['data' => $hpp])
+                @else
+                    <span class="text-slate-400">Tidak diketahui</span>
                 @endif
-            </span>
-        </span>
-    </div>
-</td>
-                                    <!-- INFORMASI ORDER + VERIFIKASI ANGGARAN (Satu kolom gabung) -->
-                                    <td class="px-4 py-3 align-top">
-                                        @php
-                                            $status = $notification->status ?? 'Pending';
-                                            $verif = $notification->verifikasiAnggaran ?? null;
-                                        @endphp
+            @endif
+        </td>
 
-                                        <!-- Bagian Status Order -->
-                                        <div class="flex items-start gap-2 mb-2">
-                                            <span class="px-2 py-1 rounded text-white text-xs
-                                                {{ $status === 'Pending' ? 'bg-yellow-500' : ($status === 'Reject' ? 'bg-red-500' : 'bg-green-500') }}">
-                                                {{ $status }}
-                                            </span>
-                                            <div class="text-[12px] leading-tight text-gray-600 dark:text-gray-300">
-                                                <div><strong>Catatan:</strong> {{ $notification->catatan ?? 'Tidak Ada Catatan' }}</div>
-                                            </div>
-                                        </div>
+        {{-- Progress --}}
+        <td class="px-3 py-2 text-center">
+            @php
+                $progress = optional($notification->purchaseOrder)->progress_pekerjaan ?? 0;
+                $catatanPo = optional($notification->purchaseOrder)->catatan;
+                $target = optional($notification->purchaseOrder)->target_penyelesaian;
+            @endphp
 
-                                        <hr class="border-gray-300 dark:border-gray-700 my-2">
+            <div class="w-full bg-gray-300 dark:bg-gray-700 rounded-full h-2 overflow-hidden mb-1">
+                <div class="h-2 bg-green-500 rounded-full" style="width: {{ $progress }}%;"></div>
+            </div>
+            <div class="text-xs text-gray-700 dark:text-gray-300">
+                <span class="font-semibold">{{ $progress }}%</span>
+                <div class="text-[11px] text-gray-500">{{ $catatanPo ?? 'Tidak ada catatan' }}</div>
+                <div class="text-[11px]">
+                    Target:
+                    @if($target)
+                        {{ \Carbon\Carbon::parse($target)->format('d M Y') }}
+                    @else
+                        <span class="text-red-500">Belum Ditentukan</span>
+                    @endif
+                </div>
+            </div>
+        </td>
 
-                                        <!-- Bagian Verifikasi Anggaran -->
-                                        @if($verif)
-                                            <div class="flex flex-col gap-1">
-                                                <span class="inline-flex items-center px-2 py-1 rounded text-white text-xs
-                                                    {{ $verif->status_anggaran === 'Tersedia' ? 'bg-green-500' : ($verif->status_anggaran === 'Tidak Tersedia' ? 'bg-red-500' : 'bg-yellow-400') }}">
-                                                    {{ $verif->status_anggaran ?? 'Menunggu' }}
-                                                </span>
+        {{-- Total Biaya (LHPP) --}}
+        <td class="px-3 py-2 text-gray-800 dark:text-gray-200 text-right font-medium">
+            @if(optional($notification->lhpp)->total_biaya)
+                Rp {{ number_format(optional($notification->lhpp)->total_biaya, 0, ',', '.') }}
+            @else
+                <span class="text-gray-500 italic">-</span>
+            @endif
+        </td>
 
-                                                <div class="text-[12px] text-gray-600 dark:text-gray-300">
-                                                    <div><strong>Cost Element:</strong> {{ $verif->cost_element ?? '-' }}</div>
-                                                    <div><strong>Catatan:</strong> {{ $verif->catatan ?? '-' }}</div>
-                                                </div>
-                                            </div>
-                                        @else
-                                            <div class="flex flex-col gap-1">
-                                                <span class="px-2 py-1 rounded text-white bg-gray-400 text-xs">Menunggu</span>
-                                                <div class="text-[12px] text-gray-500 italic">Belum diverifikasi</div>
-                                            </div>
-                                        @endif
-                                    </td>
-                                    <!-- HPP Approval Status -->
-                                    <td class="px-3 py-2 text-gray-700 dark:text-gray-300 text-sm leading-tight">
-                                        @php $hpp = $notification->hpp1; @endphp
-                                        @if (!$hpp)
-                                            <span class="text-gray-500 italic">Belum dibuat</span>
-                                        @else
-                                            @php
-                                                $pending = collect([
-                                                    'manager_signature' => 'Manager Bengkel Mesin',
-                                                    'senior_manager_signature' => 'Senior Manager Workshop',
-                                                    'manager_signature_requesting_unit' => 'Manager Peminta',
-                                                    'senior_manager_signature_requesting_unit' => 'Senior Manager Peminta',
-                                                    'general_manager_signature' => 'General Manager',
-                                                    'general_manager_signature_requesting_unit' => 'General Manager Peminta',
-                                                    'director_signature' => 'Director',
-                                                ])->first(function ($_, $key) use ($hpp) {
-                                                    return is_null($hpp->$key);
-                                                });
-                                            @endphp
+        {{-- Dokumen Laporan: pakai Lpj helper + relasi Garansi --}}
+        <td class="px-3 py-2 align-top">
+            <div class="flex flex-col gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                    @if($notification->lhpp)
+                        <a href="{{ route('lhpp.show', $notification->notification_number) }}"
+                           class="inline-flex items-center gap-1 bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs transition">
+                            <i class="fas fa-file-alt"></i> LHPP
+                        </a>
+                    @else
+                        <span class="text-gray-500 italic text-xs">LHPP: Tidak ada</span>
+                    @endif
 
-                                            @if ($pending)
-                                                <span class="text-red-500">Menunggu TTD: {{ $pending }}</span>
-                                            @else
-                                                <span class="text-green-500 font-semibold">Sudah Ditandatangani</span>
-                                            @endif
-                                        @endif
-                                    </td>
+                    @if(optional($notification->purchaseOrder)->po_document_path)
+                        <a href="{{ Storage::url(optional($notification->purchaseOrder)->po_document_path) }}" target="_blank"
+                           class="inline-flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition">
+                            <i class="fas fa-file-contract"></i> PO
+                        </a>
+                    @else
+                        <span class="text-gray-500 italic text-xs">PO: Tidak ada</span>
+                    @endif
+                </div>
 
-                                    <!-- Dokumen PR/PO -->
-                                    <td class="px-3 py-2 text-center">
-                                        @if(optional($notification->purchaseOrder)->po_document_path)
-                                            <a href="{{ Storage::url(optional($notification->purchaseOrder)->po_document_path) }}" 
-                                               target="_blank"
-                                               class="inline-flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs transition">
-                                                <i class="fas fa-file-alt"></i>
-                                                {{ optional($notification->purchaseOrder)->purchase_order_number ?? 'PO Document' }}
-                                            </a>
-                                        @else
-                                            <span class="text-gray-500 italic">Tidak ada</span>
-                                        @endif
-                                    </td>
+                @php $lpj = optional($notification->lpj); @endphp
 
-                                    <!-- Progress -->
-                                    <td class="px-3 py-2 text-center">
-                                        @php
-                                            $progress = optional($notification->purchaseOrder)->progress_pekerjaan ?? 0;
-                                            $catatanPo = optional($notification->purchaseOrder)->catatan;
-                                            $target = optional($notification->purchaseOrder)->target_penyelesaian;
-                                        @endphp
+                <div x-data="{ t: '1' }" class="flex items-center gap-2">
+                    <select x-model="t" class="text-[11px] px-2 py-1 border rounded bg-white dark:bg-gray-800">
+                        <option value="1">Termin 1</option>
+                        <option value="2">Termin 2</option>
+                    </select>
 
-                                        <div class="w-full bg-gray-300 dark:bg-gray-700 rounded-full h-2 overflow-hidden mb-1">
-                                            <div class="h-2 bg-green-500 rounded-full" style="width: {{ $progress }}%;"></div>
-                                        </div>
-                                        <div class="text-xs text-gray-700 dark:text-gray-300">
-                                            <span class="font-semibold">{{ $progress }}%</span>
-                                            <div class="text-[11px] text-gray-500">{{ $catatanPo ?? 'Tidak ada catatan' }}</div>
-                                            <div class="text-[11px]">
-                                                Target:
-                                                @if($target)
-                                                    {{ \Carbon\Carbon::parse($target)->format('d M Y') }}
-                                                @else
-                                                    <span class="text-red-500">Belum Ditentukan</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </td>
+                    <div class="flex items-center gap-2">
+                        <template x-if="t==='1'">
+                            <div class="flex items-center gap-2">
+                                @php $lpjPath1 = $lpj ? $lpj->getLpjPathForTermin(1) : null; @endphp
+                                @if(!empty($lpjPath1))
+                                    <a href="{{ Storage::url($lpjPath1) }}" target="_blank"
+                                       class="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs transition">
+                                        <i class="fas fa-file-alt"></i> LPJ T1
+                                    </a>
+                                @else
+                                    <span class="text-gray-500 italic text-xs">LPJ T1: -</span>
+                                @endif
 
-                                    <!-- TOTAL BIAYA (LHPP) -->
-                                    <td class="px-3 py-2 text-gray-800 dark:text-gray-200 text-right font-medium">
-                                        @if(optional($notification->lhpp)->total_biaya)
-                                            Rp {{ number_format(optional($notification->lhpp)->total_biaya, 0, ',', '.') }}
-                                        @else
-                                            <span class="text-gray-500 italic">-</span>
-                                        @endif
-                                    </td>
+                                @php $pplPath1 = $lpj ? $lpj->getPplPathForTermin(1) : null; @endphp
+                                @if(!empty($pplPath1))
+                                    <a href="{{ Storage::url($pplPath1) }}" target="_blank"
+                                       class="inline-flex items-center gap-1 bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-xs transition">
+                                        <i class="fas fa-file-invoice"></i> PPL T1
+                                    </a>
+                                @else
+                                    <span class="text-gray-500 italic text-xs">PPL T1: -</span>
+                                @endif
+                            </div>
+                        </template>
 
-                                    <!-- Dokumen Laporan -->
-                                    <td class="px-3 py-2 text-gray-800 dark:text-gray-200">
-                                        <div class="flex flex-wrap gap-2">
-                                            <!-- LHPP -->
-                                            @if($notification->lhpp)
-                                                <a href="{{ route('lhpp.show', $notification->notification_number) }}"
-                                                   class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs flex items-center gap-1">
-                                                   <i class="fas fa-file-alt"></i> LHPP
-                                                </a>
-                                            @else
-                                                <span class="text-gray-500 italic">LHPP: Tidak ada</span>
-                                            @endif
+                        <template x-if="t==='2'">
+                            <div class="flex items-center gap-2">
+                                @php $lpjPath2 = $lpj ? $lpj->getLpjPathForTermin(2) : null; @endphp
+                                @if(!empty($lpjPath2))
+                                    <a href="{{ Storage::url($lpjPath2) }}" target="_blank"
+                                       class="inline-flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs transition">
+                                        <i class="fas fa-file-alt"></i> LPJ T2
+                                    </a>
+                                @else
+                                    <span class="text-gray-500 italic text-xs">LPJ T2: -</span>
+                                @endif
 
-                                            <!-- LPJ -->
-                                            @if(optional($notification->lpj)->lpj_document_path)
-                                                <a href="{{ Storage::url($notification->lpj->lpj_document_path) }}" target="_blank"
-                                                   class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs flex items-center gap-1">
-                                                   <i class="fas fa-file-alt"></i> LPJ
-                                                </a>
-                                            @else
-                                                <span class="text-gray-500 italic">LPJ: Tidak ada</span>
-                                            @endif
+                                @php $pplPath2 = $lpj ? $lpj->getPplPathForTermin(2) : null; @endphp
+                                @if(!empty($pplPath2))
+                                    <a href="{{ Storage::url($pplPath2) }}" target="_blank"
+                                       class="inline-flex items-center gap-1 bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded text-xs transition">
+                                        <i class="fas fa-file-invoice"></i> PPL T2
+                                    </a>
+                                @else
+                                    <span class="text-gray-500 italic text-xs">PPL T2: -</span>
+                                @endif
+                            </div>
+                        </template>
+                    </div>
+                </div>
 
-                                            <!-- PPL -->
-                                            @if(optional($notification->lpj)->ppl_document_path)
-                                                <a href="{{ Storage::url($notification->lpj->ppl_document_path) }}" target="_blank"
-                                                   class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded text-xs flex items-center gap-1">
-                                                   <i class="fas fa-file-alt"></i> PPL
-                                                </a>
-                                            @else
-                                                <span class="text-gray-500 italic">PPL: Tidak ada</span>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="8" class="py-8 text-center text-gray-500 dark:text-gray-400">
-                                        Tidak ada data order ditemukan.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
+              @php
+    $garansi = optional($notification->garansi);
+    $garansiStart = $garansi->start_date ?? null;
+    $garansiEnd   = $garansi->end_date ?? null;
+
+    if (!$garansiEnd && $lpj && ($lpj->garansi_months ?? 0) > 0) {
+        $startCandidate = $lpj->update_date ?? null;
+        $calcEnd = $lpj->calculateGaransiEndDate($startCandidate);
+        if ($calcEnd) {
+            $garansiStart = $garansiStart ?? ($startCandidate ? \Carbon\Carbon::parse($startCandidate)->format('Y-m-d') : null);
+            $garansiEnd = $calcEnd->format('Y-m-d'); // pastikan Y-m-d
+        }
+    }
+
+    // buat versi untuk tampilan dan versi untuk data-end (Y-m-d)
+    try {
+        $garansiStartFmt = $garansiStart ? \Carbon\Carbon::parse($garansiStart)->format('d M Y') : null;
+    } catch(\Throwable $e) { $garansiStartFmt = null; }
+
+    try {
+        $garansiEndFmt = $garansiEnd ? \Carbon\Carbon::parse($garansiEnd)->format('d M Y') : null;
+    } catch(\Throwable $e) { $garansiEndFmt = null; }
+
+    // data-end must be Y-m-d or null
+    $garansiEndForData = $garansiEnd ? \Carbon\Carbon::parse($garansiEnd)->format('Y-m-d') : null;
+    $garansiStartForData = $garansiStart ? \Carbon\Carbon::parse($garansiStart)->format('Y-m-d') : '';
+@endphp
+
+                <div class="mt-2 text-xs text-gray-700 dark:text-gray-300">
+                    <div class="flex items-center gap-3">
+                        <div>
+                            <div class="text-[11px] text-gray-500">Mulai</div>
+                            <div class="font-medium">{{ $garansiStartFmt ?? '-' }}</div>
+                        </div>
+
+                        <div>
+                            <div class="text-[11px] text-gray-500">Berakhir</div>
+                            <div class="font-medium">{{ $garansiEndFmt ?? '-' }}</div>
+                        </div>
+
+                        <div>
+@if($garansiEndForData)
+    <span class="garansi-countdown inline-flex items-center px-2 py-0.5 rounded text-xs"
+          data-end="{{ $garansiEndForData }}"
+          data-start="{{ $garansiStartForData }}"
+          aria-live="polite">Menghitung...</span>
+@else
+    <span class="text-gray-400 text-xs">-</span>
+@endif
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </td>
+    </tr>
+@empty
+    <tr>
+        <td colspan="8" class="py-8 text-center text-gray-500 dark:text-gray-400">
+            Tidak ada data order ditemukan.
+        </td>
+    </tr>
+@endforelse
+</tbody>
+
                     </table>
                 </div>
 
@@ -466,6 +574,53 @@ document.addEventListener('DOMContentLoaded', () => {
     makeBarChart('chartBiaya', labels, dsBiaya, (v) => 'Rp ' + Number(v).toLocaleString('id-ID'));
     makeBarChart('chartKawat', kawatLabels, dsKawat, (v) => v);
 });
+// ===== Garansi countdown badge (sama seperti di laporan) =====
+document.addEventListener('DOMContentLoaded', function () {
+    function updateGaransiBadge(el) {
+        if (!el) return;
+        const endStr = el.getAttribute('data-end');
+        if (!endStr) {
+            el.className = 'text-gray-400 text-xs';
+            el.textContent = '-';
+            return;
+        }
+
+        // parse as local date at midnight
+        const end = new Date(endStr + 'T00:00:00');
+        const now = new Date();
+        const msPerDay = 24 * 60 * 60 * 1000;
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+        const diffDays = Math.floor((startOfEnd - startOfToday) / msPerDay);
+
+        let text = '';
+        let cls = 'inline-flex items-center px-2 py-0.5 rounded text-xs ';
+        if (diffDays > 1) {
+            text = diffDays + ' hari tersisa';
+            cls += 'bg-green-50 text-green-800';
+        } else if (diffDays === 1) {
+            text = 'Besok (1 hari)';
+            cls += 'bg-yellow-50 text-yellow-800';
+        } else if (diffDays === 0) {
+            text = 'Terakhir hari ini';
+            cls += 'bg-yellow-100 text-yellow-800';
+        } else {
+            text = 'Habis';
+            cls += 'bg-red-50 text-red-800';
+        }
+
+        el.className = cls;
+        el.textContent = text;
+    }
+
+    // init badges (works for multiple rows)
+    const els = document.querySelectorAll('.garansi-countdown');
+    els.forEach(updateGaransiBadge);
+
+    // optional: refresh every 6 hours
+    // setInterval(() => document.querySelectorAll('.garansi-countdown').forEach(updateGaransiBadge), 1000 * 60 * 60 * 6);
+});
+
 </script>
 
 <style>

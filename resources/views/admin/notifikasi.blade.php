@@ -11,12 +11,23 @@
             <!-- TAB NOTIFIKASI -->
              
             <div x-show="tab === 'notif'" class="mt-4">
-                <x-filter-bar 
+               @php
+    $statusOptions = [
+        \App\Models\Notification::STATUS_PENDING                => '⏳ Pending',
+        \App\Models\Notification::STATUS_APPROVED_WORKSHOP      => '✅ Approved (Workshop)',
+        \App\Models\Notification::STATUS_APPROVED_JASA          => '✅ Approved (Jasa)',
+        \App\Models\Notification::STATUS_APPROVED_WORKSHOP_JASA => '✅ Approved (Workshop + Jasa)',
+        \App\Models\Notification::STATUS_REJECT                 => '⛔ Reject',
+    ];
+@endphp
+
+<x-filter-bar 
     :search="true"
     searchPlaceholder="Cari Nomor Notifikasi..."
-    :statusOptions="['Pending' => '⏳ Pending', 'Approved' => '✅ Approved']"
-    :dateFilter="false"   {{-- ⬅️ ini hilangkan tanggal --}}
+    :statusOptions="$statusOptions"
+    :dateFilter="false"
 >
+
     {{-- Custom Filter: Regu --}}
     <div class="flex flex-col">
         <label class="text-[11px] font-semibold text-gray-600 mb-1">Regu</label>
@@ -144,94 +155,142 @@
                             </td>
 <!-- Catatan -->
 <td class="px-3 py-2 text-right">
-<form 
-    action="{{ route('notifications.update', $notification->notification_number) }}?tab=notif" 
-    method="POST"
-    class="notif-update-form"
-    data-notif="{{ $notification->notification_number }}"
->
-    @csrf @method('PATCH')
+    <form 
+        action="{{ route('notifications.update', $notification->notification_number) }}?tab=notif" 
+        method="POST"
+        class="notif-update-form"
+        data-notif="{{ $notification->notification_number }}"
+    >
+        @csrf @method('PATCH')
 
-        @php
-            // daftar opsi
-            $opsiJasa = ['Jasa Fabrikasi','Jasa Konstruksi','Jasa Pengerjaan Mesin'];
-            $opsiWorkshop = ['Regu Fabrikasi','Regu Bengkel (Refurbish)'];
+      @php
+    // daftar opsi
+    $opsiJasa = ['Jasa Fabrikasi','Jasa Konstruksi','Jasa Pengerjaan Mesin'];
+    $opsiWorkshop = ['Regu Fabrikasi','Regu Bengkel (Refurbish)'];
 
-            // tentukan mode awal dari data lama
-            $currentStatus = $notification->status ?? 'Pending';
-            $currentCatatan = $notification->catatan ?? '';
+    // status & catatan dari DB (pakai default 'pending' enum)
+    $currentStatus  = $notification->status ?? \App\Models\Notification::STATUS_PENDING;
+    $currentCatatan = $notification->catatan ?? '';
 
-            if ($currentStatus === 'Approved') {
-                if (in_array($currentCatatan, $opsiJasa)) {
-                    $initMode = 'approved_jasa';
-                } elseif (in_array($currentCatatan, $opsiWorkshop)) {
-                    $initMode = 'approved_workshop';
-                } else {
-                    // fallback kalau catatan kosong/lain: default ke approved_workshop
-                    $initMode = 'approved_workshop';
-                }
-            } elseif ($currentStatus === 'Reject') {
-                $initMode = 'reject';
-            } else { // Pending
-                $initMode = 'pending';
-            }
-        @endphp
+    // mapping status → mode di dropdown
+    switch ($currentStatus) {
+        case \App\Models\Notification::STATUS_APPROVED_JASA:
+            $initMode = 'approved_jasa';
+            break;
 
-       <div x-data="notifForm({
-    initMode: @js($initMode),
-    statusServer: @js($currentStatus),
-    catatanServer: @js($currentCatatan),
-    opsiJasa: @js($opsiJasa),
-    opsiWorkshop: @js($opsiWorkshop),
-})" x-init="init()" class="flex flex-col gap-2">
+        case \App\Models\Notification::STATUS_APPROVED_WORKSHOP:
+            $initMode = 'approved_workshop';
+            break;
 
-<!-- Select utama: pilih mode -->
-<select x-model="mode"
-        name="mode"           
-        class="px-2 py-1 rounded bg-gray-100 border-gray-300 text-xs w-full">
-    <option value="approved_jasa">✅ Approved (Jasa)</option>
-    <option value="approved_workshop">✅ Approved (Workshop)</option>
-    <option value="pending">⏳ Pending</option>
-    <option value="reject">⛔ Reject</option>
-</select>
+        case \App\Models\Notification::STATUS_APPROVED_WORKSHOP_JASA:
+            $initMode = 'approved_both';
+            break;
 
-<!-- Dropdown Approved (Jasa) -->
+        case \App\Models\Notification::STATUS_REJECT:
+            $initMode = 'reject';
+            break;
+
+        default: // pending atau nilai lain
+            $initMode = 'pending';
+            break;
+    }
+@endphp
+
+
+   <div x-data="notifForm({
+        initMode: @js($initMode),
+        statusServer: @js($currentStatus),
+        catatanServer: @js($currentCatatan),
+        opsiJasa: @js($opsiJasa),
+        opsiWorkshop: @js($opsiWorkshop),
+    })"
+     x-init="init()"
+     class="flex flex-col gap-2">
+
+
+            <!-- Select utama: pilih mode -->
+            <select x-model="mode"
+                    name="mode"
+                    class="px-2 py-1 rounded bg-gray-100 border-gray-300 text-xs w-full">
+                <option value="approved_jasa">✅ Approved (Jasa)</option>
+                <option value="approved_workshop">✅ Approved (Workshop)</option>
+                <option value="approved_both">✅ Approved (Workshop + Jasa)</option>
+                <option value="pending">⏳ Pending</option>
+                <option value="reject">⛔ Reject</option>
+            </select>
+
+            <!-- Dropdown Approved (Jasa) -->
 <select x-show="mode === 'approved_jasa'"
         x-model="catatan"
-        name="catatan_select_jasa"   {{-- opsional: for debug, tapi hidden catatan below is main --}}
+        name="catatan_select_jasa"
         class="w-full px-2 py-1 rounded bg-gray-100 border-gray-300 text-xs">
+    <!-- placeholder hanya terpilih kalau catatan kosong -->
+    <option value="" x-bind:selected="catatan === ''">
+        - Pilih jenis jasa (opsional) -
+    </option>
+
     <template x-for="opt in opsiJasa" :key="opt">
-        <option :value="opt" x-text="opt"></option>
+        <option :value="opt"
+                x-text="opt"
+                :selected="catatan === opt">
+        </option>
     </template>
 </select>
 
-<!-- Dropdown Approved (Workshop) -->
-<select x-show="mode === 'approved_workshop'"
+            <!-- Dropdown Approved (Workshop) -->
+          <select x-show="mode === 'approved_workshop'"
         x-model="catatan"
-        name="catatan_select_workshop" {{-- opsional --}}
+        name="catatan_select_workshop"
         class="w-full px-2 py-1 rounded bg-gray-100 border-gray-300 text-xs">
+    <option value="" x-bind:selected="catatan === ''">
+        - Pilih regu workshop (opsional) -
+    </option>
+
     <template x-for="opt in opsiWorkshop" :key="opt">
-        <option :value="opt" x-text="opt"></option>
+        <option :value="opt"
+                x-text="opt"
+                :selected="catatan === opt">
+        </option>
     </template>
 </select>
 
-<!-- Textarea untuk Pending/Reject -->
-<textarea x-show="mode === 'pending' || mode === 'reject'"
-          x-model="catatan"
-          rows="2"
-          placeholder="Catatan (opsional)"
-          class="w-full px-2 py-1 rounded bg-gray-100 border-gray-300 text-xs"></textarea>
+            <!-- Dropdown Approved (Workshop + Jasa) -->
+          <select x-show="mode === 'approved_both'"
+        x-model="catatan"
+        name="catatan_select_both"
+        class="w-full px-2 py-1 rounded bg-gray-100 border-gray-300 text-xs">
+    <option value="" x-bind:selected="catatan === ''">
+        - Pilih (opsional) -
+    </option>
 
-<!-- Hidden fields yang dikirim ke server (status & catatan) -->
-<input type="hidden" name="status"  :value="statusForSubmit">
-<input type="hidden" name="catatan" :value="catatan ?? ''">
+    <template x-for="opt in opsiGabungan" :key="opt">
+        <option :value="opt"
+                x-text="opt"
+                :selected="catatan === opt">
+        </option>
+    </template>
+</select>
+
+
+            <!-- Textarea untuk Pending/Reject -->
+            <textarea x-show="mode === 'pending' || mode === 'reject'"
+                      x-model="catatan"
+                      rows="2"
+                      placeholder="Catatan (opsional)"
+                      class="w-full px-2 py-1 rounded bg-gray-100 border-gray-300 text-xs"></textarea>
+
+            <!-- Hidden fields yang dikirim ke server (status & catatan) -->
+            <input type="hidden" name="status"  :value="statusForSubmit">
+            <input type="hidden" name="catatan" :value="catatan ?? ''">
+
             <button type="submit"
-                    class="bg-gray-500 text-white px-3 py-1 rounded-full hover:bg-gray-600 transition">
+                    class="bg-gray-500 text-white px-3 py-1 rounded-full hover:bg-gray-600 transition text-xs">
                 Save
             </button>
         </div>
-                                    </form>
-                                </td>
+    </form>
+</td>
+
                             </tr>
                     @endforeach
                 </tbody>
@@ -343,7 +402,27 @@
                             </div>
                         </td>
 
-                        <td class="px-3 py-2 align-top">{{ $order->unit_work }}</td>
+<td class="px-3 py-2 align-top">
+    <div class="flex flex-col gap-1">
+        <div class="font-medium text-[10px] text-gray-800">
+            {{ $order->unit_work }}
+        </div>
+
+        @if(!empty($order->seksi))
+            <div class="mt-1">
+                <span
+                    class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[8px] font-semibold
+                           bg-indigo-100 text-indigo-800 ring-1 ring-indigo-200">
+                    <i class="fas fa-sitemap text-[8px] opacity-80"></i>
+                    {{ $order->seksi }}
+                </span>
+            </div>
+        @else
+            <div class="text-xs text-gray-500 italic mt-1">Seksi: —</div>
+        @endif
+    </div>
+</td>
+
 
                         {{-- 🧾 Status & Catatan --}}
                         <td class="px-3 py-2 align-top">
@@ -379,41 +458,46 @@
  * 2) safe search input handling
  * 3) AJAX submit hijack for forms with class .notif-update-form
  */
-
-function notifForm({initMode, statusServer, catatanServer, opsiJasa, opsiWorkshop}) {
+function notifForm(config) {
     return {
-        // state
-        mode: initMode,
-        catatan: catatanServer || '',
-        opsiJasa,
-        opsiWorkshop,
+        mode: config.initMode || 'pending',
+        statusServer: config.statusServer || 'pending',
+        catatanServer: config.catatanServer || '',
+        opsiJasa: config.opsiJasa || [],
+        opsiWorkshop: config.opsiWorkshop || [],
 
-        // computed: status yang akan dikirim
-        get statusForSubmit() {
-            if (this.mode === 'approved_jasa' || this.mode === 'approved_workshop') return 'Approved';
-            if (this.mode === 'reject') return 'Reject';
-            return 'Pending';
+        catatan: '',
+
+        get opsiGabungan() {
+            return [...this.opsiJasa, ...this.opsiWorkshop];
         },
 
-        // init: set default catatan bila kosong sesuai mode
+        get statusForSubmit() {
+            if (this.mode === 'approved_jasa')     return 'approved_jasa';
+            if (this.mode === 'approved_workshop') return 'approved_workshop';
+            if (this.mode === 'approved_both')     return 'approved_workshop_jasa';
+            if (this.mode === 'reject')            return 'reject';
+            return 'pending';
+        },
+
         init() {
-            if (!this.catatan) {
-                if (this.mode === 'approved_jasa' && this.opsiJasa.length) {
-                    this.catatan = this.opsiJasa[0];
-                } else if (this.mode === 'approved_workshop' && this.opsiWorkshop.length) {
-                    this.catatan = this.opsiWorkshop[0];
-                } else {
-                    this.catatan = '';
+            this.catatan = this.catatanServer || '';
+
+            if (this.statusServer && this.statusServer.startsWith('approved_') && !this.catatan) {
+                if (this.mode === 'approved_jasa' || this.mode === 'approved_workshop') {
+                    this.mode = 'approved_both';
                 }
             }
         }
     }
 }
 
+
 /* ---------- safe search handler ---------- */
 (function setupSearch() {
     const searchEl = document.getElementById('search');
     if (!searchEl) return;
+
     searchEl.addEventListener('keyup', function () {
         let query = this.value.toLowerCase();
         let rows = document.querySelectorAll('#notificationTable tbody tr');
@@ -435,10 +519,10 @@ function notifForm({initMode, statusServer, catatanServer, opsiJasa, opsiWorksho
         el.style = 'position:fixed;right:20px;bottom:20px;padding:10px 14px;border-radius:8px;color:#fff;z-index:99999;font-size:13px;';
         el.style.background = ok ? '#16a34a' : '#dc2626';
         document.body.appendChild(el);
-        setTimeout(()=>el.remove(), 2400);
+        setTimeout(() => el.remove(), 2400);
     }
 
-    // attach to forms created on page load
+    // attach ke semua form notifikasi
     document.querySelectorAll('form.notif-update-form').forEach(form => {
         form.addEventListener('submit', async function (ev) {
             ev.preventDefault();
@@ -453,10 +537,8 @@ function notifForm({initMode, statusServer, catatanServer, opsiJasa, opsiWorksho
             // build payload
             const fd = new FormData(form);
 
-            // Ensure fields are present: mode, status, catatan
-            // (form should already contain name="mode" and hidden name="status" & name="catatan")
+            // pastikan field "mode" tetap ada
             if (!fd.has('mode')) {
-                // try to read from x-model select
                 const sel = form.querySelector('select[x-model="mode"], select[name="mode"]');
                 if (sel && sel.value) fd.append('mode', sel.value);
             }
@@ -472,12 +554,10 @@ function notifForm({initMode, statusServer, catatanServer, opsiJasa, opsiWorksho
                     credentials: 'same-origin'
                 });
 
-                // attempt parse JSON safely
                 let data = null;
-                try { data = await res.json(); } catch(e) { data = null; }
+                try { data = await res.json(); } catch (e) { data = null; }
 
                 if (!res.ok) {
-                    // try to show useful error message
                     let message = 'Gagal menyimpan perubahan.';
                     if (data) {
                         if (data.error) message = data.error;
@@ -487,36 +567,37 @@ function notifForm({initMode, statusServer, catatanServer, opsiJasa, opsiWorksho
                         } else if (data.message) message = data.message;
                     }
                     toast(message, false);
-                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.origText || 'Save'; }
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = submitBtn.dataset.origText || 'Save';
+                    }
                     return;
                 }
 
-                // success: Update DOM for that row so UI reflects saved state
+                // sukses: update DOM baris ini
                 const tr = form.closest('tr');
-
-                // 1) If server returned updated notification object, use it
                 const notif = data && data.notification ? data.notification : null;
 
-                // Update hidden inputs (status & catatan) to latest value
-                const hiddenStatus = form.querySelector('input[name="status"]');
+                const hiddenStatus  = form.querySelector('input[name="status"]');
                 const hiddenCatatan = form.querySelector('input[name="catatan"]');
 
                 if (notif) {
-                    if (hiddenStatus) hiddenStatus.value = notif.status ?? hiddenStatus.value;
+                    if (hiddenStatus)  hiddenStatus.value  = notif.status  ?? hiddenStatus.value;
                     if (hiddenCatatan) hiddenCatatan.value = notif.catatan ?? hiddenCatatan.value;
-                } else {
-                    // if controller returns only message, use current client state (Alpine already bound catatan)
-                    // nothing to change
                 }
 
-                // 2) Update a small status badge in the row for immediate visual feedback
                 if (tr) {
                     let badge = tr.querySelector('.notif-status-badge');
-                    const statusVal = (notif && notif.status) ? notif.status : (hiddenStatus ? hiddenStatus.value : null);
-                    const catVal = (notif && notif.catatan) ? notif.catatan : (hiddenCatatan ? hiddenCatatan.value : '');
+
+                    const statusVal = (notif && notif.status)
+                        ? notif.status
+                        : (hiddenStatus ? hiddenStatus.value : null);
+
+                    const catVal = (notif && notif.catatan)
+                        ? notif.catatan
+                        : (hiddenCatatan ? hiddenCatatan.value : '');
 
                     if (!badge) {
-                        // create and prepend to the rightmost cell
                         const catTd = tr.querySelector('td:last-child');
                         if (catTd) {
                             badge = document.createElement('div');
@@ -525,212 +606,52 @@ function notifForm({initMode, statusServer, catatanServer, opsiJasa, opsiWorksho
                             catTd.prepend(badge);
                         }
                     }
+
                     if (badge) {
-                        const labelMap = { 'Approved': '✅ Approved', 'Pending': '⏳ Pending', 'Reject': '⛔ Reject' };
+                        const labelMap = {
+                            'approved_workshop'      : '✅ Approved (Workshop)',
+                            'approved_jasa'          : '✅ Approved (Jasa)',
+                            'approved_workshop_jasa' : '✅ Approved (Workshop + Jasa)',
+                            'pending'                : '⏳ Pending',
+                            'reject'                 : '⛔ Reject',
+                        };
+
                         badge.textContent = labelMap[statusVal] || statusVal || '';
-                        badge.style.background = statusVal === 'Approved' ? '#d1fae5' : (statusVal === 'Pending' ? '#fff7ed' : '#fee2e2');
-                    }
 
-                    // Also update visible selects / textareas inside form to reflect saved catatan
-                    // find visible select or textarea for catatan inside this form
-                    const visibleSelect = form.querySelector('select[x-model="catatan"], select[name^="catatan"], textarea[x-model="catatan"]');
-                    if (visibleSelect) {
-                        if (visibleSelect.tagName.toLowerCase() === 'select') visibleSelect.value = catVal;
-                        else visibleSelect.value = catVal;
-                    }
-                }
-
-                // show success toast
-                toast((data && data.message) ? data.message : 'Berhasil disimpan.');
-
-            } catch (err) {
-                console.error('AJAX update error', err);
-                toast('Terjadi kesalahan jaringan', false);
-            } finally {
-                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.origText || 'Save'; }
-            }
-        });
-    });
-
-})();
-</script>
-x<!-- Search Filter + Notif AJAX submit -->
-<script>
-/**
- * Combined script:
- * 1) notifForm() — Alpine state + init
- * 2) safe search input handling
- * 3) AJAX submit hijack for forms with class .notif-update-form
- */
-
-function notifForm({initMode, statusServer, catatanServer, opsiJasa, opsiWorkshop}) {
-    return {
-        // state
-        mode: initMode,
-        catatan: catatanServer || '',
-        opsiJasa,
-        opsiWorkshop,
-
-        // computed: status yang akan dikirim
-        get statusForSubmit() {
-            if (this.mode === 'approved_jasa' || this.mode === 'approved_workshop') return 'Approved';
-            if (this.mode === 'reject') return 'Reject';
-            return 'Pending';
-        },
-
-        // init: set default catatan bila kosong sesuai mode
-        init() {
-            if (!this.catatan) {
-                if (this.mode === 'approved_jasa' && this.opsiJasa.length) {
-                    this.catatan = this.opsiJasa[0];
-                } else if (this.mode === 'approved_workshop' && this.opsiWorkshop.length) {
-                    this.catatan = this.opsiWorkshop[0];
-                } else {
-                    this.catatan = '';
-                }
-            }
-        }
-    }
-}
-
-/* ---------- safe search handler ---------- */
-(function setupSearch() {
-    const searchEl = document.getElementById('search');
-    if (!searchEl) return;
-    searchEl.addEventListener('keyup', function () {
-        let query = this.value.toLowerCase();
-        let rows = document.querySelectorAll('#notificationTable tbody tr');
-
-        rows.forEach(row => {
-            let cell = row.querySelector('.notification-number');
-            let notificationNumber = cell ? cell.textContent.toLowerCase() : '';
-            row.style.display = notificationNumber.includes(query) ? '' : 'none';
-        });
-    });
-})();
-
-/* ---------- AJAX submit for admin notif forms ---------- */
-(function setupAjaxForms() {
-    // helper toast
-    function toast(msg, ok = true) {
-        const el = document.createElement('div');
-        el.textContent = msg;
-        el.style = 'position:fixed;right:20px;bottom:20px;padding:10px 14px;border-radius:8px;color:#fff;z-index:99999;font-size:13px;';
-        el.style.background = ok ? '#16a34a' : '#dc2626';
-        document.body.appendChild(el);
-        setTimeout(()=>el.remove(), 2400);
-    }
-
-    // attach to forms created on page load
-    document.querySelectorAll('form.notif-update-form').forEach(form => {
-        form.addEventListener('submit', async function (ev) {
-            ev.preventDefault();
-
-            const submitBtn = form.querySelector('button[type="submit"]');
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.dataset.origText = submitBtn.textContent;
-                submitBtn.textContent = 'Saving...';
-            }
-
-            // build payload
-            const fd = new FormData(form);
-
-            // Ensure fields are present: mode, status, catatan
-            // (form should already contain name="mode" and hidden name="status" & name="catatan")
-            if (!fd.has('mode')) {
-                // try to read from x-model select
-                const sel = form.querySelector('select[x-model="mode"], select[name="mode"]');
-                if (sel && sel.value) fd.append('mode', sel.value);
-            }
-
-            try {
-                const res = await fetch(form.action, {
-                    method: (form.method || 'POST').toUpperCase(),
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    },
-                    body: fd,
-                    credentials: 'same-origin'
-                });
-
-                // attempt parse JSON safely
-                let data = null;
-                try { data = await res.json(); } catch(e) { data = null; }
-
-                if (!res.ok) {
-                    // try to show useful error message
-                    let message = 'Gagal menyimpan perubahan.';
-                    if (data) {
-                        if (data.error) message = data.error;
-                        else if (data.errors) {
-                            const first = Object.values(data.errors)[0];
-                            message = Array.isArray(first) ? first[0] : first;
-                        } else if (data.message) message = data.message;
-                    }
-                    toast(message, false);
-                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.origText || 'Save'; }
-                    return;
-                }
-
-                // success: Update DOM for that row so UI reflects saved state
-                const tr = form.closest('tr');
-
-                // 1) If server returned updated notification object, use it
-                const notif = data && data.notification ? data.notification : null;
-
-                // Update hidden inputs (status & catatan) to latest value
-                const hiddenStatus = form.querySelector('input[name="status"]');
-                const hiddenCatatan = form.querySelector('input[name="catatan"]');
-
-                if (notif) {
-                    if (hiddenStatus) hiddenStatus.value = notif.status ?? hiddenStatus.value;
-                    if (hiddenCatatan) hiddenCatatan.value = notif.catatan ?? hiddenCatatan.value;
-                } else {
-                    // if controller returns only message, use current client state (Alpine already bound catatan)
-                    // nothing to change
-                }
-
-                // 2) Update a small status badge in the row for immediate visual feedback
-                if (tr) {
-                    let badge = tr.querySelector('.notif-status-badge');
-                    const statusVal = (notif && notif.status) ? notif.status : (hiddenStatus ? hiddenStatus.value : null);
-                    const catVal = (notif && notif.catatan) ? notif.catatan : (hiddenCatatan ? hiddenCatatan.value : '');
-
-                    if (!badge) {
-                        // create and prepend to the rightmost cell
-                        const catTd = tr.querySelector('td:last-child');
-                        if (catTd) {
-                            badge = document.createElement('div');
-                            badge.className = 'notif-status-badge text-xs inline-flex items-center gap-1 px-2 py-1 rounded';
-                            badge.style.marginBottom = '6px';
-                            catTd.prepend(badge);
+                        if (statusVal && statusVal.startsWith('approved')) {
+                            badge.style.background = '#d1fae5';   // hijau muda
+                        } else if (statusVal === 'pending') {
+                            badge.style.background = '#fff7ed';   // oranye muda
+                        } else if (statusVal === 'reject') {
+                            badge.style.background = '#fee2e2';   // merah muda
+                        } else {
+                            badge.style.background = '#e5e7eb';   // abu-abu default
                         }
                     }
-                    if (badge) {
-                        const labelMap = { 'Approved': '✅ Approved', 'Pending': '⏳ Pending', 'Reject': '⛔ Reject' };
-                        badge.textContent = labelMap[statusVal] || statusVal || '';
-                        badge.style.background = statusVal === 'Approved' ? '#d1fae5' : (statusVal === 'Pending' ? '#fff7ed' : '#fee2e2');
-                    }
 
-                    // Also update visible selects / textareas inside form to reflect saved catatan
-                    // find visible select or textarea for catatan inside this form
-                    const visibleSelect = form.querySelector('select[x-model="catatan"], select[name^="catatan"], textarea[x-model="catatan"]');
+                    // sinkronkan select/textarea catatan yang kelihatan
+                    const visibleSelect = form.querySelector(
+                        'select[x-model="catatan"], select[name^="catatan"], textarea[x-model="catatan"]'
+                    );
                     if (visibleSelect) {
-                        if (visibleSelect.tagName.toLowerCase() === 'select') visibleSelect.value = catVal;
-                        else visibleSelect.value = catVal;
+                        if (visibleSelect.tagName.toLowerCase() === 'select') {
+                            visibleSelect.value = catVal;
+                        } else {
+                            visibleSelect.value = catVal;
+                        }
                     }
                 }
 
-                // show success toast
                 toast((data && data.message) ? data.message : 'Berhasil disimpan.');
 
             } catch (err) {
                 console.error('AJAX update error', err);
                 toast('Terjadi kesalahan jaringan', false);
             } finally {
-                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.origText || 'Save'; }
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = submitBtn.dataset.origText || 'Save';
+                }
             }
         });
     });

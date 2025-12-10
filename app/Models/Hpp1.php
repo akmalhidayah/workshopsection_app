@@ -23,9 +23,9 @@ class Hpp1 extends Model
         'outline_agreement',
 
         // data bertingkat per-kelompok [g][i]
-        'uraian_pekerjaan',   // array 1D judul kelompok
         'jenis_item',    
         'nama_item',       // array 2D: material/consumable/upah
+          'jumlah_item',
         'qty',                // array 2D
         'satuan',             // array 2D
         'harga_satuan',       // array 2D
@@ -70,12 +70,17 @@ class Hpp1 extends Model
         'manager_signature_requesting_user_id',
         'senior_manager_signature_requesting_user_id',
         'general_manager_signature_requesting_user_id',
+
+        // === baru: upload Direktur ===
+        'director_uploaded_file',
+        'director_uploaded_at',
+        'director_uploaded_by',
     ];
  // 🔒 default "[]": supaya cast TIDAK pernah menghasilkan null
     protected $attributes = [
-        'uraian_pekerjaan' => '[]',
         'jenis_item'       => '[]',
         'nama_item'        => '[]',
+          'jumlah_item'        => '[]',
         'qty'              => '[]',
         'satuan'           => '[]',
         'harga_satuan'     => '[]',
@@ -85,9 +90,9 @@ class Hpp1 extends Model
         'controlling_notes' => '[]',
     ];
     protected $casts = [
-        'uraian_pekerjaan' => 'array',
         'jenis_item'       => 'array',
         'nama_item'        => 'array',  
+           'jumlah_item'      => 'array',
         'qty'              => 'array',
         'satuan'           => 'array',
         'harga_satuan'     => 'array',
@@ -104,26 +109,34 @@ class Hpp1 extends Model
         'senior_manager_requesting_signed_at'    => 'datetime',
         'general_manager_requesting_signed_at'   => 'datetime',
     ];
-protected static function booted()
-{
-    static::deleting(function (self $hpp) {
-        $svc = app(\App\Services\SignatureService::class);
-        foreach ([
-            'manager_signature',
-            'senior_manager_signature',
-            'general_manager_signature',
-            'director_signature',
-            'manager_signature_requesting_unit',
-            'senior_manager_signature_requesting_unit',
-            'general_manager_signature_requesting_unit',
-        ] as $f) {
-            // path baru berbentuk 'hpp/...' (private disk)
-            if (!empty($hpp->$f) && !str_starts_with($hpp->$f, 'storage/')) {
-                $svc->deleteIfExists($hpp->$f);
+    protected static function booted()
+    {
+        static::deleting(function (self $hpp) {
+            $svc = app(\App\Services\SignatureService::class);
+            foreach ([
+                'manager_signature',
+                'senior_manager_signature',
+                'general_manager_signature',
+                'director_signature',
+                'manager_signature_requesting_unit',
+                'senior_manager_signature_requesting_unit',
+                'general_manager_signature_requesting_unit',
+            ] as $f) {
+                if (!empty($hpp->$f) && !str_starts_with($hpp->$f, 'storage/')) {
+                    $svc->deleteIfExists($hpp->$f);
+                }
             }
-        }
-    });
-}
+
+            // jika ada file uploaded director, hapus juga
+            if (!empty($hpp->director_uploaded_file) && !str_starts_with($hpp->director_uploaded_file, 'storage/')) {
+                try {
+                    $svc->deleteIfExists($hpp->director_uploaded_file);
+                } catch (\Throwable $e) {
+                    \Log::warning("[HPP] Gagal menghapus file director_uploaded_file saat model delete: " . $e->getMessage());
+                }
+            }
+        });
+    }
 
     // ===== RELATIONS =====
     public function notification()

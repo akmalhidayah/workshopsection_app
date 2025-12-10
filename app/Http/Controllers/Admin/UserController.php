@@ -37,46 +37,66 @@ class UserController extends Controller
         return response()->json($user);
     }
 
-    public function update(Request $request, $id)
-    {
-        // Debug data yang diterima
-        logger($request->all());
-    
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $id,
-            'usertype' => 'required|string',
-            'departemen' => 'nullable|string',
-            'unit_work' => 'nullable|string',
-            'seksi' => 'nullable|string',
-            'jabatan' => 'nullable|string',
-            'whatsapp_number' => 'nullable|regex:/^[0-9]{10,15}$/',
-        ]);
-    
-        $user = User::findOrFail($id);
-    
-$user->update([
-    'name'            => $request->input('name'),
-    'email'           => $request->input('email'),
-    'usertype'        => $request->input('usertype'),
-    'departemen'      => $request->input('departemen'),
-    'unit_work'       => $request->input('unit_work'),
-    'seksi'           => $request->input('seksi'),
-    'jabatan'         => $request->input('jabatan'),
-    'whatsapp_number' => $request->input('whatsapp_number'),
-    'initials'        => $request->input('initials'),
-    'related_units'   => $request->filled('related_units')
-        ? (is_array($request->input('related_units'))
-            ? $request->input('related_units')
-            : json_decode($request->input('related_units'), true))
-        : [],
-]);
+ public function update(Request $request, $id)
+{
+    // Debug data yang diterima
+    logger($request->all());
+
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|unique:users,email,' . $id,
+        'usertype' => 'required|string',
+        'departemen' => 'nullable|string',
+        'unit_work' => 'nullable|string',
+        'seksi' => 'nullable|string',
+        'jabatan' => 'nullable|string',
+        // Validasi fleksibel agar mutator bisa bekerja
+        'whatsapp_number' => [
+            'nullable',
+            'string',
+            'max:30',
+            function ($attribute, $value, $fail) {
+                $digits = preg_replace('/\D+/', '', (string) $value);
+                if (strlen($digits) < 8 || strlen($digits) > 15) {
+                    $fail('Nomor WhatsApp tidak valid.');
+                }
+            },
+        ],
+    ]);
+
+    $user = User::findOrFail($id);
+
+    // Log nomor lama (sebelum perubahan)
+    $oldWhatsapp = $user->whatsapp_number;
+
+    $user->update([
+        'name'            => $request->input('name'),
+        'email'           => $request->input('email'),
+        'usertype'        => $request->input('usertype'),
+        'departemen'      => $request->input('departemen'),
+        'unit_work'       => $request->input('unit_work'),
+        'seksi'           => $request->input('seksi'),
+        'jabatan'         => $request->input('jabatan'),
+        'whatsapp_number' => $request->input('whatsapp_number'),
+        'initials'        => $request->input('initials'),
+        'related_units'   => $request->filled('related_units')
+            ? (is_array($request->input('related_units'))
+                ? $request->input('related_units')
+                : json_decode($request->input('related_units'), true))
+            : [],
+    ]);
+
+    // Log nomor baru setelah kena mutator normalisasi
+    logger()->info('[User Update] WhatsApp number changed', [
+        'user_id'     => $user->id,
+        'old_number'  => $oldWhatsapp,
+        'new_number'  => $user->whatsapp_number,
+    ]);
+
+    return redirect()->route('admin.users.index')->with('success', 'User berhasil diperbarui.');
+}
 
 
-    
-        return redirect()->route('admin.users.index')->with('success', 'User berhasil diperbarui.');
-    }
-    
     
     // Fungsi untuk menghapus user
     public function destroy($id)

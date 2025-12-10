@@ -83,10 +83,24 @@
                                         </div>
                                     </td>
 
-                                    <!-- Unit Kerja -->
-                                    <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                                        {{ $item->unit_work }}
-                                    </td>
+                                  <!-- Unit Kerja (diperbarui: tampilkan seksi di bawah nama unit) -->
+<td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+    <div class="flex flex-col">
+        <div class="font-medium">{{ $item->unit_work }}</div>
+
+        @if(!empty($item->seksi))
+            <div class="mt-2">
+                <span
+                    class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold
+                           bg-indigo-100 text-indigo-800 ring-1 ring-indigo-200
+                           dark:bg-indigo-900/40 dark:text-indigo-300 dark:ring-indigo-700">
+                    <i class="fas fa-sitemap text-[10px] opacity-80"></i>
+                    {{ $item->seksi }}
+                </span>
+            </div>
+        @endif
+    </div>
+</td>
 
                                     <!-- Status & Catatan -->
                                     <td class="px-4 py-3 text-sm">

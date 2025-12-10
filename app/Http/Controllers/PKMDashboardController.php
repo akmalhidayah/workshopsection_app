@@ -13,6 +13,7 @@ use App\Models\PurchaseOrder;
 use App\Models\LHPP;
 use App\Models\SPK;
 use App\Models\Lpj;
+use Illuminate\Support\Facades\Storage;
 
 class PKMDashboardController extends Controller
 {
@@ -58,152 +59,192 @@ class PKMDashboardController extends Controller
             'targetDates' => $targetDates,
         ]);
     }
-    
-public function jobWaiting(Request $request)
+
+    public function jobWaiting(Request $request)
 {
     try {
-        // 🎯 Ambil filter dari request
+        // Ambil filter dari request
         $priority = $request->input('priority');
         $search   = $request->input('search');
 
-        // 🔍 Ambil semua notifikasi dengan PurchaseOrder yang sudah disetujui manager
-        $query = Notification::with('purchaseOrder')
-            ->whereHas('purchaseOrder', function ($q) {
-                $q->whereNotNull('approval_target')
-                  ->where('approve_manager', true);
+        // Eager load relasi penting untuk menghindari N+1
+        $baseQuery = Notification::with([
+            'purchaseOrder',
+            'dokumenOrders',
+            'scopeOfWork',
+            'lhpp',
+            'lpj',
+            'hpp1',
+            'spk'
+        ]);
+
+        // Jika ada filter priority eksplisit dari UI: gunakan itu saja (case-insensitive)
+        if (!empty($priority)) {
+            $baseQuery->whereRaw("LOWER(IFNULL(priority,'')) = ?", [strtolower($priority)]);
+        }
+
+        // Selama tidak ada filter priority, kita ingin menampilkan:
+        // - notifikasi yang punya PO dengan approval_target & approve_manager = true
+        // OR
+        // - notifikasi yang priority = 'urgent' (tetap muncul walau tanpa PO)
+        $baseQuery->where(function ($q) use ($priority) {
+            // always include those with purchaseOrder approved by manager
+            $q->whereHas('purchaseOrder', function ($qq) {
+                $qq->whereNotNull('approval_target')->where('approve_manager', true);
             });
 
-        // 🔹 Filter prioritas
-        if (!empty($priority)) {
-            $query->where('priority', $priority);
-        }
-
-        // 🔹 Filter pencarian
-        if (!empty($search)) {
-            $query->where('notification_number', 'like', "%{$search}%");
-        }
-
-        // 🔹 Ambil data notifikasi
-        $notifications = $query->orderBy('created_at', 'desc')->get();
-
-        // 🔧 Iterasi & tambahkan atribut dokumen tambahan
-        $notifications->each(function ($notification) {
-            try {
-                // LHPP, LPJ, LPP
-                $notification->isLhppAvailable = LHPP::where('notification_number', $notification->notification_number)->exists();
-                $notification->isLpjAvailable  = Lpj::where('notification_number', $notification->notification_number)->exists();
-                $notification->isLppAvailable  = Lpj::where('notification_number', $notification->notification_number)
-                    ->whereNotNull('ppl_document_path')
-                    ->exists();
-
-                // Abnormalitas → DokumenOrder
-                $notification->isAbnormalAvailable = DokumenOrder::where('notification_number', $notification->notification_number)
-                    ->where('jenis_dokumen', 'abnormalitas')
-                    ->exists();
-
-                // Scope of Work → model khusus
-                $notification->isScopeOfWorkAvailable = \App\Models\ScopeOfWork::where('notification_number', $notification->notification_number)
-                    ->exists();
-
-                // Gambar Teknik → DokumenOrder
-                $notification->isGambarTeknikAvailable = DokumenOrder::where('notification_number', $notification->notification_number)
-                    ->where('jenis_dokumen', 'gambar_teknik')
-                    ->exists();
-
-                // HPP
-                $hpp = Hpp1::where('notification_number', $notification->notification_number)->first();
-                if ($hpp) {
-                    $notification->isHppAvailable = true;
-                    $notification->source_form    = $hpp->source_form;
-                    $notification->total_amount   = $hpp->total_amount;
-                } else {
-                    $notification->isHppAvailable = false;
-                }
-
-                // SPK
-                $notification->isSpkAvailable = SPK::where('notification_number', $notification->notification_number)->exists();
-
-            } catch (\Exception $e) {
-                \Log::error("Error saat cek dokumen notification {$notification->notification_number}: " . $e->getMessage());
+            // jika user tidak mem-filter priority, tambahkan OR untuk urgent agar selalu muncul
+            if (empty($priority)) {
+                $q->orWhereRaw("LOWER(IFNULL(priority,'')) IN ('urgently','urgent')");
             }
         });
 
-        // 🚫 Filter hanya yang belum lengkap LHPP, LPJ, LPP
-        $filtered = $notifications->reject(fn($n) =>
-            $n->isLhppAvailable && $n->isLpjAvailable && $n->isLppAvailable
-        );
+        // optional search by notification_number
+        if (!empty($search)) {
+            $baseQuery->where('notification_number', 'like', "%{$search}%");
+        }
 
-        // 📄 Pagination manual
-        $page    = $request->input('page', 1);
+        // Ambil semua lalu transform; ordering: urgent paling atas
+        $notifications = $baseQuery
+            ->orderByRaw("
+                CASE
+                    WHEN LOWER(IFNULL(priority,'')) IN ('urgently','urgent') THEN 0
+                    WHEN LOWER(IFNULL(priority,'')) = 'hard' THEN 1
+                    WHEN LOWER(IFNULL(priority,'')) = 'medium' THEN 2
+                    WHEN LOWER(IFNULL(priority,'')) = 'low' THEN 3
+                    ELSE 4
+                END ASC
+            ")
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Cek kolom LPJ untuk fitur ppl secara defensif
+        $lpjModel = new Lpj();
+        $lpjTable = $lpjModel->getTable();
+        $hasPplColumn = \Schema::hasColumn($lpjTable, 'ppl_document_path');
+        $hasPplTerm1  = \Schema::hasColumn($lpjTable, 'ppl_document_path_termin1');
+
+        // route maps untuk admin dan non-admin (approval/public)
+        $adminMap = [
+            'createhpp1' => 'admin.inputhpp.download_hpp1',
+            'createhpp2' => 'admin.inputhpp.download_hpp2',
+            'createhpp3' => 'admin.inputhpp.download_hpp3',
+            'createhpp4' => 'admin.inputhpp.download_hpp4',
+        ];
+        $publicMap = [
+            'createhpp1' => 'approval.hpp.download_hpp1',
+            'createhpp2' => 'approval.hpp.download_hpp2',
+            'createhpp3' => 'approval.hpp.download_hpp3',
+            'createhpp4' => 'approval.hpp.download_hpp4',
+        ];
+
+        $user = auth()->user();
+
+        // Transform setiap notification: set flags / normalized paths / route names untuk Blade
+        $notifications->each(function ($notification) use ($hasPplColumn, $hasPplTerm1, $adminMap, $publicMap, $user) {
+            try {
+                $notification->isLhppAvailable = (bool) ($notification->lhpp ?? false);
+                $notification->isLpjAvailable  = (bool) ($notification->lpj ?? false);
+
+                $isLpp = false;
+                if ($notification->lpj) {
+                    if ($hasPplColumn && !empty($notification->lpj->ppl_document_path)) $isLpp = true;
+                    if ($hasPplTerm1 && !empty($notification->lpj->ppl_document_path_termin1)) $isLpp = true;
+                }
+                $notification->isLppAvailable = (bool) $isLpp;
+
+                $docs = collect($notification->dokumenOrders ?? []);
+                $types = $docs->pluck('jenis_dokumen')->map(fn($v) => strtolower(trim((string)$v)))->values();
+
+                $notification->isAbnormalAvailable = $types->contains('abnormalitas') || $types->contains('abnormal') || $types->contains('abnormality');
+                $notification->isGambarTeknikAvailable = $types->contains('gambar_teknik') || $types->contains('gambar') || $types->contains('gambar-teknik') || $types->contains('technical_image');
+
+                $notification->isScopeOfWorkAvailable = (!empty($notification->scopeOfWork))
+                    || $types->contains('scope_of_work')
+                    || $types->contains('scope')
+                    || $types->contains('scopeofwork')
+                    || $types->contains('scope-of-work');
+
+                $hpp = $notification->hpp1 ?? null;
+                $notification->isHppAvailable = (bool) $hpp;
+                $notification->hpp_file_path = null;
+                $notification->hpp_file_exists = false;
+                $notification->source_form = $hpp->source_form ?? $notification->source_form ?? null;
+                $notification->total_amount = $hpp->total_amount ?? $notification->total_amount ?? 0;
+
+                if ($hpp) {
+                    $rawPath = $hpp->file_path ?? $hpp->pdf_path ?? null;
+                    if ($rawPath) {
+                        $path = ltrim($rawPath, '/');
+                        try {
+                            $notification->hpp_file_exists = Storage::disk('public')->exists($path);
+                            $notification->hpp_file_path = $path;
+                        } catch (\Exception $e) {
+                            \Log::warning("Cek HPP file failed for {$notification->notification_number}: " . $e->getMessage());
+                            $notification->hpp_file_exists = false;
+                            $notification->hpp_file_path = null;
+                        }
+                    }
+                }
+
+                $notification->isSpkAvailable = (bool) ($notification->spk ?? false);
+
+                $source = $notification->source_form ?? '';
+                $isAdmin = false;
+                if ($user) {
+                    $isAdmin = (method_exists($user, 'hasRole') && $user->hasRole('admin'))
+                               || (!empty($user->is_admin))
+                               || (isset($user->usertype) && $user->usertype === 'admin');
+                }
+
+                $downloadRouteName = $isAdmin ? ($adminMap[$source] ?? null) : ($publicMap[$source] ?? null);
+                $notification->download_route_name = $downloadRouteName;
+                $notification->has_hpp_fallback = !empty($notification->hpp_file_exists) && !empty($notification->hpp_file_path);
+
+            } catch (\Exception $e) {
+                \Log::warning("jobWaiting transform failed for {$notification->notification_number}: " . $e->getMessage());
+                $notification->isLhppAvailable = $notification->isLpjAvailable = $notification->isLppAvailable = false;
+                $notification->isAbnormalAvailable = $notification->isGambarTeknikAvailable = $notification->isScopeOfWorkAvailable = false;
+                $notification->isHppAvailable = $notification->isSpkAvailable = false;
+                $notification->hpp_file_exists = false;
+                $notification->hpp_file_path = null;
+                $notification->source_form = $notification->source_form ?? null;
+                $notification->download_route_name = null;
+                $notification->has_hpp_fallback = false;
+            }
+        });
+
+        // Buang notifikasi yang sudah lengkap (LHPP + LPJ + PPL)
+        $filtered = $notifications->reject(function ($n) {
+            return ($n->isLhppAvailable && $n->isLpjAvailable && $n->isLppAvailable);
+        })->values();
+
+        // Pagination manual
+        $page = (int) $request->input('page', 1);
         $perPage = 10;
-        $paginated = new LengthAwarePaginator(
-            $filtered->forPage($page, $perPage)->values(),
-            $filtered->count(),
-            $perPage,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
+        $total = $filtered->count();
+        $sliced = $filtered->forPage($page, $perPage)->values();
 
-        // 🎨 Return view biasa
+        $paginated = new LengthAwarePaginator($sliced, $total, $perPage, $page, [
+            'path' => $request->url(),
+            'query' => $request->query(),
+        ]);
+
         if (!$request->ajax()) {
             return view('pkm.jobwaiting', ['notifications' => $paginated]);
         }
 
-        // 🔁 Return JSON jika AJAX
-        return response()->json([
-            'status' => 'success',
-            'data'   => $paginated,
-        ], 200);
+        return response()->json(['status' => 'success', 'data' => $paginated], 200);
 
     } catch (\Illuminate\Database\QueryException $e) {
-        \Log::error("Database error: " . $e->getMessage());
-        return response()->json([
-            'status'  => 'error',
-            'message' => 'Terjadi kesalahan database saat mengambil data.',
-            'error'   => $e->getMessage()
-        ], 500);
-
+        \Log::error("jobWaiting database error: " . $e->getMessage());
+        return response()->json(['status' => 'error', 'message' => 'Terjadi kesalahan database saat mengambil data.'], 500);
     } catch (\Exception $e) {
-        \Log::error("Unexpected error: " . $e->getMessage());
-        return response()->json([
-            'status'  => 'error',
-            'message' => 'Terjadi kesalahan tidak terduga.',
-            'error'   => $e->getMessage()
-        ], 500);
+        \Log::error("jobWaiting unexpected error: " . $e->getMessage());
+        return response()->json(['status' => 'error', 'message' => 'Terjadi kesalahan.'], 500);
     }
 }
 
-/**
- * 🔽 Download file HPP sesuai source_form (HPP1 / HPP2 / HPP3)
- */
-public function downloadHpp($notification_number)
-{
-    try {
-        // Ambil data HPP berdasarkan notification_number
-        $hpp = Hpp1::where('notification_number', $notification_number)->first();
-
-        if (!$hpp) {
-            return back()->with('error', 'Data HPP tidak ditemukan.');
-        }
-
-        // Pastikan kolom file_path atau pdf_path ada
-        $filePath = $hpp->file_path ?? $hpp->pdf_path ?? null;
-
-        if (!$filePath || !\Storage::exists('public/' . $filePath)) {
-            return back()->with('error', 'File HPP belum tersedia di server.');
-        }
-
-        // Buat nama file yang rapi berdasarkan source_form
-        $source = strtoupper(str_replace('create', '', $hpp->source_form ?? 'HPP'));
-        $fileName = "{$source}_{$notification_number}.pdf";
-
-        return \Storage::download('public/' . $filePath, $fileName);
-
-    } catch (\Exception $e) {
-        \Log::error("Error download HPP: " . $e->getMessage());
-        return back()->with('error', 'Terjadi kesalahan saat mengunduh dokumen HPP.');
-    }
-}
 
 
  public function updateProgress(Request $request, $notification_number)
@@ -281,73 +322,271 @@ public function downloadHpp($notification_number)
         return back()->with('error', 'Terjadi kesalahan saat memperbarui progress.');
     }
 }
-
 public function laporan(Request $request)
 {
     try {
         // ambil filter dari request
         $notificationNumber = $request->input('notification_number');
         $status = $request->input('status'); // '' | 'complete' | 'incomplete'
+        $perPage = 10;
+        $page = (int) $request->input('page', 1);
 
         // base query: eager load relations yang dibutuhkan
-        $query = Notification::with(['lhpp', 'lpj', 'hpp1', 'purchaseOrder']);
+        $query = Notification::with(['lhpp', 'lpj', 'hpp1', 'purchaseOrder', 'dokumenOrders']);
 
         // filter by notification number (partial)
         $query->when($notificationNumber, fn($q) => $q->where('notification_number', 'like', "%{$notificationNumber}%"));
 
-        // tetap persyaratan dasar: HPP ada, PurchaseOrder punya dokumen, dan LHPP ada
-        $query->whereHas('hpp1')
-              ->whereHas('purchaseOrder', function ($q) {
-                  $q->whereNotNull('po_document_path');
-              })
-              ->whereHas('lhpp');
+        // ambil semua kandidat (kita akan filter di collection agar complete/incomplete lebih fleksibel)
+        $notifications = $query->orderBy('created_at', 'desc')->get();
 
-        // status filter: complete = punya LPJ+PPL; incomplete = tidak memenuhi semua syarat complete
-        if ($status === 'complete') {
-            $query->whereHas('lpj', function ($q) {
-                $q->whereNotNull('lpj_document_path')
-                  ->whereNotNull('ppl_document_path');
-            });
-        } elseif ($status === 'incomplete') {
-            // jika salah satu komponen lengkap belum terpenuhi -> termasuk incomplete
-            $query->where(function ($q) {
-                $q->whereDoesntHave('lpj', function ($qq) {
-                        $qq->whereNotNull('lpj_document_path')
-                           ->whereNotNull('ppl_document_path');
-                    })
-                    ->orWhereDoesntHave('purchaseOrder', function ($qq) {
-                        $qq->whereNotNull('po_document_path');
-                    })
-                    ->orWhereDoesntHave('lhpp')
-                    ->orWhereDoesntHave('hpp1');
-            });
-        }
+        // ========== copy jobWaiting helper checks ==========
+        $lpjModel = new Lpj();
+        $lpjTable = $lpjModel->getTable();
+        $hasPplColumn = \Schema::hasColumn($lpjTable, 'ppl_document_path');
+        $hasPplTerm1  = \Schema::hasColumn($lpjTable, 'ppl_document_path_termin1');
 
-        // paginate dan jaga query string
-        $notifications = $query->orderBy('created_at', 'desc')
-                               ->paginate(10)
-                               ->appends($request->query());
+        $adminMap = [
+            'createhpp1' => 'admin.inputhpp.download_hpp1',
+            'createhpp2' => 'admin.inputhpp.download_hpp2',
+            'createhpp3' => 'admin.inputhpp.download_hpp3',
+            'createhpp4' => 'admin.inputhpp.download_hpp4',
+        ];
+        $publicMap = [
+            'createhpp1' => 'approval.hpp.download_hpp1',
+            'createhpp2' => 'approval.hpp.download_hpp2',
+            'createhpp3' => 'approval.hpp.download_hpp3',
+            'createhpp4' => 'approval.hpp.download_hpp4',
+        ];
+        $user = auth()->user();
+        // ====================================================
 
-        // transform supaya blade tidak melakukan query ulang
-        $notifications->transform(function ($notification) {
+        // transform supaya blade tidak melakukan query ulang dan untuk menentukan status
+        $notifications = $notifications->map(function ($notification) use ($hasPplColumn, $hasPplTerm1, $adminMap, $publicMap, $user) {
+
+            // HPP
             $hpp = $notification->hpp1;
             $notification->isHppAvailable = (bool) $hpp;
-            $notification->source_form    = $hpp->source_form ?? '-';
+            $notification->source_form    = $hpp->source_form ?? $notification->source_form ?? '-';
             $notification->total_amount   = $hpp->total_amount ?? 0;
 
+            // LHPP / total biaya prioritas: LHPP.total_biaya > HPP.total_amount
+            $lhpp = $notification->lhpp;
+            $notification->has_lhpp = (bool) $lhpp;
+            $notification->total_biaya = (float) ($lhpp->total_biaya ?? $notification->total_amount ?? 0);
+
+            // Purchase Order
             $po = $notification->purchaseOrder;
             $notification->has_po_document = !empty($po->po_document_path);
 
-            $notification->has_lhpp = (bool) $notification->lhpp;
-
+            // LPJ per-termin (pakai model Lpj helpers if available)
             $lpj = $notification->lpj;
-            $notification->has_lpj = !empty($lpj->lpj_document_path);
-            $notification->has_ppl = !empty($lpj->ppl_document_path);
+            if ($lpj) {
+                $notification->termin1_paid = method_exists($lpj, 'isTermin1Paid') ? $lpj->isTermin1Paid() : (!empty($lpj->termin1) && $lpj->termin1 === 'sudah');
+                $notification->termin2_paid = method_exists($lpj, 'isTermin2Paid') ? $lpj->isTermin2Paid() : (!empty($lpj->termin2) && $lpj->termin2 === 'sudah');
+
+                $notification->lpj_path_termin1 = method_exists($lpj, 'getLpjPathForTermin') ? $lpj->getLpjPathForTermin(1) : ($lpj->lpj_document_path_termin1 ?? $lpj->lpj_document_path ?? null);
+                $notification->ppl_path_termin1 = method_exists($lpj, 'getPplPathForTermin') ? $lpj->getPplPathForTermin(1) : ($lpj->ppl_document_path_termin1 ?? $lpj->ppl_document_path ?? null);
+
+                $notification->lpj_path_termin2 = method_exists($lpj, 'getLpjPathForTermin') ? $lpj->getLpjPathForTermin(2) : ($lpj->lpj_document_path_termin2 ?? null);
+                $notification->ppl_path_termin2 = method_exists($lpj, 'getPplPathForTermin') ? $lpj->getPplPathForTermin(2) : ($lpj->ppl_document_path_termin2 ?? null);
+
+                $notification->has_lpj_t1_file = !empty($notification->lpj_path_termin1);
+                $notification->has_ppl_t1_file = !empty($notification->ppl_path_termin1);
+                $notification->has_lpj_t2_file = !empty($notification->lpj_path_termin2);
+                $notification->has_ppl_t2_file = !empty($notification->ppl_path_termin2);
+            } else {
+                $notification->termin1_paid = false;
+                $notification->termin2_paid = false;
+                $notification->lpj_path_termin1 = null;
+                $notification->ppl_path_termin1 = null;
+                $notification->lpj_path_termin2 = null;
+                $notification->ppl_path_termin2 = null;
+                $notification->has_lpj_t1_file = $notification->has_ppl_t1_file = $notification->has_lpj_t2_file = $notification->has_ppl_t2_file = false;
+            }
+
+            // HITUNG paidPercent dan paidAmount
+            if ($notification->termin1_paid && $notification->termin2_paid) {
+                $notification->paid_percent = 100;
+            } elseif ($notification->termin1_paid) {
+                $notification->paid_percent = 95;
+            } else {
+                $notification->paid_percent = 0;
+            }
+            $notification->paid_amount = (int) round($notification->total_biaya * ($notification->paid_percent / 100));
+// GARANSI fallback (DITERAPKAN UBAH: prioritaskan LHPP.tanggal_selesai, ambil garansi_months dari tabel Garansi jika ada)
+$garansiStart = null;
+
+// 1) Prefer LHPP.tanggal_selesai (start date biasanya berdasarkan tanggal selesai pekerjaan pada LHPP)
+if ($lhpp && !empty($lhpp->tanggal_selesai)) {
+    try { $garansiStart = \Carbon\Carbon::parse($lhpp->tanggal_selesai)->startOfDay(); } catch (\Throwable $e) { $garansiStart = null; }
+}
+
+// 2) Jika belum ada, cek LPJ.tanggal_ttd (bila model punya field ini)
+if (!$garansiStart && $lpj) {
+    if (!empty($lpj->tanggal_ttd)) {
+        try { $garansiStart = \Carbon\Carbon::parse($lpj->tanggal_ttd)->startOfDay(); } catch (\Throwable $e) { /* ignore */ }
+    }
+}
+
+// 3) Jika belum ada, fallback ke LPJ.update_date
+if (!$garansiStart && $lpj && !empty($lpj->update_date)) {
+    try {
+        $garansiStart = $lpj->update_date instanceof \Carbon\Carbon ? $lpj->update_date->copy()->startOfDay() : \Carbon\Carbon::parse($lpj->update_date)->startOfDay();
+    } catch (\Throwable $e) { $garansiStart = null; }
+}
+
+// 4) Jika belum ada, fallback ke PO.created_at
+if (!$garansiStart && $po && !empty($po->created_at)) {
+    try {
+        $garansiStart = $po->created_at instanceof \Carbon\Carbon ? $po->created_at->copy()->startOfDay() : \Carbon\Carbon::parse($po->created_at)->startOfDay();
+    } catch (\Throwable $e) { $garansiStart = null; }
+}
+
+// 5) Jika masih belum, pakai notification.created_at
+if (!$garansiStart) {
+    try {
+        $garansiStart = $notification->created_at instanceof \Carbon\Carbon ? $notification->created_at->copy()->startOfDay() : \Carbon\Carbon::parse($notification->created_at)->startOfDay();
+    } catch (\Throwable $e) { $garansiStart = null; }
+}
+
+// Ambil garansi_months: prioritas dari tabel Garansi, lalu fallback ke LPJ jika ada
+$garansiRecord = \App\Models\Garansi::where('notification_number', $notification->notification_number)->first();
+
+$garansiMonths = null;
+if ($garansiRecord && $garansiRecord->garansi_months !== null) {
+    $garansiMonths = (int) $garansiRecord->garansi_months;
+} elseif ($lpj && isset($lpj->garansi_months) && $lpj->garansi_months !== null) {
+    $garansiMonths = (int) $lpj->garansi_months;
+} else {
+    // jika tidak ada info garansi, biarkan null (frontend akan menampilkan '-')
+    $garansiMonths = null;
+}
+
+// Simpan start + months ke notification (dipakai blade)
+$notification->garansi_start = $garansiStart;
+$notification->garansi_months = $garansiMonths;
+
+// Hitung end date & status secara defensif
+$notification->garansi_end = null;
+$notification->garansi_days_remaining = null;
+$notification->garansi_status = '-';
+
+if ($garansiMonths !== null && $garansiStart instanceof \Carbon\Carbon) {
+    if ($garansiMonths === 0) {
+        // 0 => tanpa garansi, tetapkan end = start (frontend bisa interpretasikan sebagai 'Habis')
+        $notification->garansi_end = $garansiStart->copy();
+    } else {
+        try {
+            $notification->garansi_end = $garansiStart->copy()->addMonthsNoOverflow($garansiMonths);
+        } catch (\Throwable $e) {
+            try {
+                $notification->garansi_end = $garansiStart->copy()->addMonths($garansiMonths);
+            } catch (\Throwable $e2) {
+                $notification->garansi_end = null;
+            }
+        }
+    }
+
+    if ($notification->garansi_end instanceof \Carbon\Carbon) {
+        $now = \Carbon\Carbon::now()->startOfDay();
+        // diffInDays with signed result: positive if end in future, negative if past
+        $diff = $now->diffInDays($notification->garansi_end, false);
+        $notification->garansi_days_remaining = (int) $diff;
+
+        if ($diff > 1) {
+            $notification->garansi_status = 'Masih Berlaku';
+        } elseif ($diff === 1) {
+            $notification->garansi_status = 'Besok';
+        } elseif ($diff === 0) {
+            $notification->garansi_status = 'Terakhir hari ini';
+        } else {
+            $notification->garansi_status = 'Habis';
+        }
+    } else {
+        $notification->garansi_status = '-';
+    }
+} else {
+    // ada garansi_months tapi start belum tersedia -> tunjukkan '-' agar admin tahu TTD/Start belum lengkap
+    if ($garansiMonths !== null && !($garansiStart instanceof \Carbon\Carbon)) {
+        $notification->garansi_status = '-';
+    } else {
+        // tidak ada info garansi
+        $notification->garansi_status = '-';
+    }
+}
+
+
+            // ========== replicate jobWaiting HPP handling ==========
+            $rawHpp = $hpp;
+            $notification->hpp_file_path = null;
+            $notification->hpp_file_exists = false;
+            if ($rawHpp) {
+                $rawPath = $rawHpp->file_path ?? $rawHpp->pdf_path ?? null;
+                if ($rawPath) {
+                    $path = ltrim($rawPath, '/');
+                    try {
+                        $notification->hpp_file_exists = Storage::disk('public')->exists($path);
+                        $notification->hpp_file_path = $path;
+                    } catch (\Exception $e) {
+                        \Log::warning("Cek HPP file failed for {$notification->notification_number}: " . $e->getMessage());
+                        $notification->hpp_file_exists = false;
+                        $notification->hpp_file_path = null;
+                    }
+                }
+            }
+
+            $source = $notification->source_form ?? '';
+            $isAdmin = false;
+            if ($user) {
+                $isAdmin = (method_exists($user, 'hasRole') && $user->hasRole('admin'))
+                           || (!empty($user->is_admin))
+                           || (isset($user->usertype) && $user->usertype === 'admin');
+            }
+
+            $downloadRouteName = $isAdmin ? ($adminMap[$source] ?? null) : ($publicMap[$source] ?? null);
+            $notification->download_route_name = $downloadRouteName;
+            $notification->has_hpp_fallback = !empty($notification->hpp_file_exists) && !empty($notification->hpp_file_path);
+            // ====================================================
+
+            // STATUS COMPLETE: definisi = HPP + PO document + LHPP + LPJ file termin1 + PPL file termin1
+            $notification->is_complete = (
+                $notification->isHppAvailable &&
+                $notification->has_po_document &&
+                $notification->has_lhpp &&
+                (!empty($notification->lpj_path_termin1) || !empty(optional($notification->lpj)->lpj_document_path)) &&
+                (!empty($notification->ppl_path_termin1) || !empty(optional($notification->lpj)->ppl_document_path))
+            );
 
             return $notification;
         });
 
-        return view('pkm.laporan', compact('notifications'));
+        // APPLY STATUS FILTER di collection
+        if ($status === 'complete') {
+            $notifications = $notifications->filter(fn($n) => $n->is_complete)->values();
+        } elseif ($status === 'incomplete') {
+            $notifications = $notifications->reject(fn($n) => $n->is_complete)->values();
+        } else {
+            $notifications = $notifications->values();
+        }
+
+        // PAGINATION MANUAL
+        $total = $notifications->count();
+        $sliced = $notifications->forPage($page, $perPage)->values();
+
+        $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $sliced,
+            $total,
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
+        return view('pkm.laporan', ['notifications' => $paginated]);
+
     } catch (\Exception $e) {
         \Log::error('Error di PKMDashboardController::laporan - ' . $e->getMessage(), [
             'request' => $request->all()
@@ -355,7 +594,6 @@ public function laporan(Request $request)
         abort(500, 'Terjadi kesalahan saat memuat laporan PKM.');
     }
 }
-
 
     public function showLHPP($notification_number)
     {

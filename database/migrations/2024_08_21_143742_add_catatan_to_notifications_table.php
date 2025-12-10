@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('notifications', function (Blueprint $table) {
-            $table->text('catatan')->nullable()->after('status'); // Menambahkan kolom 'catatan' setelah 'status'
+            $table->string('status')->default('Pending')->after('input_date');
+            $table->text('catatan')->nullable()->after('status');
         });
     }
 
@@ -23,7 +24,7 @@ return new class extends Migration
     {
         Schema::table('notifications', function (Blueprint $table) {
             $table->dropColumn('catatan');
+            $table->dropColumn('status');
         });
     }
 };
-

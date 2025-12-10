@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Notification;
 use App\Models\UnitWork;
+use App\Models\VerifikasiAnggaran;
+use App\Models\OrderBengkel;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
@@ -99,6 +101,7 @@ class NotificationController extends Controller
                 'input_date' => $request->input_date,
                 'usage_plan_date' => $request->usage_plan_date,
                 'user_id' => auth()->id(),
+                'status'              => Notification::STATUS_PENDING,
             ]);
 
             if ($request->wantsJson() || $request->ajax()) {
@@ -198,58 +201,41 @@ class NotificationController extends Controller
         return response()->view('errors.500', ['message' => 'Terjadi kesalahan saat mengambil data notifikasi.'], Response::HTTP_INTERNAL_SERVER_ERROR);
     }
 }
-
 /**
  * Update notification.
- * - If request contains 'status' OR 'mode' => treat as admin status/catatan update (from admin panel)
- * - Otherwise treat as normal edit (modal) updating job_name, unit_work, priority, input_date, usage_plan_date
+ * - Jika request mengandung 'status' atau 'mode' => dianggap update dari admin (status/catatan)
+ * - Selain itu => edit biasa (modal) untuk job_name, unit_work, priority, dll.
  */
 public function update(Request $request, $notification_number)
 {
     // ---------- ADMIN flow (status/catatan via admin panel) ----------
-    // We detect admin flow either by presence of 'mode' (approved_jasa/...) OR presence of 'status'
     $isAdminFlow = $request->has('mode') || $request->has('status');
 
     if ($isAdminFlow) {
-        // Define allowed buckets (should mirror what Blade provides)
-        $opsiJasa = ['Jasa Fabrikasi','Jasa Konstruksi','Jasa Pengerjaan Mesin'];
-        $opsiWorkshop = ['Regu Fabrikasi','Regu Bengkel (Refurbish)'];
+        // gunakan daftar opsi dari model (supaya konsisten)
+        $opsiJasa     = Notification::JASA_NOTES;
+        $opsiWorkshop = Notification::WORKSHOP_NOTES;
 
-        // Accept either 'mode' (preferred) or 'status' param.
-        // mode: approved_jasa | approved_workshop | pending | reject
-        $mode = $request->get('mode', null);
-        $statusFromRequest = $request->get('status', null);
+        // status enum dikirim dari Blade (hidden input `status`)
+        // nilai yg diharapkan: approved_workshop | approved_jasa | approved_workshop_jasa | pending | reject
+        $status = $request->input('status');
+        $mode   = $request->input('mode'); // masih boleh dipakai jika perlu, tapi status yg utama
 
-        // Basic validation for mode/status presence
-        if (!$mode && !$statusFromRequest) {
-            // nothing to validate -> bad request
-            if ($request->wantsJson() || $request->ajax()) {
-                return response()->json(['error' => 'Mode atau status diperlukan untuk pembaruan admin.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-            }
-            return redirect()->back()->withErrors(['error' => 'Mode atau status diperlukan untuk pembaruan admin.']);
-        }
-
-        // Normalize mode -> if mode not provided but status provided, infer simple mapping
-        if (!$mode && $statusFromRequest) {
-            // If status is 'Approved' we cannot infer whether jasa/workshop — expect catatan to tell us.
-            if ($statusFromRequest === 'Approved') {
-                // keep mode null — we'll validate catatan against both buckets
-                $mode = null;
-            } elseif ($statusFromRequest === 'Pending') {
-                $mode = 'pending';
-            } elseif ($statusFromRequest === 'Reject') {
-                $mode = 'reject';
-            }
-        }
-
-        // Validate according to mode
-        $rules = [
-            // catatan is required for approved modes (and must match allowed lists)
+        // validasi dasar
+        $validator = \Validator::make($request->all(), [
+            'status'  => [
+                'required',
+                'string',
+                Rule::in([
+                    Notification::STATUS_PENDING,
+                    Notification::STATUS_REJECT,
+                    Notification::STATUS_APPROVED_WORKSHOP,
+                    Notification::STATUS_APPROVED_JASA,
+                    Notification::STATUS_APPROVED_WORKSHOP_JASA,
+                ]),
+            ],
             'catatan' => 'nullable|string|max:1000',
-        ];
-
-        // We'll run custom validation logic below (so not all rules put inside validate()).
-        $validator = \Validator::make($request->all(), $rules);
+        ]);
 
         if ($validator->fails()) {
             if ($request->wantsJson() || $request->ajax()) {
@@ -258,74 +244,65 @@ public function update(Request $request, $notification_number)
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        // Extract catatan value (can be empty for pending/reject)
+        // Extract catatan (boleh kosong untuk sebagian status)
         $catatan = trim((string) $request->input('catatan', ''));
 
-        // Now validate mode-specific constraints
-        if ($mode === 'approved_jasa') {
-            if (empty($catatan) || !in_array($catatan, $opsiJasa)) {
+        // --- Validasi tambahan per-status ---
+
+        // Approved (Jasa) → catatan wajib & harus salah satu dari JASA_NOTES
+        if ($status === Notification::STATUS_APPROVED_JASA) {
+            if ($catatan === '' || !in_array($catatan, $opsiJasa, true)) {
                 $msg = 'Untuk Approved (Jasa), pilih catatan yang valid.';
                 if ($request->wantsJson() || $request->ajax()) {
                     return response()->json(['error' => $msg], Response::HTTP_UNPROCESSABLE_ENTITY);
                 }
                 return redirect()->back()->withErrors(['catatan' => $msg])->withInput();
             }
-            $statusToSave = 'Approved';
-        } elseif ($mode === 'approved_workshop') {
-            if (empty($catatan) || !in_array($catatan, $opsiWorkshop)) {
+        }
+
+        // Approved (Workshop) → catatan wajib & harus salah satu dari WORKSHOP_NOTES
+        if ($status === Notification::STATUS_APPROVED_WORKSHOP) {
+            if ($catatan === '' || !in_array($catatan, $opsiWorkshop, true)) {
                 $msg = 'Untuk Approved (Workshop), pilih catatan yang valid.';
                 if ($request->wantsJson() || $request->ajax()) {
                     return response()->json(['error' => $msg], Response::HTTP_UNPROCESSABLE_ENTITY);
                 }
                 return redirect()->back()->withErrors(['catatan' => $msg])->withInput();
             }
-            $statusToSave = 'Approved';
-        } elseif ($mode === 'pending') {
-            $statusToSave = 'Pending';
-            // catatan optional (no further checks)
-        } elseif ($mode === 'reject') {
-            $statusToSave = 'Reject';
-            // catatan optional (no further checks)
-        } else {
-            // mode null but statusFromRequest may be present (fallback)
-            if ($statusFromRequest === 'Approved') {
-                // status Approved but mode not given: ensure catatan belongs to either list
-                if (empty($catatan) || (!in_array($catatan, $opsiJasa) && !in_array($catatan, $opsiWorkshop))) {
-                    $msg = 'Status Approved memerlukan catatan yang valid (Jasa atau Workshop).';
-                    if ($request->wantsJson() || $request->ajax()) {
-                        return response()->json(['error' => $msg], Response::HTTP_UNPROCESSABLE_ENTITY);
-                    }
-                    return redirect()->back()->withErrors(['catatan' => $msg])->withInput();
-                }
-                $statusToSave = 'Approved';
-            } elseif ($statusFromRequest === 'Pending') {
-                $statusToSave = 'Pending';
-            } elseif ($statusFromRequest === 'Reject') {
-                $statusToSave = 'Reject';
-            } else {
-                $msg = 'Mode atau status tidak dikenali.';
+        }
+
+        // Approved (Workshop + Jasa) → catatan opsional,
+        // tapi kalau DIISI harus termasuk salah satu dari gabungan 2 list
+        if ($status === Notification::STATUS_APPROVED_WORKSHOP_JASA) {
+            if ($catatan !== '' && !in_array($catatan, array_merge($opsiJasa, $opsiWorkshop), true)) {
+                $msg = 'Catatan untuk Approved (Workshop + Jasa) harus dari daftar opsi Jasa/Workshop.';
                 if ($request->wantsJson() || $request->ajax()) {
                     return response()->json(['error' => $msg], Response::HTTP_UNPROCESSABLE_ENTITY);
                 }
-                return redirect()->back()->withErrors(['error' => $msg]);
+                return redirect()->back()->withErrors(['catatan' => $msg])->withInput();
             }
         }
 
-        // All validation passed — persist
+        // pending / reject → catatan bebas (opsional), tidak ada constraint khusus
+
+        // Simpan ke DB
         try {
             $notification = Notification::where('notification_number', $notification_number)->firstOrFail();
 
-            $notification->status = $statusToSave;
-            $notification->catatan = $catatan ?: null;
+            $notification->status  = $status;                     // ⬅️ langsung simpan enum baru
+            $notification->catatan = $catatan !== '' ? $catatan : null;
             $notification->save();
 
             if ($request->wantsJson() || $request->ajax()) {
-                return response()->json(['message' => 'Status dan catatan berhasil diperbarui.'], Response::HTTP_OK);
+                return response()->json([
+                    'message'      => 'Status dan catatan berhasil diperbarui.',
+                    'notification' => $notification,
+                ], Response::HTTP_OK);
             }
 
-        // redirect to admin.notifikasi with tab preserved
-$redirectRoute = route('admin.notifikasi', ['tab' => $request->get('tab', 'notif')]);
-return redirect($redirectRoute)->with('success', 'Status dan catatan berhasil diperbarui.');
+            // redirect ke admin.notifikasi dengan tab yang sama
+            $redirectRoute = route('admin.notifikasi', ['tab' => $request->get('tab', 'notif')]);
+            return redirect($redirectRoute)->with('success', 'Status dan catatan berhasil diperbarui.');
 
         } catch (ModelNotFoundException $e) {
             if ($request->wantsJson() || $request->ajax()) {
@@ -339,16 +316,15 @@ return redirect($redirectRoute)->with('success', 'Status dan catatan berhasil di
             }
             return redirect()->back()->withErrors(['error' => 'Terjadi kesalahan saat memperbarui status.']);
         }
-    } // end admin flow
+    }
 
-
-    // ---------- NORMAL edit (modal) flow ----------
+    // ---------- NORMAL edit (modal) flow (TIDAK DIUBAH) ----------
     $request->validate([
-        'job_name' => 'required|string|max:255',
-        'unit_work' => 'required|string|max:255',
-         'seksi' => 'nullable|string|max:255',
-        'priority' => 'required|in:Urgently,Hard,Medium,Low',
-        'input_date' => 'required|date',
+        'job_name'        => 'required|string|max:255',
+        'unit_work'       => 'required|string|max:255',
+        'seksi'           => 'nullable|string|max:255',
+        'priority'        => 'required|in:Urgently,Hard,Medium,Low',
+        'input_date'      => 'required|date',
         'usage_plan_date' => 'required|date',
     ]);
 
@@ -361,11 +337,11 @@ return redirect($redirectRoute)->with('success', 'Status dan catatan berhasil di
                                         ->firstOrFail();
         }
 
-        $notification->job_name = $request->input('job_name');
-        $notification->unit_work = $request->input('unit_work');
-          $notification->seksi = $request->input('seksi');
-        $notification->priority = $request->input('priority');
-        $notification->input_date = $request->input('input_date');
+        $notification->job_name        = $request->input('job_name');
+        $notification->unit_work       = $request->input('unit_work');
+        $notification->seksi           = $request->input('seksi');
+        $notification->priority        = $request->input('priority');
+        $notification->input_date      = $request->input('input_date');
         $notification->usage_plan_date = $request->input('usage_plan_date');
         $notification->save();
 
@@ -429,47 +405,58 @@ return redirect($redirectRoute)->with('success', 'Status dan catatan berhasil di
     }
 public function updateEkorin(Request $request, $notification_number)
 {
-    // validasi: HARUS SAMA PERSIS (dua-duanya wajib)
     $validated = $request->validate([
         'nomor_e_korin'  => 'required|string|max:255',
-        'status_e_korin' => 'required|in:waiting_korin,waiting_transfer,complete_transfer',
+        'status_e_korin' => 'required|in:waiting_korin,waiting_approval,waiting_transfer,complete_transfer',
     ]);
 
     try {
-        // cek akses notif
+        // Cek akses notif
         if (auth()->user()->usertype === 'admin') {
-            $notif = \App\Models\Notification::where('notification_number', $notification_number)->firstOrFail();
+            $notif = Notification::where('notification_number', $notification_number)->firstOrFail();
         } else {
-            $notif = \App\Models\Notification::where('notification_number', $notification_number)
+            $notif = Notification::where('notification_number', $notification_number)
                 ->where('user_id', auth()->id())
                 ->firstOrFail();
         }
 
-        // ambil verifikasi anggaran
-        $va = \App\Models\VerifikasiAnggaran::where('notification_number', $notification_number)->first();
+        $va = VerifikasiAnggaran::where('notification_number', $notification_number)->first();
+        $ob = OrderBengkel::where('notification_number', $notification_number)->first();
 
-        if (!$va) {
-            return back()->withErrors(['ekorin' => 'Verifikasi Anggaran belum dibuat oleh admin.'])->withInput();
+        // ==============================
+        // 1) Jika Verifikasi Anggaran: "Tidak Tersedia"
+        // ==============================
+        if ($va && $va->status_anggaran === 'Tidak Tersedia') {
+
+            $va->nomor_e_korin  = $validated['nomor_e_korin'];
+            $va->status_e_korin = $validated['status_e_korin'];
+            $va->tanggal_verifikasi = $va->tanggal_verifikasi ?? now();
+            $va->save();
+
+            return back()->with('success', 'E-KORIN berhasil disimpan ke Verifikasi Anggaran.');
         }
 
-        if ($va->status_anggaran !== 'Tersedia') {
-            return back()->withErrors(['ekorin' => 'E-KORIN hanya bisa diisi jika status dana = Tersedia.'])->withInput();
+        // ==============================
+        // 2) Jika Order Bengkel: "Waiting Budget"
+        // ==============================
+        if ($ob && $ob->status_anggaran === 'Waiting Budget') {
+
+            $ob->nomor_e_korin  = $validated['nomor_e_korin'];
+            $ob->status_e_korin = $validated['status_e_korin'];
+            $ob->save();
+
+            return back()->with('success', 'E-KORIN berhasil disimpan ke Order Bengkel.');
         }
 
-        // update hanya dua kolom ini
-        $va->nomor_e_korin  = $validated['nomor_e_korin'];
-        $va->status_e_korin = $validated['status_e_korin'];
-        // opsional: cap waktu update
-        $va->tanggal_verifikasi = $va->tanggal_verifikasi ?? now();
-        $va->save();
+        // Jika dua-duanya tidak cocok
+        return back()->withErrors(['ekorin' => 'Tidak dapat menyimpan E-KORIN. Status anggaran tidak valid.']);
 
-        return back()->with('success', 'Nomor E-KORIN dan Status E-KORIN berhasil disimpan.');
-    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-        return back()->withErrors(['ekorin' => 'Notifikasi tidak ditemukan atau akses ditolak.']);
     } catch (\Exception $e) {
-        \Log::error('updateEkorin error: '.$e->getMessage(), ['notification' => $notification_number]);
+        \Log::error('updateEkorin error: '.$e->getMessage());
         return back()->withErrors(['ekorin' => 'Terjadi kesalahan saat menyimpan E-KORIN.']);
     }
 }
+
+
 
 }

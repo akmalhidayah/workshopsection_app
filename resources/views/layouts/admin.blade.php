@@ -17,7 +17,7 @@
 <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
 <!-- TomSelect JS -->
 <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
-  <!-- <link rel="stylesheet" href="{{ asset('build/assets/app-D9W9ZKZc.css') }}">
+  <!-- <link rel="stylesheet" href="{{ asset('build/assets/app-DJspGMRf.css') }}">
     <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script>  -->
     <!-- Vite -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -104,7 +104,7 @@
           hover:bg-blue-700 {{ request('tab') === 'notif' ? 'bg-blue-800' : '' }}">
     <div class="flex items-center">
         <i class="fas fa-bell mr-2 text-[12px]"></i> 
-        <span>Order Pekerjaan</span>
+        <span>Order Pekerjaan Jasa</span>
     </div>
     @if(!empty($jumlahOrderPekerjaan))
         <span class="bg-red-500 text-[10px] font-semibold px-2 py-[1px] rounded-full">
@@ -129,13 +129,18 @@
     @endif
 </a>
 
-        <!-- 3️⃣ Order Lainnya 
-        <a href="#"
-           @click.prevent="/* nanti bisa diarahkan ke route lain */"
-           class="block px-3 py-2 text-xs text-white rounded-lg hover:bg-blue-700">
-            <i class="fas fa-list-alt mr-2 text-[12px]"></i> 
-            Order Lainnya
-        </a> -->
+      <!-- Order Pekerjaan Bengkel -->
+<a href="{{ route('admin.orderbengkel.index') }}"
+   class="flex items-center justify-between px-3 py-2 text-xs text-white rounded-lg hover:bg-blue-700 {{ request()->routeIs('admin.orderbengkel.*') ? 'bg-blue-800' : '' }}">
+    <div class="flex items-center">
+        <i class="fas fa-list-alt mr-2 text-[12px]"></i>
+        <span>Order Pekerjaan Bengkel</span>
+    </div>
+    @if(!empty($jumlahOrderPekerjaan))
+        <span class="bg-red-500 text-[10px] font-semibold px-2 py-[1px] rounded-full">{{ $jumlahOrderPekerjaan }}</span>
+    @endif
+</a>
+
 
     </div>
 </div>

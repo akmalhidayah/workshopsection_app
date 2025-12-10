@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class Lpj extends Model
 {
@@ -16,16 +18,35 @@ class Lpj extends Model
 
     protected $fillable = [
         'notification_number',
+
+        // legacy single-number (tetap disimpan untuk backward compatibility)
         'lpj_number',
-        'lpj_document_path',
         'ppl_number',
+
+        // --- tambahan: nomor per-termin (baru) ---
+        'lpj_number_termin1',
+        'ppl_number_termin1',
+        'lpj_number_termin2',
+        'ppl_number_termin2',
+
+        // legacy file paths (tetap)
+        'lpj_document_path',
         'ppl_document_path',
+
+        // explicit per-termin file columns
+        'lpj_document_path_termin1',
+        'ppl_document_path_termin1',
+        'lpj_document_path_termin2',
+        'ppl_document_path_termin2',
+
+        // status termin
         'termin1',
         'termin2',
+
         'update_date',
-        // baru:
+
+        // tambahkan garansi_months agar bisa diisi/dibaca lewat model
         'garansi_months',
-        'garansi_label',
     ];
 
     protected $casts = [
@@ -33,7 +54,7 @@ class Lpj extends Model
         'garansi_months' => 'integer',
     ];
 
-    // ---------- Termin helpers ----------
+    // ---------- Termin helpers (existing) ----------
     public function isTermin1Paid(): bool
     {
         return $this->termin1 === 'sudah';
@@ -54,36 +75,101 @@ class Lpj extends Model
         return $this->termin2 === 'sudah' ? 'Sudah Dibayar' : 'Belum Dibayar';
     }
 
-    // ---------- Garansi helpers ----------
+    // ---------- File path helpers (prioritas & kompatibilitas) (existing) ----------
     /**
-     * Kembalikan label garansi, mis: "1 Bulan", "6 Bulan", atau '-' jika null
+     * Get LPJ file path for a given termin (1 or 2).
+     * Prioritas:
+     *  - termin-specific column (lpj_document_path_terminX)
+     *  - legacy lpj_document_path (treated as termin1)
      */
- public function getGaransiLabelAttribute()
+    public function getLpjPathForTermin(int $termin = 1): ?string
     {
-        if (! $this->garansi_months) return '-';
-        return $this->garansi_months . ' Bulan';
+        if ($termin === 1) {
+            return $this->lpj_document_path_termin1 ?? $this->lpj_document_path ?? null;
+        }
+
+        return $this->lpj_document_path_termin2 ?? null;
     }
 
     /**
-     * Shortcut: apakah garansi pernah dipilih (ada nilai)
+     * Get PPL file path for a given termin (1 or 2).
+     * Prioritas: termin-specific, lalu legacy.
      */
-    public function hasGaransi(): bool
+    public function getPplPathForTermin(int $termin = 1): ?string
     {
-        return (bool) $this->garansi_months;
+        if ($termin === 1) {
+            return $this->ppl_document_path_termin1 ?? $this->ppl_document_path ?? null;
+        }
+
+        return $this->ppl_document_path_termin2 ?? null;
     }
-     public function calculateGaransiEndDate(?Carbon $startDate): ?Carbon
+
+    // ---------- New: nomor per-termin helpers (tidak mengubah logic lama) ----------
+    public function getLpjNumberForTermin(int $termin = 1): ?string
     {
-        if (! $startDate) {
+        if ($termin === 1) {
+            return $this->lpj_number_termin1 ?? $this->lpj_number ?? null;
+        }
+        return $this->lpj_number_termin2 ?? null;
+    }
+
+    public function getPplNumberForTermin(int $termin = 1): ?string
+    {
+        if ($termin === 1) {
+            return $this->ppl_number_termin1 ?? $this->ppl_number ?? null;
+        }
+        return $this->ppl_number_termin2 ?? null;
+    }
+
+    /**
+     * Generate safe filename mengikuti format:
+     *   {TYPE}_BMS_{NOTIF}_T{termin}_{NUMBER}.{ext}
+     */
+    public function generateDocumentFilename(string $type, int $termin = 1, string $extension = 'pdf'): string
+    {
+        $typeUpper = strtoupper($type) === 'PPL' ? 'PPL' : 'LPJ';
+        $notif = $this->notification_number;
+        $number = $typeUpper === 'LPJ' ? $this->getLpjNumberForTermin($termin) : $this->getPplNumberForTermin($termin);
+        $cleanNumber = $number ? preg_replace('/[^A-Za-z0-9\-_]/', '_', $number) : 'NONUM';
+        $filename = "{$typeUpper}_BMS_{$notif}_T{$termin}_{$cleanNumber}.{$extension}";
+
+        // limit length to be safe for filesystems
+        return Str::limit($filename, 200, '');
+    }
+
+    /**
+     * Shortcut: apakah termin sudah dibayar
+     */
+    public function isTerminPaid(int $termin = 1): bool
+    {
+        return $termin === 1 ? $this->isTermin1Paid() : $this->isTermin2Paid();
+    }
+
+    /**
+     * Hitung tanggal berakhir garansi berdasarkan tanggal mulai.
+     *
+     * @param  \Carbon\Carbon|string|null  $start
+     * @return \Carbon\Carbon|null
+     */
+    public function calculateGaransiEndDate($start): ?Carbon
+    {
+        if (empty($start)) {
+            return null;
+        }
+
+        try {
+            $startDate = $start instanceof Carbon ? $start : Carbon::parse($start);
+        } catch (\Exception $e) {
             return null;
         }
 
         $months = (int) ($this->garansi_months ?? 0);
+
         if ($months <= 0) {
             return null;
         }
 
-        // gunakan addMonthsNoOverflow supaya tanggal tetap valid (mis. 31 Jan + 1 bln => 28/29 Feb)
-        return (clone $startDate)->addMonthsNoOverflow($months);
+        // default: berakhir = start + months - 1 hari
+        return $startDate->copy()->addMonths($months)->subDay();
     }
-    
 }

@@ -13,18 +13,22 @@ use App\Http\Controllers\ScopeOfWork\ScopeOfWorkController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\KawatLasController;
 use App\Http\Controllers\Admin\JenisKawatLasController;
+use App\Http\Controllers\Admin\OrderBengkelController;
 use App\Http\Controllers\GambarTeknikController;
 use App\Http\Controllers\Approval\ApprovalController;
 use App\Http\Controllers\Admin\BaseHppController;
 use App\Http\Controllers\Admin\Hpp1Controller;
 use App\Http\Controllers\Admin\Hpp2Controller;
 use App\Http\Controllers\Admin\Hpp3Controller;
+use App\Http\Controllers\Admin\Hpp4Controller;
 use App\Http\Controllers\Admin\HppApprovalController;
 use App\Http\Controllers\SignatureController;
 use App\Http\Controllers\Approval\HPPApprovalMagicController;
 use App\Http\Controllers\Admin\SPKController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\LHPPController;
+use App\Http\Controllers\Admin\LHPPAdminController;
+use App\Http\Controllers\LHPPApprovalController as TokenLHPPApprovalController;
 use App\Http\Controllers\ItemsController;
 use App\Http\Controllers\PKMDashboardController;
 use App\Http\Controllers\Admin\UserController;
@@ -32,6 +36,7 @@ use App\Http\Controllers\Approval\SPKApprovalController;
 use App\Http\Controllers\Admin\UploadInfoController;
 use App\Http\Controllers\WelcomeController;
 use Illuminate\Support\Facades\Route;
+
 
 Route::get('/', [WelcomeController::class, 'index'])->name('welcome');
 
@@ -108,6 +113,19 @@ Route::put('/admin/kawatlas/{id}/jumlah', [KawatLasController::class, 'updateJum
      ->name('admin.kawatlas.updateStatus');
 
 
+// Admin routes order bengkel
+Route::prefix('admin')->name('admin.')->middleware(['auth','admin'])->group(function () {
+
+    Route::get('order-bengkel', [OrderBengkelController::class, 'index'])->name('orderbengkel.index');
+    Route::get('order-bengkel/create', [OrderBengkelController::class, 'create'])->name('orderbengkel.create');
+    Route::get('order-bengkel/{notification_number}/edit', [OrderBengkelController::class, 'edit'])->name('orderbengkel.edit');
+
+    // ✅ Tambahan: update inline status (AJAX atau form submit)
+    // Menangani update per-notification (status anggaran/material/progress & catatan)
+    Route::patch('order-bengkel/{notification_number}', [OrderBengkelController::class, 'update'])
+         ->name('orderbengkel.update');
+
+});
 
 // Profile routes
 Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -195,6 +213,9 @@ Route::prefix('admin')->middleware(['auth','admin'])->name('admin.')->group(func
 
         // Index (pakai BaseHppController via Hpp1Controller@index)
         Route::get('/', [Hpp1Controller::class, 'index'])->name('index');
+// Re-issue token (POST) — berada di: admin.inputhpp.reissue_token
+Route::post('{notification_number}/reissue-token', [HppApprovalController::class, 'reissueToken'])
+     ->name('reissue_token');
 
         // HPP 1 — > 250jt
         Route::controller(Hpp1Controller::class)->group(function () {
@@ -204,6 +225,18 @@ Route::prefix('admin')->middleware(['auth','admin'])->name('admin.')->group(func
             Route::put('update-hpp1/{notification_number}', 'update')->name('update_hpp1');
             Route::delete('delete-hpp1/{notification_number}', 'destroy')->name('destroy_hpp1');
             Route::get('download-hpp1/{notification_number}',  'downloadPDF')->name('download_hpp1');
+            // Form upload
+            Route::get('director-upload/{notification_number}', 'showDirectorUpload')
+                ->name('director_upload');
+
+            // Simpan upload
+            Route::post('director-upload/{notification_number}', 'storeDirectorUpload')
+                ->name('director_upload.store');
+
+            // Download file direktur (opsional)
+            Route::get('director-download/{notification_number}', 'downloadDirector')
+                ->name('download_director');
+            
         });
 
         // HPP 2 — < 250jt
@@ -216,7 +249,7 @@ Route::prefix('admin')->middleware(['auth','admin'])->name('admin.')->group(func
             Route::get('download-hpp2/{notification_number}',  'downloadPDF')->name('download_hpp2');
         });
 
-        // HPP 3 — Bengkel/Lainnya
+        // HPP 3 — Bengkel >250JT
         Route::controller(Hpp3Controller::class)->group(function () {
             Route::get('create-hpp3', 'create')->name('create_hpp3');
             Route::post('store-hpp3',  'store')->name('store_hpp3');
@@ -224,6 +257,16 @@ Route::prefix('admin')->middleware(['auth','admin'])->name('admin.')->group(func
             Route::put('update-hpp3/{notification_number}', 'update')->name('update_hpp3');
             Route::delete('delete-hpp3/{notification_number}', 'destroy')->name('destroy_hpp3');
             Route::get('download-hpp3/{notification_number}',  'downloadPDF')->name('download_hpp3');
+        });
+
+        // HPP 4 — Bengkel <250JT
+        Route::controller(Hpp4Controller::class)->group(function () {
+            Route::get('create-hpp4', 'create')->name('create_hpp4');
+            Route::post('store-hpp4',  'store')->name('store_hpp4');
+            Route::get('edit-hpp4/{notification_number}',   'edit')->name('edit_hpp4');
+            Route::put('update-hpp4/{notification_number}', 'update')->name('update_hpp4');
+            Route::delete('delete-hpp4/{notification_number}', 'destroy')->name('destroy_hpp4');
+            Route::get('download-hpp4/{notification_number}',  'downloadPDF')->name('download_hpp4');
         });
     });
 });
@@ -240,6 +283,7 @@ Route::prefix('approval/hpp')->middleware(['auth'])->name('approval.hpp.')->grou
     Route::get('{notification_number}/download-hpp1', [Hpp1Controller::class, 'downloadPDF'])->name('download_hpp1');
     Route::get('{notification_number}/download-hpp2', [Hpp2Controller::class, 'downloadPDF'])->name('download_hpp2');
     Route::get('{notification_number}/download-hpp3', [Hpp3Controller::class, 'downloadPDF'])->name('download_hpp3');
+    Route::get('{notification_number}/download-hpp4', [Hpp4Controller::class, 'downloadPDF'])->name('download_hpp4');
 });
 
 
@@ -254,15 +298,53 @@ Route::middleware(['auth', 'admin'])->group(function () {
 });
 
 //Route LHPP ADMIN
-Route::middleware(['auth', 'admin'])->group(function () {
-    Route::get('/admin/lhpp', [App\Http\Controllers\Admin\LHPPAdminController::class, 'index'])->name('admin.lhpp.index');
-    Route::get('/admin/lhpp/{notification_number}', [App\Http\Controllers\Admin\LHPPAdminController::class, 'show'])->name('admin.lhpp.show');
-    Route::post('/admin/lhpp/{notification_number}/approve', [App\Http\Controllers\Admin\LHPPAdminController::class, 'approve'])->name('admin.lhpp.approve');
-    Route::post('/admin/lhpp/{notification_number}/reject', [App\Http\Controllers\Admin\LHPPAdminController::class, 'reject'])->name('admin.lhpp.reject');
-    Route::get('/admin/lhpp/{notification_number}/download-pdf', [App\Http\Controllers\Admin\LHPPAdminController::class, 'downloadPDF'])
-    ->name('admin.lhpp.download_pdf');
+Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(function () {
+
+    // LHPP List + Detail
+    Route::get('lhpp', [LHPPAdminController::class, 'index'])->name('lhpp.index');
+    Route::get('lhpp/{notification_number}', [LHPPAdminController::class, 'show'])->name('lhpp.show');
+
+    // Store garansi
+    Route::post('lhpp/{notification_number}/garansi', [LHPPAdminController::class, 'storeGaransi'])
+        ->name('lhpp.storeGaransi');
+
+    // Approve / Reject LHPP
+    Route::post('lhpp/{notification_number}/approve', [LHPPAdminController::class, 'approve'])
+        ->name('lhpp.approve');
+    Route::post('lhpp/{notification_number}/reject', [LHPPAdminController::class, 'reject'])
+        ->name('lhpp.reject');
+
+    // Download PDF
+    Route::get('lhpp/{notification_number}/download-pdf', [LHPPAdminController::class, 'downloadPDF'])
+        ->name('lhpp.download_pdf');
 
 });
+/* =========================
+   APPROVAL LHPP (TOKEN LINK)
+   ========================= */
+Route::middleware(['auth'])
+    ->prefix('approval/lhpp')
+    ->name('approval.lhpp.')
+    ->group(function () {
+
+        // (opsional) list LHPP – tetap aman karena index di-controller cek isPkmManager()
+        Route::get('/', [TokenLHPPApprovalController::class, 'index'])
+            ->name('index');
+
+        // halaman approve via TOKEN
+        Route::get('{token}', [TokenLHPPApprovalController::class, 'show'])
+            ->name('sign');
+
+        // submit tanda tangan
+        Route::post('{token}', [TokenLHPPApprovalController::class, 'sign'])
+            ->name('do');
+
+        // download PDF dari halaman approval
+        Route::get('{notification_number}/download-pdf', [LHPPController::class, 'downloadPDF'])
+            ->name('download_pdf');
+    });
+
+
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::resource('unit_work', App\Http\Controllers\Admin\UnitWorkController::class);
 });
@@ -284,8 +366,7 @@ Route::middleware(['auth', PkmMiddleware::class])
         // Job Waiting List
         Route::get('/jobwaiting', [PKMDashboardController::class, 'jobWaiting'])->name('jobwaiting');
         Route::post('/jobwaiting/update-progress/{notification_number}', [PKMDashboardController::class, 'updateProgress'])->name('jobwaiting.updateProgress');
-        // ✅ Route baru untuk download HPP (semua jenis: HPP1, HPP2, HPP3)
-        Route::get('/download-hpp/{notification_number}', [PKMDashboardController::class, 'downloadHpp'])->name('download_hpp');
+
         // Laporan
         Route::get('/laporan', [PKMDashboardController::class, 'laporan'])->name('laporan');
 
@@ -329,6 +410,7 @@ Route::middleware(['auth', PkmMiddleware::class])
             Route::delete('/{notification_number}', [ItemsController::class, 'destroy'])->name('destroy'); // ✅ Hapus item
         }); 
     });
+            Route::get('lhpp/{notification_number}/download-pdf', [LHPPController::class, 'downloadPDF'])->name('lhpp.download_pdf');
     Route::get('/get-item-data/{notification_number}', [ItemsController::class, 'getItemData'])->name('getItemData');
 
 // Routes for SPK Approval
@@ -337,37 +419,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/approval/spk/sign/{signType}/{nomorSpk}', [SPKApprovalController::class, 'saveSignature'])->name('approval.spk.saveSignature');
 });
 
-
-Route::middleware(['auth'])->prefix('approval/hpp')->name('approval.hpp.')->group(function () {
-    Route::get('{notification_number}/download-hpp1', [Hpp1Controller::class, 'downloadPDF'])->name('download_hpp1');
-    Route::get('{notification_number}/download-hpp2', [Hpp2Controller::class, 'downloadPDF'])->name('download_hpp2');
-    Route::get('{notification_number}/download-hpp3', [Hpp3Controller::class, 'downloadPDF'])->name('download_hpp3');
-});
-
-// Routes for LHPP Approval
-Route::middleware(['auth'])->prefix('approval/lhpp')->name('approval.lhpp.')->group(function () {
-    Route::get('/', [App\Http\Controllers\Approval\LHPPApprovalController::class, 'index'])->name('index');
-    Route::post('/sign/{signType}/{notificationNumber}', [App\Http\Controllers\Approval\LHPPApprovalController::class, 'saveSignature'])->name('saveSignature');
-    Route::post('/notes/{notification_number}/{type}', [App\Http\Controllers\Approval\LHPPApprovalController::class, 'saveNotes'])->name('saveNotes');
-    Route::put('/status/{notification_number}', [App\Http\Controllers\Approval\LHPPApprovalController::class, 'updateStatus'])->name('updateStatus');
-    Route::post('/reject/{signType}/{notificationNumber}', [App\Http\Controllers\Approval\LHPPApprovalController::class, 'reject'])->name('reject');
-
-    // ✅ Route untuk download PDF menggunakan LHPPController
-    Route::get('/{notification_number}/download-pdf', [App\Http\Controllers\LHPPController::class, 'downloadPDF'])->name('download_pdf');
-});
-
-
-// Route::get('/send-wa', function() {
-//     $response = Http::withHeaders([
-//         'Authorization' => '3GBUnGXz7gPbP5AJKA4a'
-//     ])->post('https://api.fonnte.com/send', [
-//         'target' => '083150898767',
-//         'message' => 'Ini Pesan Laravel'
-//     ]);
-
-//     dd(json_decode($response, true));
-// });
-
+Route::post('/webhook/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'receive']);
+Route::get('/webhook/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'verify']); // challenge verify (optional)
 
 
 

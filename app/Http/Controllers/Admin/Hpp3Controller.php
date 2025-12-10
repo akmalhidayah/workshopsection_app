@@ -12,6 +12,9 @@ use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use App\Services\HppApprovalLinkService;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Config;
+
 
 
 class Hpp3Controller extends BaseHppController
@@ -35,15 +38,14 @@ class Hpp3Controller extends BaseHppController
 
             return view('admin.inputhpp.createhpp3', compact('notifications', 'source_form', 'currentOA'));
         } catch (\Throwable $e) {
-            Log::error('Gagal membuka form create HPP2: '.$e->getMessage());
+            Log::error('Gagal membuka form create HPP3: '.$e->getMessage());
             abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Terjadi kesalahan saat membuka form create.');
         }
     }
-
 public function store(Request $request)
 {
     try {
-        // 1) VALIDASI HEADER + NESTED FIELDS
+        // 1) VALIDASI HEADER + NESTED FIELDS (uraian_pekerjaan TIDAK LAGI diwajibkan)
         $data = $request->validate([
             'notification_number' => [
                 'required','string','max:255',
@@ -53,15 +55,11 @@ public function store(Request $request)
             'source_form'         => 'nullable|string|max:100',
             'cost_centre'         => 'nullable|string|max:100',
             'description'         => 'required|string',
-            'requesting_unit'     => 'nullable|string|max:100', // akan dioverride
+            'requesting_unit'     => 'nullable|string|max:100',
             'controlling_unit'    => 'nullable|string|max:100',
             'outline_agreement'   => 'nullable|string|max:100',
 
-            // kelompok [g]
-            'uraian_pekerjaan'    => 'required|array|min:1',
-            'uraian_pekerjaan.*'  => 'nullable|string|max:255',
-
-            // item [g][i]
+            // item [g][i] - menggunakan nama_item sebagai acuan group
             'jenis_item'          => 'nullable|array',
             'jenis_item.*'        => 'array',
             'jenis_item.*.*'      => 'nullable|string|max:50',
@@ -69,6 +67,10 @@ public function store(Request $request)
             'nama_item'           => 'required|array|min:1',
             'nama_item.*'         => 'array|min:1',
             'nama_item.*.*'       => 'nullable|string|max:255',
+
+            'jumlah_item'         => 'nullable|array',        // <<-- tambah ini
+            'jumlah_item.*'       => 'array',
+            'jumlah_item.*.*'     => 'nullable|string|max:255',
 
             'qty'                 => 'required|array|min:1',
             'qty.*'               => 'array|min:1',
@@ -96,23 +98,30 @@ public function store(Request $request)
             'requesting_notes'    => 'nullable|string',
         ]);
 
-        // default
-        $data['source_form'] = $data['source_form'] ?? 'createhpp1';
-
-        // 2) LOCK unit kerja dari notifikasi (abaikan input user)
+        // default & lock requesting_unit
+        $data['source_form'] = $data['source_form'] ?? 'createhpp3';
         $notif = Notification::where('notification_number', $data['notification_number'])->firstOrFail();
         $data['requesting_unit'] = $notif->unit_work;
+        $data['cost_centre'] = $notif->cost_centre ?? ($data['cost_centre'] ?? null);
 
-        // 3) NORMALISASI PANJANG ARRAY + HITUNG GRAND TOTAL
+        // NORMALISASI PANJANG ARRAY + HITUNG GRAND TOTAL
         $grand     = 0.0;
-        $itemCols  = ['jenis_item','nama_item','qty','satuan','harga_satuan','harga_total','keterangan'];
+        $itemCols  = ['jenis_item','jumlah_item','nama_item','qty','satuan','harga_satuan','harga_total','keterangan'];
 
-        foreach (array_keys($data['uraian_pekerjaan']) as $g) {
-            // acuan panjang = nama_item[g]
+        // pastikan nama_item ada sebagai acuan group
+        if (!isset($data['nama_item']) || !is_array($data['nama_item']) || empty($data['nama_item'])) {
+            $data['nama_item'] = [['']]; // fallback 1 group kosong
+        }
+
+        // gunakan index kelompok dari nama_item
+        $groupIndices = array_keys($data['nama_item']);
+
+        foreach ($groupIndices as $g) {
             $n = count($data['nama_item'][$g] ?? []);
 
             foreach ($itemCols as $col) {
-                $row = array_values($data[$col][$g] ?? []);
+                $row = $data[$col][$g] ?? [];
+                $row = is_array($row) ? array_values($row) : [];
                 $data[$col][$g] = array_values(array_pad(array_slice($row, 0, $n), $n, null));
             }
 
@@ -125,21 +134,24 @@ public function store(Request $request)
         }
         $data['total_amount'] = $grand;
 
-        // 3.1) Tentukan status berdasarkan tombol
+        // Tentukan status berdasarkan tombol
         $action = $request->input('action'); // 'draft' | 'submit'
         $data['status'] = $action === 'submit' ? 'submitted' : 'draft';
 
-        // Jika diajukan, pastikan total > 0
         if ($data['status'] === 'submitted' && $data['total_amount'] <= 0) {
             return back()
                 ->withInput()
                 ->with('error', 'Total keseluruhan harus lebih dari 0 untuk diajukan.');
         }
 
-        // 4) SIMPAN
-        $hpp = Hpp1::create($data);
+        // SIMPAN (filter hanya field yang ada di model -> mencegah field tak diinginkan tersimpan)
+        $hppModel = new Hpp1();
+        $saveData = Arr::only($data, $hppModel->getFillable());
+        $saveData['total_amount'] = number_format((float)($saveData['total_amount'] ?? 0), 2, '.', '');
 
-        // 5) Jika submitted, issue token approver pertama
+        $hpp = Hpp1::create($saveData);
+
+        // Jika submitted, issue first token
         if ($hpp->status === 'submitted') {
             $this->issueFirstToken($hpp);
         }
@@ -158,23 +170,30 @@ public function store(Request $request)
 // di dalam class Hpp1Controller
 private function issueFirstToken(Hpp1 $hpp): void
 {
-    $form  = $hpp->source_form ?: 'createhpp3';
-    // step pertama di semua form = Manager UoW
-    $first = ['key'=>'manager','role'=>'Manager','unit'=>'Unit of Workshop & Design'];
+    // tahap pertama: Manager Unit of Workshop (toleran variasi penamaan)
+    $roleLower   = 'manager';
+    $unitPattern = 'unit of workshop%'; // contoh: "Unit of Workshop", "Unit of Workshop & Design", dst.
 
-    // cari user penerima pertama
+    // cari user approver pertama (lebih toleran & jelas saat gagal)
     $user = User::query()
-        ->whereRaw('LOWER(jabatan)=?', [strtolower($first['role'])])
-        ->where('unit_work', $first['unit'])
+        ->whereRaw('LOWER(jabatan) = ?', [$roleLower])
+        ->whereRaw('LOWER(unit_work) LIKE ?', [$unitPattern])
         ->first();
 
-    if (!$user) { \Log::warning('Approver awal tidak ditemukan'); return; }
+    if (!$user) {
+        \Log::warning('[HPP] Approver awal tidak ditemukan', [
+            'notif' => $hpp->notification_number,
+            'filter' => ['jabatan' => $roleLower, 'unit_like' => $unitPattern],
+        ]);
+        return;
+    }
 
+    // terbitkan token + buat URL
     $linkSvc = app(HppApprovalLinkService::class);
-    $tok     = $linkSvc->issue($hpp->notification_number, $first['key'], $user->id, 60*24);
+    $tok     = $linkSvc->issue($hpp->notification_number, 'manager', $user->id, 60*24);
     $url     = $linkSvc->url($tok);
 
-    // kirim WA (opsional)
+    // kirim WA (opsional; error tidak memblokir proses)
     try {
         Http::withHeaders(['Authorization' => 'KBTe2RszCgc6aWhYapcv'])
             ->post('https://api.fonnte.com/send', [
@@ -182,19 +201,25 @@ private function issueFirstToken(Hpp1 $hpp): void
                 'message' =>
                     "✍️ *Permintaan Tanda Tangan HPP*\n".
                     "No: {$hpp->notification_number}\n".
-                    "Role: {$first['role']}\n".
+                    "Role: Manager\n".
                     "Klik untuk menandatangani:\n{$url}\n\n".
                     "_Link berlaku 24 jam & hanya untuk Anda_",
             ]);
     } catch (\Throwable $e) {
-        \Log::error('WA first token gagal: '.$e->getMessage());
+        \Log::error('[HPP] Gagal kirim WA first token', [
+            'notif' => $hpp->notification_number,
+            'user'  => $user->id,
+            'error' => $e->getMessage(),
+        ]);
     }
 
     \Log::info('[HPP] First token issued', [
-        'notif'=>$hpp->notification_number,'sign_type'=>$first['key'],'user'=>$user->id,'url'=>$url
+        'notif'     => $hpp->notification_number,
+        'sign_type' => 'manager',
+        'user'      => $user->id,
+        'url'       => $url,
     ]);
 }
-
 
     public function edit($notification_number)
     {
@@ -210,15 +235,12 @@ private function issueFirstToken(Hpp1 $hpp): void
 public function update(Request $request, $notification_number)
 {
     try {
-        // 1) VALIDASI (jenis opsional; acuan panjang = nama_item)
+        // VALIDASI (uraian_pekerjaan tidak diwajibkan)
         $data = $request->validate([
             'description'       => 'required|string',
             'requesting_unit'   => 'required|string',
             'controlling_unit'  => 'nullable|string',
             'outline_agreement' => 'nullable|string',
-
-            'uraian_pekerjaan'  => 'required|array|min:1',
-            'uraian_pekerjaan.*'=> 'nullable|string|max:255',
 
             'jenis_item'        => 'nullable|array',
             'jenis_item.*'      => 'array',
@@ -227,6 +249,10 @@ public function update(Request $request, $notification_number)
             'nama_item'         => 'required|array|min:1',
             'nama_item.*'       => 'array|min:1',
             'nama_item.*.*'     => 'nullable|string|max:255',
+
+            'jumlah_item'         => 'nullable|array',        // <<-- tambah ini
+            'jumlah_item.*'       => 'array',
+            'jumlah_item.*.*'     => 'nullable|string|max:255',
 
             'qty'               => 'required|array|min:1',
             'qty.*'             => 'array|min:1',
@@ -253,15 +279,22 @@ public function update(Request $request, $notification_number)
 
         $hpp = Hpp1::where('notification_number', $notification_number)->firstOrFail();
 
-        // 2) NORMALISASI + HITUNG ULANG
+        // NORMALISASI + HITUNG ULANG (sama seperti store)
         $grand     = 0.0;
-        $itemCols  = ['jenis_item','nama_item','qty','satuan','harga_satuan','harga_total','keterangan'];
+        $itemCols  = ['jenis_item','jumlah_item','nama_item','qty','satuan','harga_satuan','harga_total','keterangan'];
 
-        foreach (array_keys($data['uraian_pekerjaan']) as $g) {
+        if (!isset($data['nama_item']) || !is_array($data['nama_item']) || empty($data['nama_item'])) {
+            $data['nama_item'] = [['']];
+        }
+
+        $groupIndices = array_keys($data['nama_item']);
+
+        foreach ($groupIndices as $g) {
             $n = count($data['nama_item'][$g] ?? []);
 
             foreach ($itemCols as $col) {
-                $row = array_values($data[$col][$g] ?? []);
+                $row = $data[$col][$g] ?? [];
+                $row = is_array($row) ? array_values($row) : [];
                 $data[$col][$g] = array_values(array_pad(array_slice($row, 0, $n), $n, null));
             }
 
@@ -272,20 +305,24 @@ public function update(Request $request, $notification_number)
                 $grand += $data['harga_total'][$g][$i];
             }
         }
-        $data['total_amount'] = $grand; 
+        $data['total_amount'] = $grand;
 
-        // 3) UPDATE
-        $hpp->update($data);
+        // FILTER & UPDATE (hanya field fillable)
+        $saveData = Arr::only($data, (new Hpp1())->getFillable());
+        $saveData['total_amount'] = number_format((float)($saveData['total_amount'] ?? 0), 2, '.', '');
+        $hpp->update($saveData);
 
         return redirect()
             ->route('admin.inputhpp.index')
             ->with('success', 'Data berhasil diperbarui.');
 
     } catch (\Throwable $e) {
-        \Log::error('Gagal memperbarui HPP2: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        \Log::error('Gagal memperbarui HPP3: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
         abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Terjadi kesalahan saat memperbarui data HPP.');
     }
 }
+
+
 
     public function downloadPDF($notification_number)
     {
@@ -298,7 +335,7 @@ public function update(Request $request, $notification_number)
 
             return $pdf->stream('HPP3.pdf');
         } catch (\Throwable $e) {
-            Log::error('Gagal membuat PDF HPP3: '.$e->getMessage());
+            Log::error('Gagal membuat PDF HPP2: '.$e->getMessage());
             abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Terjadi kesalahan saat membuat PDF.');
         }
     }

@@ -79,6 +79,64 @@
 
     <!-- Alpine (defer) - if app.js already imports Alpine, you can remove this -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js" defer></script>
+{{-- SweetAlert flash + open PDF if session has open_pdf --}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // helper: open pdf in new tab safely
+  function openPdf(url) {
+    try {
+      // try to open — best when called after a user gesture (we call it after Swal resolves)
+      window.open(url, '_blank');
+    } catch (e) {
+      console.error('Gagal membuka PDF:', e);
+    }
+  }
+
+  @if(session()->has('success'))
+    Swal.fire({
+      icon: 'success',
+      title: 'Sukses',
+      text: {!! json_encode(session('success')) !!},
+      confirmButtonText: 'OK'
+    }).then(() => {
+      @if(session()->has('open_pdf'))
+        openPdf({!! json_encode(session('open_pdf')) !!});
+      @endif
+    });
+  @endif
+
+  @if(session()->has('warning'))
+    Swal.fire({
+      icon: 'warning',
+      title: 'Peringatan',
+      text: {!! json_encode(session('warning')) !!},
+      confirmButtonText: 'OK'
+    }).then(() => {
+      @if(session()->has('open_pdf'))
+        openPdf({!! json_encode(session('open_pdf')) !!});
+      @endif
+    });
+  @endif
+
+  @if(session()->has('error'))
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal',
+      text: {!! json_encode(session('error')) !!},
+      confirmButtonText: 'OK'
+    });
+  @endif
+
+  @if($errors->any())
+    Swal.fire({
+      icon: 'error',
+      title: 'Validasi',
+      html: {!! json_encode(implode('<br>', $errors->all())) !!},
+      confirmButtonText: 'Tutup'
+    });
+  @endif
+});
+</script>
 
     {{-- allow pages/partials to push scripts (for custom-notification.js etc) --}}
     @stack('scripts')

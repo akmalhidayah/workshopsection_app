@@ -20,9 +20,9 @@ return new class extends Migration
             $table->string('outline_agreement')->nullable();
 
             // Line-arrays disimpan sebagai JSON (panjang harus sinkron di sisi controller)
-            $table->json('uraian_pekerjaan')->nullable();
             $table->json('jenis_item')->nullable();
             $table->json('nama_item')->nullable();
+            $table->json('jumlah_item')->nullable();
             $table->json('qty')->nullable();
             $table->json('satuan')->nullable();
             $table->json('harga_satuan')->nullable();
@@ -69,16 +69,15 @@ return new class extends Migration
             $table->foreign('senior_manager_signature_requesting_user_id')->references('id')->on('users')->onDelete('set null')->onUpdate('cascade');
             $table->foreign('general_manager_signature_requesting_user_id')->references('id')->on('users')->onDelete('set null')->onUpdate('cascade');
             
-            // PENGENDALI
-            $t->timestamp('manager_signed_at')->nullable();
-            $t->timestamp('senior_manager_signed_at')->nullable();   
-            $t->timestamp('general_manager_signed_at')->nullable();  
-            $t->timestamp('director_signed_at')->nullable();         
+            $table->timestamp('manager_signed_at')->nullable();
+            $table->timestamp('senior_manager_signed_at')->nullable();
+            $table->timestamp('general_manager_signed_at')->nullable();
+            $table->timestamp('director_signed_at')->nullable();
 
-            // PEMINTA
-            $t->timestamp('manager_requesting_signed_at')->nullable();
-            $t->timestamp('senior_manager_requesting_signed_at')->nullable();
-            $t->timestamp('general_manager_requesting_signed_at')->nullable();
+            // peminta
+            $table->timestamp('manager_requesting_signed_at')->nullable();
+            $table->timestamp('senior_manager_requesting_signed_at')->nullable();
+            $table->timestamp('general_manager_requesting_signed_at')->nullable();
             $table->timestamps();
 
             // Index untuk query umum

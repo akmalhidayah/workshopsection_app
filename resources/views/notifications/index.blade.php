@@ -120,15 +120,15 @@
                     <td class="px-4 py-3 text-gray-700 dark:text-gray-200">{{ $notification->notification_number }}</td>
                     <td class="px-4 py-3 text-gray-700 dark:text-gray-200">{{ Str::limit($notification->job_name, 80) }}</td>
                    <td class="px-4 py-3">
-    <div class="text-gray-700 dark:text-gray-200">
+    <div class="text-[11px] text-gray-700 dark:text-gray-200">
         {{ $notification->unit_work }}
     </div>
 
     @if(!empty($notification->seksi))
         <div class="mt-1">
             <span
-                class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold
-                       bg-indigo-100 text-indigo-800 ring-1 ring-indigo-200
+                class="text-[9px] font-semibold
+                       bg-yellow-100 text-indigo-800 ring-1 ring-indigo-200
                        dark:bg-indigo-900/40 dark:text-indigo-300 dark:ring-indigo-700">
                 <i class="fas fa-sitemap text-[9px] opacity-80"></i>
                 {{ $notification->seksi }}
@@ -151,28 +151,185 @@
 
                     <td class="px-4 py-3 text-gray-700 dark:text-gray-200">{{ $notification->input_date }}</td>
 
-                    <!-- Informasi Order: status + catatan -->
-                    <td class="px-4 py-3 align-top">
+<!-- Informasi Order: status + catatan + progress (modern) -->
+<td class="px-4 py-3 align-top">
+    @php
+        $status = $notification->status ?? 'Pending';
+        // Jika ada order_bengkel relasi, ambil progress dari situ (jika ada)
+        $orderBengkel = $notification->orderBengkel ?? null;
+        $progressStatus = $orderBengkel->progress_status ?? null;
+        $progressNote = $orderBengkel->keterangan_progress ?? null;
+
+        // Map warna untuk status notifikasi (sama seperti sebelumnya, tapi mudah di-custom)
+        $statusClasses = [
+            'Pending' => 'bg-yellow-500 text-white',
+            'Reject'  => 'bg-red-500 text-white',
+            'Approved'=> 'bg-green-600 text-white',
+            'Default' => 'bg-gray-500 text-white'
+        ];
+        $badgeClass = $statusClasses[$status] ?? $statusClasses['Default'];
+
+        // Map warna & icon untuk progress (simple)
+        $progressMap = [
+            'not_started' => ['label' => 'Belum Mulai', 'color' => 'bg-gray-400', 'icon' => 'fas fa-clock'],
+            'waiting_schedule' => ['label' => 'Waiting Schedule', 'color' => 'bg-indigo-500', 'icon' => 'fas fa-calendar-alt'],
+            'on_process' => ['label' => 'On Process', 'color' => 'bg-sky-600', 'icon' => 'fas fa-cogs'],
+            'in_progress' => ['label' => 'Sedang Berjalan', 'color' => 'bg-sky-600', 'icon' => 'fas fa-cogs'],
+            'finish' => ['label' => 'Selesai', 'color' => 'bg-emerald-600', 'icon' => 'fas fa-check-circle'],
+            'done' => ['label' => 'Selesai', 'color' => 'bg-emerald-600', 'icon' => 'fas fa-check-circle'],
+            'default' => ['label' => ucfirst(str_replace('_',' ',$progressStatus ?? 'Not Started')), 'color' => 'bg-gray-400', 'icon' => 'fas fa-info-circle'],
+        ];
+        $pmap = $progressMap[$progressStatus] ?? $progressMap['default'];
+    @endphp
+
+    <div class="flex items-start gap-3">
+        {{-- Status utama --}}
+        <div class="min-w-[84px]">
+            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-semibold {{ $badgeClass }}">
+                {{ $status }}
+            </span>
+        </div>
+
+        {{-- Catatan + small meta --}}
+        <div class="flex-1 min-w-0">
+            <div class="text-[12px] leading-tight text-gray-700 dark:text-gray-200">
+                <div class="mb-1 line-clamp-2">
+                    <strong class="text-[11px]">Catatan:</strong>
+                    <span class="text-[11px] text-gray-600 dark:text-gray-300">
+                        {{ $notification->catatan ?? 'Tidak Ada Catatan' }}
+                    </span>
+                </div>
+
+                {{-- Jika ada order_bengkel, tampilkan ringkasan kecil (Nomor Order ada di kolom lain) --}}
+                @if($orderBengkel)
+                    <div class="text-[11px] text-gray-500 dark:text-gray-400 mb-1">
+                        <span class="opacity-70">Order Bengkel:</span>
+                        <span class="font-medium">{{ $orderBengkel->catatan ?? '-' }}</span>
+                    </div>
+                @endif
+
+                {{-- Progress block (hanya tampil jika ada progressStatus / order_bengkel ada) --}}
+                @if($progressStatus)
+                    <div class="mt-1 flex items-center gap-2">
+                        <div class="inline-flex items-center px-2 py-0.5 rounded text-[11px] {{ $pmap['color'] }} text-white shadow-sm">
+                            <i class="{{ $pmap['icon'] }} text-[11px] mr-2"></i>
+                            <span class="font-semibold">{{ $pmap['label'] }}</span>
+                        </div>
+
+                        @if($progressNote)
+                            <div class="text-[11px] text-gray-600 dark:text-gray-300 truncate">
+                                — {{ \Illuminate\Support\Str::limit($progressNote, 60) }}
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- Optional: mini progress bar visual (inferred states only, not numeric) --}}
+                    <div class="mt-2 w-full max-w-[240px]">
                         @php
-                            $status = $notification->status ?? 'Pending';
+                            // convert some statuses to percent for display purposes
+                            $percent = 0;
+                            if (in_array($progressStatus, ['not_started'])) $percent = 5;
+                            elseif (in_array($progressStatus, ['waiting_schedule'])) $percent = 20;
+                            elseif (in_array($progressStatus, ['on_process','in_progress'])) $percent = 60;
+                            elseif (in_array($progressStatus, ['finish','done'])) $percent = 100;
                         @endphp
 
-                        <div class="flex items-start gap-3">
-                            <span class="px-2 py-1 rounded text-white text-xs
-                                {{ $status === 'Pending' ? 'bg-yellow-500' : ($status === 'Reject' ? 'bg-red-500' : 'bg-green-500') }}">
-                                {{ $status }}
-                            </span>
-                            <div class="text-[12px] leading-tight text-gray-600 dark:text-gray-300">
-                                <div><strong>Catatan:</strong> {{ $notification->catatan ?? 'Tidak Ada Catatan' }}</div>
-                            </div>
+                        <div class="h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                            <div style="width: {{ $percent }}%" class="h-2 rounded-full {{ $percent === 100 ? 'bg-emerald-500' : 'bg-indigo-500' }}"></div>
                         </div>
-                    </td>
+                        <div class="text-[10px] text-gray-500 mt-1">{{ $percent }}% selesai</div>
+                    </div>
+                @else
+                    {{-- no progress yet --}}
+                    <div class="mt-1 text-[11px] text-gray-500 italic">Status pekerjaan belum tersedia</div>
+                @endif
+            </div>
+        </div>
+    </div>
+</td>
 
-                 <!-- Verifikasi Anggaran -->
+
+<!-- Verifikasi Anggaran / Order Bengkel -->
 <td class="px-4 py-3 align-top">
-    @php $verif = $notification->verifikasiAnggaran ?? null; @endphp
+    @php
+        $verif = $notification->verifikasiAnggaran ?? null;
+        $orderBengkel = $notification->orderBengkel ?? null;
 
-    @if($verif)
+        // Flag: apakah order_bengkel yang memicu tampilnya UI?
+        // Kita anggap trigger Order Bengkel adalah status_anggaran == 'Waiting Budget'
+        $isOrderBengkelWaitingBudget = ($orderBengkel && ($orderBengkel->status_anggaran ?? '') === 'Waiting Budget');
+
+        // Show ekorin form if verif->Tidak Tersedia OR order_bengkel Waiting Budget
+        $showEkorinForm = ($verif && ($verif->status_anggaran ?? '') === 'Tidak Tersedia')
+                         || $isOrderBengkelWaitingBudget;
+    @endphp
+
+    {{-- CASE A: Jika ini triggered oleh ORDER BENGKEL WAITING BUDGET --}}
+    @if($isOrderBengkelWaitingBudget)
+        {{-- tampilkan ringkasan ORDER BENGKEL: status material + keterangan material --}}
+        <div class="flex flex-col gap-2">
+            <div>
+                <span class="inline-flex items-center px-2 py-1 rounded text-white text-xs {{ ($orderBengkel->status_material ?? '') === 'Good Issue' ? 'bg-emerald-600' : 'bg-slate-500' }}">
+                    {{ $orderBengkel->status_material ?? 'Pending' }}
+                </span>
+            </div>
+
+            <div class="text-[11px] text-gray-600 dark:text-gray-300 leading-tight">
+                <div class="font-medium"><span class="opacity-70">Keterangan :</span></div>
+                <div>{{ $orderBengkel->keterangan_konfirmasi ?? '-' }}</div>
+            </div>
+
+            {{-- Form E-KORIN (simpan ke table order_bengkels) --}}
+            {{-- NOTE: form action tetap route verifikasianggaran.ekorin.update (controller akan menyimpan
+                      ke order_bengkels kalau kondisi order_bengkel Waiting Budget) --}}
+            @if($showEkorinForm)
+                <div class="mt-2 p-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                    <form method="POST"
+                          action="{{ route('verifikasianggaran.ekorin.update', $notification->notification_number) }}"
+                          class="flex flex-wrap items-center gap-2">
+                        @csrf
+                        @method('PATCH')
+
+                        <label class="text-[11px] text-gray-600 dark:text-gray-300">
+                            No. E-KORIN
+                            <input type="text" name="nomor_e_korin"
+                                   value="{{ old('nomor_e_korin', $orderBengkel->nomor_e_korin ?? '') }}"
+                                   placeholder="Nomor e-korin…"
+                                   required
+                                   class="ml-1 w-44 px-2 py-1 border rounded text-[11px]">
+                        </label>
+
+                        <label class="text-[11px] text-gray-600 dark:text-gray-300">
+                            Status
+                            <select name="status_e_korin" required class="ml-1 w-44 px-2 py-1 border rounded text-[11px]">
+                                @php
+                                    $ekorinOptions = [
+                                        'waiting_korin' => 'Waiting Korin',
+                                        'waiting_approval' => 'Waiting Approval',
+                                        'waiting_transfer' => 'Waiting Transfer',
+                                        'complete_transfer' => 'Complete Transfer'
+                                    ];
+                                    $currentEkorin = old('status_e_korin', $orderBengkel->status_e_korin ?? '');
+                                @endphp
+                                @foreach($ekorinOptions as $val => $label)
+                                    <option value="{{ $val }}" {{ $currentEkorin === $val ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        <button type="submit" class="ml-auto inline-flex items-center px-3 py-1 rounded bg-indigo-600 text-white text-[11px]">
+                            Simpan E-KORIN
+                        </button>
+                    </form>
+
+                    @error('nomor_e_korin') <div class="mt-1 text-[11px] text-red-600">{{ $message }}</div> @enderror
+                    @error('status_e_korin') <div class="mt-1 text-[11px] text-red-600">{{ $message }}</div> @enderror
+                </div>
+            @endif
+        </div>
+
+    {{-- CASE B: Jika ada VERIFIKASI ANGGARAN (bukan triggered dari order_bengkel) --}}
+    @elseif($verif)
         <div class="flex flex-col gap-1">
             <span class="inline-flex items-center px-2 py-1 rounded text-white text-xs
                 {{ $verif->status_anggaran === 'Tersedia' ? 'bg-green-500' : ($verif->status_anggaran === 'Tidak Tersedia' ? 'bg-red-500' : 'bg-yellow-400') }}">
@@ -186,56 +343,55 @@
                     <span class="font-mono">{{ $verif->cost_element ?? '-' }}</span>
                 </div>
                 <div><span class="opacity-70">Catatan:</span> {{ $verif->catatan ?? '-' }}</div>
+                @if(!empty($verif->tanggal_verifikasi))
+                    <div class="text-[11px] text-gray-500">Diverifikasi: {{ \Carbon\Carbon::parse($verif->tanggal_verifikasi)->format('d-m-Y') }}</div>
+                @endif
             </div>
+
+            {{-- E-KORIN: hanya saat verif->status_anggaran === 'Tidak Tersedia' --}}
+            @if(($verif->status_anggaran ?? '') === 'Tidak Tersedia')
+                <div class="mt-2 p-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                    <form method="POST"
+                          action="{{ route('verifikasianggaran.ekorin.update', $notification->notification_number) }}"
+                          class="flex flex-wrap items-center gap-2">
+                        @csrf
+                        @method('PATCH')
+
+                        <label class="text-[11px] text-gray-600 dark:text-gray-300">
+                            No. E-KORIN
+                            <input type="text" name="nomor_e_korin"
+                                   value="{{ old('nomor_e_korin', $verif->nomor_e_korin ?? '') }}"
+                                   required
+                                   class="ml-1 w-44 px-2 py-1 border rounded text-[11px]">
+                        </label>
+
+                        <label class="text-[11px] text-gray-600 dark:text-gray-300">
+                            Status
+                            <select name="status_e_korin" required class="ml-1 w-44 px-2 py-1 border rounded text-[11px]">
+                                @foreach(['waiting_korin','waiting_approval','waiting_transfer','complete_transfer'] as $opt)
+                                    <option value="{{ $opt }}" {{ ($verif->status_e_korin ?? '') === $opt ? 'selected' : '' }}>
+                                        {{ ucfirst(str_replace('_',' ',$opt)) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        <button type="submit" class="ml-auto inline-flex items-center px-3 py-1 rounded bg-indigo-600 text-white text-[11px]">
+                            Simpan E-KORIN
+                        </button>
+                    </form>
+
+                    @error('nomor_e_korin') <div class="mt-1 text-[11px] text-red-600">{{ $message }}</div> @enderror
+                    @error('status_e_korin') <div class="mt-1 text-[11px] text-red-600">{{ $message }}</div> @enderror
+                </div>
+            @else
+                <div class="mt-2 text-[11px] text-gray-500 italic">
+                    E-KORIN dapat diisi setelah <span class="font-medium">Status Dana = Tidak Tersedia</span>.
+                </div>
+            @endif
         </div>
 
-        {{-- E-KORIN: tampil hanya jika dana Tersedia --}}
-        @if(($verif->status_anggaran ?? null) === 'Tersedia')
-            <div class="mt-2 p-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                <form method="POST"
-                      action="{{ route('verifikasianggaran.ekorin.update', $notification->notification_number) }}"
-                      class="flex flex-wrap items-center gap-2">
-                    @csrf
-                    @method('PATCH')
-
-                    {{-- Nomor E-KORIN (wajib) --}}
-                    <label class="text-[11px] text-gray-600 dark:text-gray-300">
-                        No. E-KORIN
-                        <input type="text" name="nomor_e_korin"
-                               value="{{ old('nomor_e_korin', $verif->nomor_e_korin ?? '') }}"
-                               placeholder="Nomor e-korin…"
-                               required
-                               class="ml-1 w-44 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-800 focus:ring-blue-500 focus:border-blue-500">
-                    </label>
-
-                    {{-- Status E-KORIN (wajib) --}}
-                    <label class="text-[11px] text-gray-600 dark:text-gray-300">
-                        Status
-                        <select name="status_e_korin" required
-                                class="ml-1 w-44 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-800 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="waiting_korin" {{ ($verif->status_e_korin ?? '')==='waiting_korin' ? 'selected' : '' }}>Waiting Korin</option>
-                             <option value="waiting_transfer" {{ ($verif->status_e_korin ?? '')==='waiting_approval' ? 'selected' : '' }}>Waiting Approval</option>
-                            <option value="waiting_transfer" {{ ($verif->status_e_korin ?? '')==='waiting_transfer' ? 'selected' : '' }}>Waiting Transfer</option>
-                            <option value="complete_transfer" {{ ($verif->status_e_korin ?? '')==='complete_transfer' ? 'selected' : '' }}>Complete Transfer</option>
-                        </select>
-                    </label>
-
-                    <button type="submit"
-                            class="ml-auto inline-flex items-center px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white text-[11px]">
-                        Simpan E-KORIN
-                    </button>
-                </form>
-
-                {{-- Error message (jika validasi gagal) --}}
-                @error('ekorin') <div class="mt-1 text-[11px] text-red-600">{{ $message }}</div> @enderror
-                @error('nomor_e_korin') <div class="mt-1 text-[11px] text-red-600">{{ $message }}</div> @enderror
-                @error('status_e_korin') <div class="mt-1 text-[11px] text-red-600">{{ $message }}</div> @enderror
-            </div>
-        @else
-            <div class="mt-2 text-[11px] text-gray-500 italic">
-                E-KORIN dapat diisi setelah <span class="font-medium">Status Dana = Tersedia</span>.
-            </div>
-        @endif
+    {{-- CASE C: tidak ada verif dan bukan order_bengkel waiting budget --}}
     @else
         <div class="flex flex-col gap-1">
             <span class="px-2 py-1 rounded text-white bg-gray-400 text-xs">Menunggu</span>
@@ -243,6 +399,7 @@
         </div>
     @endif
 </td>
+
 
 
                     <!-- Aksi: Edit | Hapus | Lengkapi Dokumen -->

@@ -17,7 +17,6 @@ return new class extends Migration
             $table->string('unit_work');
             $table->string('seksi')->nullable();
             $table->date('input_date');
-            $table->string('status')->default('Pending');
             $table->string('priority'); 
             $table->string('status_anggaran')->default('Tersedia'); // Kolom baru untuk status verifikasi anggaran
             $table->timestamp('update_date')->nullable();

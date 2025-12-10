@@ -4,6 +4,63 @@
             {{ __('Notification Process Overview') }}
         </h2>
     </x-slot>
+    @php
+    /**
+     * cleanNumber: bersihkan satu nilai menjadi integer aman
+     * - jika $x adalah string JSON array -> return 0 (diproses di luar)
+     * - jika numeric -> cast
+     * - jika string biasa dengan pemisah ribuan -> hapus non-digit lalu cast
+     */
+    $cleanNumber = function ($x) {
+        if ($x === null || $x === '') return 0;
+
+        // jika value sudah integer atau numeric simple
+        if (is_int($x) || (is_string($x) && ctype_digit($x))) {
+            return (int) $x;
+        }
+
+        // jika numeric (float-like)
+        if (is_numeric($x)) {
+            return (int) round((float) $x);
+        }
+
+        // jika string JSON array (contoh '["1000","2000"]'), jangan gabung -> return 0
+        // (array JSON harus didecode di controller seperti langkah 1)
+        $trim = trim($x);
+        if (str_starts_with($trim, '[') && str_ends_with($trim, ']')) {
+            return 0;
+        }
+
+        // hapus semua selain digit dan minus
+        $onlyDigits = preg_replace('/[^\d\-]/', '', (string) $x);
+
+        return ($onlyDigits === '') ? 0 : (int) $onlyDigits;
+    };
+
+    /**
+     * fmt: terima number|string|array|null
+     * - jika array -> jumlahkan elemen dengan cleanNumber
+     * - jika numeric/string -> bersihkan dan format
+     */
+    $fmt = function ($v) use ($cleanNumber) {
+        if (is_array($v)) {
+            $sum = 0;
+            foreach ($v as $item) {
+                $sum += $cleanNumber($item);
+            }
+            $v = $sum;
+        } else {
+            $v = $cleanNumber($v);
+        }
+
+        return number_format((int) $v, 0, ',', '.');
+    };
+
+    $rp = function ($v) use ($fmt) {
+        return 'Rp. ' . $fmt($v);
+    };
+@endphp
+
     <div class="bg-gray-100" style="padding-top: 10px;">
     <!-- Notification Process Container -->
     <div class="max-w-6xl mx-auto bg-white rounded-lg p-6">
@@ -89,7 +146,7 @@
             </div>
             <div class="mt-2 text-right">
               <div class="inline-block bg-gray-50 px-2 py-1 rounded font-semibold text-gray-800">
-                Rp. {{ number_format($documentOnProcessHPPAmount, 0, ',', '.') }}
+                {{ $rp($documentOnProcessHPPAmount) }}
               </div>
             </div>
           </li>
@@ -104,7 +161,7 @@
             </div>
             <div class="mt-2 text-right">
               <div class="inline-block bg-gray-50 px-2 py-1 rounded font-semibold text-gray-800">
-                Rp. {{ number_format($approvalProcessHPPAmount, 0, ',', '.') }}
+                {{ $rp($approvalProcessHPPAmount) }}
               </div>
             </div>
           </li>
@@ -119,7 +176,7 @@
             </div>
             <div class="mt-2 text-right">
               <div class="inline-block bg-gray-50 px-2 py-1 rounded font-semibold text-gray-800">
-                Rp. {{ number_format($documentOnProcessPOAmount, 0, ',', '.') }}
+                {{ $rp($documentOnProcessPOAmount) }}
               </div>
             </div>
           </li>
@@ -128,7 +185,7 @@
         <div class="mt-3 text-right">
           <span class="text-[11px] text-gray-500 mr-2">Subtotal potensi</span>
           <span class="font-bold text-sm text-gray-800">
-            Rp. {{ number_format($totalAmount1, 0, ',', '.') }}
+            {{ $rp($totalAmount1) }}
           </span>
         </div>
       </section>
@@ -155,7 +212,7 @@
             </div>
             <div class="mt-2 text-right">
               <div class="inline-block bg-gray-50 px-2 py-1 rounded font-semibold text-gray-800">
-                Rp. {{ number_format($documentPRPOAmount, 0, ',', '.') }}
+                {{ $rp($documentPRPOAmount) }}
               </div>
             </div>
           </li>
@@ -170,7 +227,7 @@
             </div>
             <div class="mt-2 text-right">
               <div class="inline-block bg-gray-50 px-2 py-1 rounded font-semibold text-gray-800">
-                Rp. {{ number_format($urgentAmount, 0, ',', '.') }}
+                {{ $rp($urgentAmount) }}
               </div>
             </div>
           </li>
@@ -179,7 +236,7 @@
         <div class="mt-3 text-right">
           <span class="text-[11px] text-gray-500 mr-2">Subtotal potensi</span>
           <span class="font-bold text-sm text-gray-800">
-            Rp. {{ number_format($totalAmount2, 0, ',', '.') }}
+            {{ $rp($totalAmount2) }}
           </span>
         </div>
       </section>
@@ -187,6 +244,7 @@
     </div>
   </div>
 </div>
+
 <!-- ============== Exposure & Kuota + Realisasi (combined container) ============== -->
 <div class="max-w-6xl mx-auto mt-6">
   <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
@@ -243,15 +301,39 @@
             </p>
           </div>
 
-          {{-- Target Biaya Jasa Pemeliharaan (dari OA) --}}
-          @if(!is_null($targetPemeliharaan))
-            <div class="rounded-md bg-emerald-50 border border-emerald-200 p-2.5">
-              <p class="text-[11px] font-semibold uppercase text-emerald-700">Target Biaya Pemeliharaan</p>
-              <p class="text-sm font-bold text-emerald-900">
-                Rp. {{ number_format($targetPemeliharaan, 0, ',', '.') }}
-              </p>
-            </div>
-          @endif
+     <!-- -- Target Biaya Jasa Pemeliharaan (dari OA) -- -->
+@if(!is_null($targetPemeliharaan))
+  @php
+    $isArrayTarget = is_array($targetPemeliharaan);
+    if ($isArrayTarget) {
+        $totalTargetInt = 0;
+        foreach ($targetPemeliharaan as $x) {
+            $totalTargetInt += $cleanNumber($x);
+        }
+    } else {
+        $totalTargetInt = $cleanNumber($targetPemeliharaan);
+    }
+  @endphp
+
+  <div class="rounded-md bg-emerald-50 border border-emerald-200 p-2.5">
+    <p class="text-[11px] font-semibold uppercase text-emerald-700">Target Biaya Pemeliharaan</p>
+    <p class="text-sm font-bold text-emerald-900">
+      {{ $rp($totalTargetInt) }}
+    </p>
+
+    @if($isArrayTarget)
+      @php $years = $latestKuotaAnggaran->tahun ?? null; @endphp
+      @if(is_array($years) && count($years) === count($targetPemeliharaan))
+        <div class="mt-2 text-xs text-emerald-800">
+          @foreach($targetPemeliharaan as $i => $val)
+            <div>{{ $years[$i] }}: {{ $rp($val) }}</div>
+          @endforeach
+        </div>
+      @endif
+    @endif
+  </div>
+@endif
+
 
           <!-- Sisa Kuota -->
           <div class="rounded-md bg-yellow-100 border border-yellow-200 p-2.5">
