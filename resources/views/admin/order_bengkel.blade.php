@@ -6,8 +6,8 @@
     @php
         $chipBase = 'inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full text-white shadow-sm';
         $progressOptions = [
-            'not_started' => 'Belum Mulai',
-            'in_progress' => 'Sedang Berjalan',
+            'menunggu_jadwal' => 'Menunggu Jadwal',
+            'in_progress' => 'Sementara Proses',
             'done' => 'Selesai',
         ];
         $materialOptions = [
@@ -69,7 +69,7 @@
                                 <th class="px-3 py-2 w-44">Unit / Seksi</th>
                                 <th class="px-3 py-2 w-44">Konfirmasi Anggaran</th>
                                 <th class="px-3 py-2 w-36">Status Material</th>
-                                <th class="px-3 py-2 w-36">Progress</th>
+                                <th class="px-3 py-2 w-36">Progress Pekerjaan</th>
                                 <th class="px-3 py-2 w-52">Catatan</th>
                             </tr>
                         </thead>

@@ -4,123 +4,202 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SPK;
+use App\Models\SPKApprovalToken;
+use App\Services\SPKApprovalLinkService;
 use Illuminate\Http\Request;
 use App\Models\Notification;
 use App\Models\User;
-use App\Mail\SPKNotification;
-use Illuminate\Support\Facades\Mail;
-use Twilio\Rest\Client;
-use Illuminate\Support\Facades\Http;
-
-
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 
 class SPKController extends Controller
 {
-    public function create($notificationNumber)
+    /* =====================================================
+     * ISSUE TOKEN PERTAMA
+     * → MANAGER WORKSHOP
+     * ===================================================== */
+    private function issueFirstTokenForSPK(SPK $spk): void
     {
-        // Mengambil data notifikasi berdasarkan nomor notifikasi
-        $notification = Notification::where('notification_number', $notificationNumber)->firstOrFail();
+        $manager = User::query()
+            ->whereRaw('LOWER(jabatan) = ?', ['manager'])
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(unit_work) LIKE ?', ['%workshop%'])
+                  ->orWhereRaw('LOWER(unit_work) LIKE ?', ['%bengkel%']);
+            })
+            ->first();
 
-        // Mengirimkan data notifikasi ke view
-        return view('admin.inputspk.createspk', compact('notification'));
+        if (! $manager) {
+            Log::warning('[SPK] Manager Workshop tidak ditemukan', [
+                'nomor_spk' => $spk->nomor_spk,
+            ]);
+            return;
+        }
+
+        $exists = SPKApprovalToken::where('nomor_spk', $spk->nomor_spk)
+            ->where('user_id', $manager->id)
+            ->where('sign_type', 'manager')
+            ->whereNull('used_at')
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>', now());
+            })
+            ->exists();
+
+        if ($exists) {
+            Log::info('[SPK] Token manager sudah ada', [
+                'nomor_spk' => $spk->nomor_spk,
+                'user_id'   => $manager->id,
+            ]);
+            return;
+        }
+
+        $svc = app(SPKApprovalLinkService::class);
+
+        $svc->issue(
+            nomorSpk: $spk->nomor_spk,
+            notificationNumber: $spk->notification_number,
+            signType: 'manager',
+            userId: $manager->id,
+            minutes: 60 * 24
+        );
+
+        Log::info('[SPK] First approval token issued', [
+            'nomor_spk' => $spk->nomor_spk,
+            'user_id'   => $manager->id,
+        ]);
     }
+
+    /* =====================================================
+     * FORM CREATE SPK
+     * ===================================================== */
+    public function create(string $notificationNumber)
+    {
+        $notification = Notification::where('notification_number', $notificationNumber)
+            ->firstOrFail();
+
+        $now   = now();
+        $month = $now->format('m');
+        $year  = $now->format('Y');
+
+        $lastSpk = SPK::whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->orderByDesc('created_at')
+            ->first();
+
+        $nextNumber = '001';
+        if ($lastSpk && preg_match('/^(\d{3})\//', $lastSpk->nomor_spk, $m)) {
+            $nextNumber = str_pad(((int) $m[1]) + 1, 3, '0', STR_PAD_LEFT);
+        }
+
+        $nomorSpkOtomatis = sprintf('%s/IW/25.10/%s-%s', $nextNumber, $month, $year);
+
+        return view('admin.inputspk.createspk', compact(
+            'notification',
+            'nomorSpkOtomatis'
+        ));
+    }
+
+    /* =====================================================
+     * STORE SPK
+     * ===================================================== */
     public function store(Request $request)
     {
-        // Validasi input
-        $request->validate([
-            'nomor_spk' => 'required|unique:spks',
-            'perihal' => 'required',
-            'tanggal_spk' => 'required|date',
-            'notification_number' => 'required|exists:notifications,notification_number',
-            'unit_work' => 'required',
-    
-            // Validasi array
-            'functional_location' => 'required|array',
-            'scope_pekerjaan' => 'required|array',
-            'qty' => 'required|array',
-            'stn' => 'required|array',
-            'keterangan' => 'required|array',
-        ]);
-    
-        // Simpan data ke dalam model SPK langsung dalam bentuk array
-        $spk = SPK::create([
-            'nomor_spk' => $request->input('nomor_spk'),
-            'perihal' => $request->input('perihal'),
-            'tanggal_spk' => $request->input('tanggal_spk'),
-            'notification_number' => $request->input('notification_number'),
-            'unit_work' => $request->input('unit_work'),
-    
-            // Simpan data array secara langsung
-            'functional_location' => $request->input('functional_location'),
-            'scope_pekerjaan' => $request->input('scope_pekerjaan'),
-            'qty' => $request->input('qty'),
-            'stn' => $request->input('stn'),
-            'keterangan' => $request->input('keterangan'),
-    
-            // Keterangan Pengerjaan
-            'keterangan_pekerjaan' => $request->input('keterangan_pekerjaan', '-'),
-        ]);
-    
-        // Kirim email notifikasi ke Manager dengan unit_work "Unit Of Workshop"
-        $managers = User::where('unit_work', 'Unit Of Workshop')
-        ->where('jabatan', 'Manager')
-        ->get();
+        $validated = $request->validate([
+            'perihal'              => 'required|string|max:255',
+            'tanggal_spk'          => 'required|date',
+            'notification_number'  => 'required|exists:notifications,notification_number',
+            'unit_work'            => 'required|string|max:255',
 
-        foreach ($managers as $manager) {
-            try {
-                // Kirim notifikasi WhatsApp
-                Http::withHeaders([
-                    'Authorization' => 'KBTe2RszCgc6aWhYapcv' // API key Fonnte Anda
-                ])->post('https://api.fonnte.com/send', [
-                    'target' => $manager->whatsapp_number,
-                    'message' => "Permintaan Approval Pembuatan SPK:\nNomor SPK: {$spk->nomor_spk}\nPerihal: {$spk->perihal}\nTanggal SPK: " . $spk->created_at->format('d-m-Y') . "\nUnit Kerja: {$spk->unit_work}\n\nSilakan login untuk melihat detailnya:\nhttps://sectionofworkshop.com/approval/spk",
-                ]);
-        
-                \Log::info("WhatsApp notification sent to Manager: " . $manager->whatsapp_number);
-            } catch (\Exception $e) {
-                \Log::error("Gagal mengirim WhatsApp ke {$manager->whatsapp_number}: " . $e->getMessage());
+            'functional_location'  => 'required|array',
+            'scope_pekerjaan'      => 'required|array',
+            'qty'                  => 'required|array',
+            'stn'                  => 'required|array',
+            'keterangan'           => 'required|array',
+
+            'keterangan_pekerjaan' => 'nullable|string|max:2000',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $now   = now();
+            $month = $now->format('m');
+            $year  = $now->format('Y');
+
+            $lastSpk = SPK::whereYear('created_at', $year)
+                ->whereMonth('created_at', $month)
+                ->orderByDesc('created_at')
+                ->first();
+
+            $nextNumber = '001';
+            if ($lastSpk && preg_match('/^(\d{3})\//', $lastSpk->nomor_spk, $m)) {
+                $nextNumber = str_pad(((int) $m[1]) + 1, 3, '0', STR_PAD_LEFT);
             }
-        
-            // Komentar email notifikasi
-            /*
-            try {
-                Mail::to($manager->email)->send(new SPKNotification($spk, $manager));
-            } catch (\Exception $e) {
-                \Log::error("Gagal mengirim email ke {$manager->email}: " . $e->getMessage());
-            }
-            */
+
+            $nomorSpk = sprintf('%s/IW/25.10/%s-%s', $nextNumber, $month, $year);
+
+            $spk = SPK::create([
+                'nomor_spk'            => $nomorSpk,
+                'perihal'              => $validated['perihal'],
+                'tanggal_spk'          => $validated['tanggal_spk'],
+                'notification_number'  => $validated['notification_number'],
+                'unit_work'            => $validated['unit_work'],
+
+                'functional_location'  => $validated['functional_location'],
+                'scope_pekerjaan'      => $validated['scope_pekerjaan'],
+                'qty'                  => $validated['qty'],
+                'stn'                  => $validated['stn'],
+                'keterangan'           => $validated['keterangan'],
+
+                'keterangan_pekerjaan' => $validated['keterangan_pekerjaan'] ?? '-',
+            ]);
+
+            DB::commit();
+
+            $this->issueFirstTokenForSPK($spk);
+
+            return redirect()
+                ->route('notifikasi.index')
+                ->with('success_spk', 'SPK berhasil dibuat.');
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            Log::error('[SPK] Store gagal', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error_spk', 'Terjadi kesalahan saat menyimpan SPK.');
         }
-        
-        return redirect()->route('notifikasi.index')->with('success_spk', 'SPK berhasil dibuat.');
-    }        
-    
-
-public function show($notification_number)
-{
-    // Mengambil data SPK berdasarkan nomor notifikasi
-    $spk = SPK::where('notification_number', $notification_number)->firstOrFail();
-
-    // Decode JSON menjadi array, jika belum berbentuk array
-    if (!is_array($spk->functional_location)) {
-        $spk->functional_location = json_decode($spk->functional_location, true);
-    }
-    if (!is_array($spk->scope_pekerjaan)) {
-        $spk->scope_pekerjaan = json_decode($spk->scope_pekerjaan, true);
-    }
-    if (!is_array($spk->qty)) {
-        $spk->qty = json_decode($spk->qty, true);
-    }
-    if (!is_array($spk->stn)) {
-        $spk->stn = json_decode($spk->stn, true);
-    }
-    if (!is_array($spk->keterangan)) {
-        $spk->keterangan = json_decode($spk->keterangan, true);
     }
 
-    return view('admin.inputspk.viewspk', compact('spk'));
+    /* =====================================================
+     * VIEW / PDF SPK
+     * ===================================================== */
+    public function show(string $notification_number)
+    {
+        $spk = SPK::with([
+            'managerSignatureUser',
+            'seniorManagerSignatureUser',
+        ])->where('notification_number', $notification_number)
+          ->firstOrFail();
+
+        $pdf = Pdf::loadView('admin.inputspk.viewspk', [
+                'spk' => $spk,
+            ])
+            ->setPaper('A4', 'portrait');
+
+        $filename = 'SPK-' . str_replace(['/', '\\'], '-', $spk->nomor_spk) . '.pdf';
+
+        return $pdf->stream($filename);
+    }
+
+    public function view(string $notification_number)
+    {
+        return $this->show($notification_number);
+    }
 }
-
-}
-
-
-

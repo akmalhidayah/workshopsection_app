@@ -1,118 +1,206 @@
-<x-admin-layout>
-    <div class="p-6 border rounded-lg shadow-lg">
-        <!-- Kop Surat -->
-        <div class="flex items-left border-b-2 pb-4 mb-4">
-            <div class="flex items-left mr-4"> <!-- Menambahkan margin kanan untuk memberikan jarak antara logo dan teks -->
-                <img src="{{ asset('images/logo-st.png') }}" alt="Logo PT Semen Tonasa" class="h-20 w-auto">
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>SPK - {{ $spk->nomor_spk }}</title>
+
+    <style>
+        @page { margin: 10mm; }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10px;
+            color: #000;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        td, th {
+            padding: 4px;
+            vertical-align: top;
+        }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .bold { font-weight: bold; }
+
+        .title {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* ================= SIGNATURE ================= */
+        .sig-cell {
+            position: relative;
+            height: 150px;
+            padding-top: 18px;
+        }
+
+        .sig-date-top {
+            position: absolute;
+            top: 4px;
+            right: 6px;
+            font-size: 9px;
+            font-weight: bold;
+        }
+
+        .sig-box {
+            height: 100px;
+            position: relative;
+        }
+
+        .sig-box img {
+            max-height: 95px;
+            max-width: 220px;
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+        }
+
+        .sig-name {
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 6px;
+        }
+
+        .sig-role {
+            font-size: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .border {
+            border: 1px solid #000;
+        }
+    </style>
+</head>
+
+@php
+    use Illuminate\Support\Facades\Storage;
+
+    $sig = fn ($path) =>
+        $path && Storage::disk('public')->exists($path)
+            ? storage_path('app/public/'.$path)
+            : null;
+@endphp
+
+<body>
+
+{{-- ================= HEADER ================= --}}
+<table>
+    <tr>
+        <td style="width:20%">
+            <img src="{{ public_path('images/logo-st.png') }}" style="height:60px">
+        </td>
+        <td style="width:60%" class="text-center">
+            <div class="title">SURAT PERINTAH KERJA (SPK)</div>
+            <div class="subtitle">JASA FABRIKASI, KONSTRUKSI & MESIN</div>
+        </td>
+        <td style="width:20%"></td>
+    </tr>
+</table>
+
+<br>
+
+{{-- ================= INFO SPK ================= --}}
+<table>
+    <tr><td class="bold" width="25%">KEPADA YTH</td><td>: {{ $spk->kepada_yth ?? 'PT. PRIMA KARYA MANUNGGAL' }}</td></tr>
+    <tr><td class="bold">PERIHAL</td><td>: {{ $spk->perihal }}</td></tr>
+    <tr><td class="bold">NOMOR SPK</td><td>: {{ $spk->nomor_spk }}</td></tr>
+    <tr><td class="bold">NOMOR ORDER</td><td>: {{ $spk->notification_number }}</td></tr>
+    <tr><td class="bold">UNIT KERJA PEMINTA</td><td>: {{ $spk->unit_work }}</td></tr>
+</table>
+
+<br>
+
+{{-- ================= TABEL PEKERJAAN ================= --}}
+<table class="border">
+    <thead>
+        <tr class="bold text-center">
+            <th class="border">No</th>
+            <th class="border">Functional Location</th>
+            <th class="border">Scope Pekerjaan</th>
+            <th class="border">Qty</th>
+            <th class="border">Stn</th>
+            <th class="border">Keterangan</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach($spk->functional_location ?? [] as $i => $loc)
+        <tr>
+            <td class="border text-center">{{ $i+1 }}</td>
+            <td class="border">{{ $loc }}</td>
+            <td class="border">{{ $spk->scope_pekerjaan[$i] ?? '-' }}</td>
+            <td class="border text-center">{{ $spk->qty[$i] ?? '-' }}</td>
+            <td class="border text-center">{{ $spk->stn[$i] ?? '-' }}</td>
+            <td class="border">{{ $spk->keterangan[$i] ?? '-' }}</td>
+        </tr>
+    @endforeach
+    </tbody>
+</table>
+
+<br>
+
+<strong>Keterangan Pekerjaan:</strong><br>
+{{ $spk->keterangan_pekerjaan ?? '-' }}
+
+<br><br>
+
+{{-- ================= TANDA TANGAN ================= --}}
+<table class="border" style="width:70%">
+    <tr>
+        <td colspan="2" class="text-center bold border">
+            PT. SEMEN TONASA – UNIT WORKSHOP
+        </td>
+    </tr>
+    <tr>
+
+        {{-- SENIOR MANAGER --}}
+        <td class="border sig-cell">
+            <div class="sig-date-top">
+                {{ $spk->senior_manager_signed_at?->format('d/m/Y') ?? '-' }}
             </div>
-            <div class="text-left">
-                <h1 class="text-lg font-bold">PT. SEMEN TONASA</h1>
-                <h1 class="text-lg font-bold">DEPARTEMEN PEMELIHARAAN</h1>
-                <h1 class="text-lg font-bold">UNIT WORKSHOP</h1>
+            <div class="sig-box">
+                @if($p = $sig($spk->senior_manager_signature))
+                    <img src="{{ $p }}">
+                @endif
             </div>
-        </div>
-
-        <h1 class="text-center text-2xl font-bold">SURAT PERINTAH KERJA KONTRAK JASA FABRIKASI, KONSTRUKSI DAN PENGERJAAN MESIN</h1>
-        <h1 class="text-center text-2xl font-bold">PT. PRIMA KARYA MANUNGGAL</h1>
-        <br><br>
-        
-        <div class="col-span-3 text-left p-2 pb-0">
-            <div class="grid grid-cols-3 gap-0">
-                <div class="col-span-1 text-sm font-medium mb-0">KEPADA YTH</div>
-                <div class="col-span-2">: {{ $spk->kepada_yth ?? 'PT. PRIMA KARYA MANUNGGAL' }}</div>
-
-                <div class="col-span-1 text-sm font-medium mb-0">PERIHAL</div>
-                <div class="col-span-2">: {{ $spk->perihal }}</div>
-
-                <div class="col-span-1 text-sm font-medium mb-0">NOMOR SPK</div>
-                <div class="col-span-2">: {{ $spk->nomor_spk }}</div>
-
-                <div class="col-span-1 text-sm font-medium mb-0">TANGGAL SPK</div>
-                <div class="col-span-2">: {{ $spk->tanggal_spk }}</div>
-
-                <div class="col-span-1 text-sm font-medium mb-0">NOMOR ORDER</div>
-                <div class="col-span-2">: {{ $spk->notification_number }}</div>
-
-                <div class="col-span-1 text-sm font-medium mb-0">KATEGORI PEKERJAAN</div>
-                <div class="col-span-2 font-bold">: URGENT</div>
-
-                <div class="col-span-1 text-sm font-medium mb-0">UNIT KERJA PEMINTA</div>
-                <div class="col-span-2">: {{ $spk->unit_work }}</div>
+            <div class="sig-name">
+                {{ $spk->seniorManagerSignatureUser?->name ?? '-' }}
             </div>
-        </div>
+            <div class="sig-role">Senior Manager Workshop</div>
+        </td>
 
-        <!-- Tabel Functional Locations dan Scope Pekerjaan -->
-        <div class="mt-6">
-            <table class="min-w-full bg-white text-gray-900 border border-gray-300 text-xs rounded-lg shadow-md mt-4">
-                <thead class="bg-gray-300 text-black">
-                    <tr>
-                        <th class="text-center px-2 py-2">No</th>
-                        <th class="text-center px-2 py-2">Functional Location</th>
-                        <th class="text-center px-2 py-2">Scope Pekerjaan</th>
-                        <th class="text-center px-2 py-2">Qty</th>
-                        <th class="text-center px-2 py-2">Stn</th>
-                        <th class="text-center px-2 py-2">Keterangan</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($spk->functional_location as $index => $location)
-                        <tr>
-                            <td class="text-center px-2 py-2">{{ $index + 1 }}</td>
-                            <td class="text-center px-2 py-2">{{ $location }}</td>
-                            <td class="text-center px-2 py-2">{{ is_array($spk->scope_pekerjaan) ? $spk->scope_pekerjaan[$index] ?? '-' : '-' }}</td>
-                            <td class="text-center px-2 py-2">{{ is_array($spk->qty) ? $spk->qty[$index] ?? '-' : '-' }}</td>
-                            <td class="text-center px-2 py-2">{{ is_array($spk->stn) ? $spk->stn[$index] ?? '-' : '-' }}</td>
-                            <td class="text-center px-2 py-2">{{ is_array($spk->keterangan) ? $spk->keterangan[$index] ?? '-' : '-' }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+        {{-- MANAGER --}}
+        <td class="border sig-cell">
+            <div class="sig-date-top">
+                {{ $spk->manager_signed_at?->format('d/m/Y') ?? '-' }}
+            </div>
+            <div class="sig-box">
+                @if($p = $sig($spk->manager_signature))
+                    <img src="{{ $p }}">
+                @endif
+            </div>
+            <div class="sig-name">
+                {{ $spk->managerSignatureUser?->name ?? '-' }}
+            </div>
+            <div class="sig-role">Manager Workshop</div>
+        </td>
 
-        <div class="mt-4">
-            <h4><strong>KETERANGAN PENGERJAAN URGENSI :</strong></h4>
-            <p>{{ $spk->keterangan_pekerjaan ?? 'Tidak ada keterangan tambahan' }}</p>
-        </div>
+    </tr>
+</table>
 
-        <div class="mt-6">
-            <h4><strong>Catatan:</strong></h4>
-            <ol class="list-decimal ml-6">
-                <li>PT. Prima Karya Manunggal mengurus working permit untuk jasa pekerjaan Fabrikasi, Konstruksi dan Mesin yang memerlukan working permit.</li>
-                <li>Proses pekerjaan wajib menggunakan APD sesuai standar K3.</li>
-                <li>SPK ini merupakan Perintah Kerja untuk pekerjaan yang bersifat urgent bukan untuk penagihan dan dilampirkan untuk ajuan approval HPP.</li>
-                <li>User peminta wajib membantu percepatan proses approval HPP ke atasan masing-masing setelah HPP diterbitkan.</li>
-                <li>User peminta wajib menyiapkan anggaran sesuai nilai HPP Pekerjaan.</li>
-            </ol>
-        </div>
-
-<!-- Signature Section -->
-<div class="border border-black w-1/2 ml-0">
-    <div class="border-b border-black">
-        <h1 class="text-center font-bold">PT. SEMEN TONASA</h1>
-    </div>
-    <div class="border-b border-black">
-        <h2 class="text-center">UNIT WORKSHOP</h2>
-    </div>
-    <div class="grid grid-cols-2 divide-x divide-black">
-        <div class="text-center p-4">
-            @if (!empty($spk->senior_manager_signature))
-                <img src="{{ $spk->senior_manager_signature }}" alt="Tanda Tangan Senior Manager" class="mx-auto w-32 h-auto">
-            @else
-                <p class="text-gray-500">Belum ditandatangani</p>
-            @endif
-            <p class="font-bold"></p>
-            <p>Senior Manager Unit Of Workshop</p>
-        </div>
-        <div class="text-center p-4">
-            @if (!empty($spk->manager_signature))
-                <img src="{{ $spk->manager_signature }}" alt="Tanda Tangan Manager" class="mx-auto w-32 h-auto">
-            @else
-                <p class="text-gray-500">Belum ditandatangani</p>
-            @endif
-            <p class="font-bold">HERWANTO S</p>
-            <p>Manager Machine Workshop</p>
-        </div>
-    </div>
-</div>
-
-</x-admin-layout>
+</body>
+</html>

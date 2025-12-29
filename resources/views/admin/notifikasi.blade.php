@@ -128,29 +128,78 @@
     @endif
 </div>
 
+@php
+    $tok = $activeSpkTokens[$notification->notification_number] ?? null;
+    $hasTok = $tok && (
+        is_null($tok->expires_at) || $tok->expires_at->isFuture()
+    );
+@endphp
 
                                     <!-- Kondisi untuk Tombol Lihat/Buat SPK -->
-                                    @if($notification->priority == 'Urgently')
-                                        <div class="mt-2 flex space-x-2">
-                                            @php
-                                                $spk = \App\Models\SPK::where('notification_number', $notification->notification_number)->first();
-                                            @endphp
+<div class="flex items-center gap-2 mt-2">
 
-                                            @if ($spk)
-                                                <a href="{{ route('spk.show', ['notification_number' => $notification->notification_number]) }}" 
-                                                class="bg-yellow-400 text-white px-3 py-1 rounded text-xs hover:bg-yellow-500 transition duration-150 flex items-center space-x-1" target="_blank">
-                                                    <i class="fas fa-eye"></i>
-                                                    <span>Lihat Initial Work</span>
-                                                </a>
-                                            @else
-                                                <a href="{{ route('spk.create', ['notificationNumber' => $notification->notification_number]) }}" 
-                                                class="bg-yellow-400 text-white px-3 py-1 rounded text-xs hover:bg-orange-500 transition duration-150 flex items-center space-x-1">
-                                                    <i class="fas fa-file-alt"></i>
-                                                    <span>Buat Initial Work</span>
-                                                </a>
-                                            @endif
-                                        </div>
-                                    @endif
+    {{-- ICON TOKEN APPROVAL SPK --}}
+    @if($hasTok)
+        <button type="button"
+            class="copy-spk-token inline-flex items-center justify-center
+                   w-6 h-6 rounded-md
+                   bg-slate-100 text-slate-700
+                   ring-1 ring-slate-300
+                   hover:bg-slate-200"
+            title="Salin Link Approval SPK"
+            data-link="{{ route('approval.spk.sign', $tok->id) }}">
+            <i class="fas fa-link text-[10px]"></i>
+        </button>
+    @endif
+
+ @php
+    $isEmergency = $notification->priority === 'Urgently';
+@endphp
+
+{{-- ================= STATUS SPK (RINGKAS) ================= --}}
+@if ($notification->spk)
+    <div class="text-[10px] mb-1
+        @if($notification->spk->isFullyApproved())
+            text-green-700
+        @elseif($notification->spk->isManagerSigned())
+            text-blue-700
+        @else
+            text-gray-500
+        @endif
+    ">
+        @if($notification->spk->isFullyApproved())
+            ✅ Fully Approved
+        @elseif($notification->spk->isManagerSigned())
+            ✍️ Proses Approval
+        @else
+            ⏳ Belum Ditandatangani
+        @endif
+    </div>
+@endif
+
+{{-- ================= TOMBOL SPK ================= --}}
+@if ($notification->spk)
+    <a href="{{ route('spk.show', ['notification_number' => $notification->notification_number]) }}"
+       class="bg-blue-500 text-white px-3 py-1 rounded text-xs
+              hover:bg-blue-600 transition
+              flex items-center gap-1"
+       target="_blank">
+        <i class="fas fa-eye text-[11px]"></i>
+        <span>Lihat Initial Work</span>
+    </a>
+@elseif ($isEmergency)
+    <a href="{{ route('spk.create', ['notificationNumber' => $notification->notification_number]) }}"
+       class="bg-blue-500 text-white px-3 py-1 rounded text-xs
+              hover:bg-blue-600 transition
+              flex items-center gap-1">
+        <i class="fas fa-file-alt text-[11px]"></i>
+        <span>Buat Initial Work</span>
+    </a>
+@endif
+
+</div>
+
+
                                 </div>
                             </td>
 <!-- Catatan -->
@@ -452,6 +501,36 @@
 </div>
 <!-- Search Filter + Notif AJAX submit -->
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.copy-spk-token').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const link = btn.dataset.link;
+            if (!link) return;
+
+            try {
+                await navigator.clipboard.writeText(link);
+
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Tautan Disalin',
+                        text: 'Link approval SPK berhasil disalin.',
+                        timer: 1400,
+                        showConfirmButton: false
+                    });
+                } else {
+                    alert('Link approval SPK berhasil disalin');
+                }
+            } catch (e) {
+                if (window.Swal) {
+                    Swal.fire('Gagal', 'Tidak bisa menyalin link', 'error');
+                } else {
+                    alert('Gagal menyalin link');
+                }
+            }
+        });
+    });
+});
 /**
  * Combined script:
  * 1) notifForm() — Alpine state + init

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\Hpp1;
+use App\Models\SPKApprovalToken;
 use App\Models\ScopeOfWork; 
 use App\Models\JenisKawatLas;
 use App\Models\KawatLas;
@@ -28,7 +29,7 @@ class HomeController extends Controller
    public function index()
 {
     // Ambil semua notifikasi dengan eager loading
-    $notifications = Notification::with(['dokumenOrders', 'scopeOfWork'])->get();
+    $notifications = Notification::with(['dokumenOrders', 'scopeOfWork', 'spk'])->get();
 
     // Ambil semua notifikasi yang sudah memiliki dokumen HPP
     $notificationsWithHPP = DB::table('hpp1')->pluck('notification_number')->toArray();
@@ -350,7 +351,7 @@ private function filterNotifications(Request $request, $withHpp = false, $withDa
     $query = Notification::query();
 
     // eager-load relasi untuk view
-    $with = ['dokumenOrders', 'scopeOfWork','verifikasiAnggaran'];
+    $with = ['dokumenOrders', 'scopeOfWork','verifikasiAnggaran', 'spk'];
     if ($withHpp) $with[] = 'hpp1';
     $query->with($with);
 
@@ -399,6 +400,37 @@ public function notifikasi(Request $request)
 {
     // ✅ Panggil helper biar konsisten filter & pagination
     $notifications = $this->filterNotifications($request, false, false);
+    // ===============================
+// ACTIVE TOKEN SPK (untuk index)
+// ===============================
+$activeSpkTokens = collect();
+
+try {
+    $notifNumbers = $notifications
+        ->pluck('notification_number')
+        ->filter()
+        ->unique()
+        ->values()
+        ->all();
+
+    if (!empty($notifNumbers)) {
+        $activeSpkTokens = SPKApprovalToken::whereIn('notification_number', $notifNumbers)
+            ->whereNull('used_at')
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>', now());
+            })
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy('notification_number')
+            ->map(fn ($g) => $g->first()); // token aktif terbaru
+    }
+} catch (\Throwable $e) {
+    Log::error('[SPK] gagal ambil active token', [
+        'error' => $e->getMessage()
+    ]);
+}
+
 
     foreach ($notifications as $notification) {
         $notification->isAbnormalAvailable = $notification->dokumenOrders
@@ -437,7 +469,8 @@ public function notifikasi(Request $request)
         'jumlahOrderKawatLas',
         'kawatLasOrders',
         'jenisList',
-        'units' // 👈 tambahan ini
+        'units',
+        'activeSpkTokens'
     ));
 }
 public function inputHppIndex(Request $request)

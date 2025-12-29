@@ -5,121 +5,204 @@
         </h2>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white shadow-md rounded-lg p-6">
-                <h3 class="text-xl font-semibold mb-6 text-gray-700">Unggah Dokumen Informasi</h3>
+    <div class="py-10">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
 
-                <!-- Form Upload -->
-                <form action="{{ route('admin.uploadinfo.upload') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+            {{-- ========================= --}}
+            {{-- FORM UPLOAD --}}
+            {{-- ========================= --}}
+            <div class="bg-white shadow rounded-lg p-6">
+                <h3 class="text-lg font-semibold mb-4 text-gray-700">
+                    Unggah Dokumen Informasi
+                </h3>
+
+                <form action="{{ route('admin.uploadinfo.upload') }}"
+                      method="POST"
+                      enctype="multipart/form-data"
+                      class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     @csrf
+
+                    {{-- KATEGORI --}}
                     <div>
-                        <label for="category" class="block text-sm font-medium text-gray-700">Pilih Kategori Dokumen:</label>
-                        <select id="category" name="category" class="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Kategori Dokumen
+                        </label>
+                        <select id="category"
+                                name="category"
+                                class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                             <option value="cara_kerja">Cara Kerja</option>
                             <option value="flowchart_aplikasi">Flowchart Aplikasi</option>
                             <option value="kontrak_pkm">Kontrak PKM</option>
                         </select>
                     </div>
-                    <div>
-                        <label for="files" class="block text-sm font-medium text-gray-700">Unggah File:</label>
-                        <input type="file" id="files" name="files[]" multiple class="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500">
+
+                    {{-- ROLE (HANYA UNTUK CARA KERJA) --}}
+                    <div id="role-wrapper">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Role Pengguna
+                        </label>
+                        <select name="role"
+                                class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                            <option value="pns">PNS</option>
+                            <option value="pkm">PKM</option>
+                            <option value="approval">Approval</option>
+                        </select>
                     </div>
-                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
-                        Upload
-                    </button>
+
+                    {{-- FILE --}}
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            File Dokumen
+                        </label>
+                        <input type="file"
+                               name="files[]"
+                               multiple
+                               class="w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                        <p class="text-xs text-gray-500 mt-1">
+                            Maksimal 10 MB per file
+                        </p>
+                    </div>
+
+                    {{-- SUBMIT --}}
+                    <div class="md:col-span-2 flex justify-end">
+                        <button type="submit"
+                                class="px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                            Upload Dokumen
+                        </button>
+                    </div>
                 </form>
+            </div>
 
-                <!-- Dokumen yang Diunggah -->
-                <h3 class="text-lg font-semibold mt-8 text-gray-700">Dokumen yang Diunggah</h3>
+            {{-- ========================= --}}
+            {{-- LIST DOKUMEN --}}
+            {{-- ========================= --}}
+            <div class="bg-white shadow rounded-lg p-6 space-y-10">
 
-                <!-- Section: Cara Kerja -->
-                <div class="mt-6">
-                    <h4 class="text-md font-bold text-gray-600">Cara Kerja</h4>
-                    <div class="space-y-2">
-                        @forelse ($caraKerjaFiles as $file)
-                            <div class="flex items-center justify-between p-3 bg-gray-100 rounded shadow-sm">
-                                <span class="flex items-center">
-                                    <i class="fas fa-file-alt text-blue-500 mr-2"></i>
-                                    {{ basename($file) }}
-                                </span>
-                                <div class="flex items-center space-x-4">
-                                    <a href="{{ asset('storage/' . $file) }}" class="text-blue-600 hover:underline" target="_blank">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <form action="{{ route('admin.uploadinfo.delete', ['filename' => basename($file), 'category' => 'cara_kerja']) }}" method="POST">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:underline">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </form>
+                {{-- ===== CARA KERJA PER ROLE ===== --}}
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">
+                        Cara Kerja Aplikasi
+                    </h3>
+
+                    @foreach (['pns' => 'PNS', 'pkm' => 'PKM', 'approval' => 'Approval'] as $key => $label)
+                        <div class="mb-6">
+                            <h4 class="font-semibold text-gray-600 mb-2">
+                                {{ $label }}
+                            </h4>
+
+                            @forelse ($caraKerja[$key] as $file)
+                                <div class="flex justify-between items-center bg-gray-50 border rounded px-4 py-2 mb-2">
+                                    <span class="text-sm text-gray-700 flex items-center gap-2">
+                                        <i class="fas fa-file-alt text-blue-500"></i>
+                                        {{ basename($file) }}
+                                    </span>
+
+                                    <div class="flex items-center gap-3">
+                                        <a href="{{ asset('storage/' . $file) }}"
+                                           target="_blank"
+                                           class="text-blue-600 hover:text-blue-800">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+
+                                        <form action="{{ route('admin.uploadinfo.delete', basename($file)) }}"
+                                              method="POST">
+                                            @csrf
+                                            @method('DELETE')
+                                            <input type="hidden" name="category" value="cara_kerja">
+                                            <input type="hidden" name="role" value="{{ $key }}">
+                                            <button class="text-red-600 hover:text-red-800">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
-                            </div>
-                        @empty
-                            <p class="text-gray-500">Tidak ada dokumen untuk kategori ini.</p>
-                        @endforelse
-                    </div>
+                            @empty
+                                <p class="text-sm text-gray-500">
+                                    Tidak ada dokumen.
+                                </p>
+                            @endforelse
+                        </div>
+                    @endforeach
                 </div>
 
-                <!-- Section: Flowchart Aplikasi -->
-                <div class="mt-6">
-                    <h4 class="text-md font-bold text-gray-600">Flowchart Aplikasi</h4>
-                    <div class="space-y-2">
-                        @forelse ($flowchartFiles as $file)
-                            <div class="flex items-center justify-between p-3 bg-gray-100 rounded shadow-sm">
-                                <span class="flex items-center">
-                                    <i class="fas fa-file-alt text-blue-500 mr-2"></i>
-                                    {{ basename($file) }}
-                                </span>
-                                <div class="flex items-center space-x-4">
-                                    <a href="{{ asset('storage/' . $file) }}" class="text-blue-600 hover:underline" target="_blank">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <form action="{{ route('admin.uploadinfo.delete', ['filename' => basename($file), 'category' => 'flowchart_aplikasi']) }}" method="POST">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:underline">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </form>
-                                </div>
+                {{-- ===== FLOWCHART ===== --}}
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">
+                        Flowchart Aplikasi
+                    </h3>
+
+                    @forelse ($flowchartFiles as $file)
+                        <div class="flex justify-between items-center bg-gray-50 border rounded px-4 py-2 mb-2">
+                            <span class="text-sm text-gray-700">
+                                {{ basename($file) }}
+                            </span>
+
+                            <div class="flex gap-3">
+                                <a href="{{ asset('storage/' . $file) }}" target="_blank" class="text-blue-600">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <form action="{{ route('admin.uploadinfo.delete', basename($file)) }}" method="POST">
+                                    @csrf
+                                    @method('DELETE')
+                                    <input type="hidden" name="category" value="flowchart_aplikasi">
+                                    <button class="text-red-600">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
                             </div>
-                        @empty
-                            <p class="text-gray-500">Tidak ada dokumen untuk kategori ini.</p>
-                        @endforelse
-                    </div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-gray-500">Tidak ada dokumen.</p>
+                    @endforelse
                 </div>
 
-                <!-- Section: Kontrak PKM -->
-                <div class="mt-6">
-                    <h4 class="text-md font-bold text-gray-600">Kontrak PKM</h4>
-                    <div class="space-y-2">
-                        @forelse ($kontrakFiles as $file)
-                            <div class="flex items-center justify-between p-3 bg-gray-100 rounded shadow-sm">
-                                <span class="flex items-center">
-                                    <i class="fas fa-file-alt text-blue-500 mr-2"></i>
-                                    {{ basename($file) }}
-                                </span>
-                                <div class="flex items-center space-x-4">
-                                    <a href="{{ asset('storage/' . $file) }}" class="text-blue-600 hover:underline" target="_blank">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <form action="{{ route('admin.uploadinfo.delete', ['filename' => basename($file), 'category' => 'kontrak_pkm']) }}" method="POST">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:underline">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </form>
-                                </div>
+                {{-- ===== KONTRAK PKM ===== --}}
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">
+                        Kontrak PKM
+                    </h3>
+
+                    @forelse ($kontrakFiles as $file)
+                        <div class="flex justify-between items-center bg-gray-50 border rounded px-4 py-2 mb-2">
+                            <span class="text-sm text-gray-700">
+                                {{ basename($file) }}
+                            </span>
+
+                            <div class="flex gap-3">
+                                <a href="{{ asset('storage/' . $file) }}" target="_blank" class="text-blue-600">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <form action="{{ route('admin.uploadinfo.delete', basename($file)) }}" method="POST">
+                                    @csrf
+                                    @method('DELETE')
+                                    <input type="hidden" name="category" value="kontrak_pkm">
+                                    <button class="text-red-600">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
                             </div>
-                        @empty
-                            <p class="text-gray-500">Tidak ada dokumen untuk kategori ini.</p>
-                        @endforelse
-                    </div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-gray-500">Tidak ada dokumen.</p>
+                    @endforelse
                 </div>
             </div>
         </div>
     </div>
+
+    {{-- ========================= --}}
+    {{-- JS KECIL (ROLE TOGGLE) --}}
+    {{-- ========================= --}}
+    <script>
+        const categorySelect = document.getElementById('category');
+        const roleWrapper = document.getElementById('role-wrapper');
+
+        function toggleRole() {
+            roleWrapper.style.display =
+                categorySelect.value === 'cara_kerja' ? 'block' : 'none';
+        }
+
+        categorySelect.addEventListener('change', toggleRole);
+        toggleRole();
+    </script>
 </x-admin-layout>

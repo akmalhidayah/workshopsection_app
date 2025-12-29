@@ -27,243 +27,242 @@
 
 <!-- Sidebar -->
 <div x-data="{ open: true }" class="relative min-h-screen flex bg-gray-200">
-    <!-- Tombol Toggle Sidebar -->
-    <button @click="open = !open" class="fixed top-4 left-4 z-20 bg-blue-600 text-white p-2 rounded">
-        <i x-show="open" class="fas fa-times text-xl"></i>
-        <i x-show="!open" class="fas fa-bars text-xl"></i>
-    </button>
 
-    <!-- Sidebar Section -->
-    <aside 
-    x-show="open"
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="opacity-0 transform -translate-x-full"
-    x-transition:enter-end="opacity-100 transform translate-x-0"
-    x-transition:leave="transition ease-in duration-200"
-    x-transition:leave-start="opacity-100 transform translate-x-0"
-    x-transition:leave-end="opacity-0 transform -translate-x-full"
-    class="fixed top-0 left-0 h-full z-10 w-56 px-2 py-4 shadow-lg text-blue-100 bg-blue-900 text-sm 
-           overflow-y-auto scroll-smooth scrollbar-thin scrollbar-thumb-blue-600 scrollbar-track-blue-300"
->        
-        <!-- Sidebar Header -->
-        <div class="flex items-center space-x-2 px-2">
-            <a href="#">
-                <x-application-logo class="block h-9 w-auto fill-current text-gray-200" />
-            </a>
-            <div>
-                <span class="text-2xl font-extrabold text-gray-200 block">BMS</span>
-                <span class="text-xl font-extrabold text-white block">Dashboard</span>
-            </div>
-        </div>
-        <!-- Sidebar Navigation -->
-<!-- Sidebar Navigation -->
-<nav class="mt-5">
-    <!-- Dashboard Icon -->
-    <a href="{{ route('admin.dashboard') }}"
-       class="block px-3 py-2 mt-1 text-[11px] font-medium text-white rounded-lg flex items-center group
-              {{ request()->routeIs('admin.dashboard') ? 'bg-blue-800' : 'hover:bg-blue-700' }}"
-       @click="open = false">
-        <i class="fas fa-chart-pie mr-1 text-sm group-hover:text-blue-300 transition duration-200"></i>
-        <span>Dashboard</span>
-    </a>
-
-<!-- ORDER (dengan Submenu & Badge jumlah) -->
-<div 
-    x-data="{ orderOpen: {{ in_array(request('tab'), ['notif','kawatlas']) ? 'true' : 'false' }} }" 
-    class="mt-1"
->
-    <!-- Tombol Utama Order -->
+    <!-- TOGGLE BUTTON (SELALU TERLIHAT) -->
     <button
-        @click="orderOpen = !orderOpen; open = true"
-        class="w-full flex items-center justify-between px-3 py-2 text-[11px] font-medium text-white rounded-lg group
-               {{ in_array(request('tab'), ['notif','kawatlas']) ? 'bg-blue-800' : 'hover:bg-blue-700' }}">
-        <div class="flex items-center">
-            <i class="fas fa-envelope-open-text mr-2 text-sm group-hover:text-blue-300 transition duration-200"></i>
-            <span>Order</span>
-
-            <!-- 🔴 Badge total pending notifikasi -->
-            @php
-                $totalNotif = ($jumlahOrderPekerjaan ?? 0) + ($jumlahOrderKawatLas ?? 0);
-            @endphp
-            @if($totalNotif > 0)
-                <span class="ml-2 bg-red-600 text-white text-[10px] font-bold px-2 py-[2px] rounded-full">
-                    {{ $totalNotif }}
-                </span>
-            @endif
-        </div>
-        <i :class="orderOpen ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+        @click="open = !open"
+        :class="open ? 'left-60' : 'left-4'"
+        class="fixed top-4 z-50 bg-blue-600 text-white p-2 rounded shadow-lg
+               transition-all duration-300"
+    >
+        <i :class="open ? 'fas fa-times' : 'fas fa-bars'" class="text-lg"></i>
     </button>
 
-    <!-- Submenu Order -->
-    <div x-show="orderOpen" x-collapse class="mt-1 ml-3 space-y-1">
+    <!-- SIDEBAR -->
+    <aside
+        :class="open ? 'w-56' : 'w-16'"
+        class="fixed top-0 left-0 h-full z-40
+               bg-blue-900 text-blue-100 text-sm
+               transition-all duration-300
+               overflow-hidden shadow-lg"
+    >
 
-       <!-- 1️⃣ Order Pekerjaan -->
-<a href="{{ route('notifikasi.index', ['tab' => 'notif']) }}"
-   @click="open = false"
-   class="flex items-center justify-between px-3 py-2 text-xs text-white rounded-lg 
-          hover:bg-blue-700 {{ request('tab') === 'notif' ? 'bg-blue-800' : '' }}">
-    <div class="flex items-center">
-        <i class="fas fa-bell mr-2 text-[12px]"></i> 
-        <span>Order Pekerjaan Jasa</span>
-    </div>
-    @if(!empty($jumlahOrderPekerjaan))
-        <span class="bg-red-500 text-[10px] font-semibold px-2 py-[1px] rounded-full">
-            {{ $jumlahOrderPekerjaan }}
-        </span>
-    @endif
-</a>
+        <!-- HEADER -->
+        <div class="flex items-center justify-center h-16 border-b border-blue-800">
 
-<!-- 2️⃣ Order Kawat Las -->
-<a href="{{ route('notifikasi.index', ['tab' => 'kawatlas']) }}"
-   @click="open = false"
-   class="flex items-center justify-between px-3 py-2 text-xs text-white rounded-lg 
-          hover:bg-blue-700 {{ request('tab') === 'kawatlas' ? 'bg-blue-800' : '' }}">
-    <div class="flex items-center">
-        <i class="fas fa-wrench mr-2 text-[12px]"></i> 
-        <span>Order Kawat Las</span>
-    </div>
-    @if(!empty($jumlahOrderKawatLas))
-        <span class="bg-yellow-400 text-[10px] font-semibold text-black px-2 py-[1px] rounded-full">
-            {{ $jumlahOrderKawatLas }}
-        </span>
-    @endif
-</a>
+            <!-- MODE EXPANDED -->
+            <template x-if="open">
+                <div class="flex items-center space-x-2 px-2">
+                    <x-application-logo class="h-9 w-auto fill-current text-gray-200" />
+                    <div class="leading-tight">
+                        <span class="block text-lg font-extrabold text-white">Workshop Machine</span>
+                        <span class="block text-xs text-blue-200">Dashboard</span>
+                    </div>
+                </div>
+            </template>
 
-      <!-- Order Pekerjaan Bengkel -->
-<a href="{{ route('admin.orderbengkel.index') }}"
-   class="flex items-center justify-between px-3 py-2 text-xs text-white rounded-lg hover:bg-blue-700 {{ request()->routeIs('admin.orderbengkel.*') ? 'bg-blue-800' : '' }}">
-    <div class="flex items-center">
-        <i class="fas fa-list-alt mr-2 text-[12px]"></i>
-        <span>Order Pekerjaan Bengkel</span>
-    </div>
-    @if(!empty($jumlahOrderPekerjaan))
-        <span class="bg-red-500 text-[10px] font-semibold px-2 py-[1px] rounded-full">{{ $jumlahOrderPekerjaan }}</span>
-    @endif
-</a>
+            <!-- MODE COLLAPSED -->
+            <template x-if="!open">
+                <x-application-logo class="h-8 w-auto fill-current text-gray-200" />
+            </template>
 
+        </div>
 
-    </div>
-</div>
+    <!-- NAVIGATION -->
+<nav class="mt-3 px-2 space-y-1">
 
-
-    <!-- Create HPP Icon -->
-    <a href="{{ route('admin.inputhpp.index') }}"
-       class="block px-3 py-2 mt-1 text-[11px] font-medium text-white rounded-lg flex items-center group
-              {{ request()->routeIs('admin.inputhpp.index') ? 'bg-blue-800' : 'hover:bg-blue-700' }}"
-       @click="open = false">
-        <i class="fas fa-pencil-alt mr-1 text-sm group-hover:text-blue-300 transition duration-200"></i>
-        <span>Create HPP</span>
+    <!-- DASHBOARD -->
+    <a href="{{ route('admin.dashboard') }}"
+       class="flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg
+              hover:bg-blue-700
+              {{ request()->routeIs('admin.dashboard') ? 'bg-blue-800' : '' }}"
+       @click="open = false"
+    >
+        <i class="fas fa-chart-pie w-4 text-center"></i>
+        <span x-show="open" class="font-semibold">Dashboard</span>
     </a>
 
-    <!-- Verifikasi Anggaran Icon -->
-    <a href="{{ route('admin.verifikasianggaran.index') }}"
-       class="block px-3 py-2 mt-1 text-[11px] font-medium text-white rounded-lg flex items-center group
-              {{ request()->routeIs('admin.verifikasianggaran.index') ? 'bg-blue-800' : 'hover:bg-blue-700' }}"
-       @click="open = false">
-        <i class="fas fa-money-check-alt mr-1 text-sm group-hover:text-blue-300 transition duration-200"></i>
-        <span>Verifikasi Anggaran</span>
-    </a>
+    <!-- ORDER GROUP -->
+    <div x-data="{ orderOpen: {{ in_array(request('tab'), ['notif','kawatlas']) ? 'true' : 'false' }} }">
 
-    <!-- PR / PO Icon -->
-    <a href="{{ route('admin.purchaseorder') }}"
-       class="block px-3 py-2 mt-1 text-[11px] font-medium text-white rounded-lg flex items-center group
-              {{ request()->routeIs('admin.purchaseorder') ? 'bg-blue-800' : 'hover:bg-blue-700' }}"
-       @click="open = false">
-        <i class="fas fa-tasks mr-1 text-sm group-hover:text-blue-300 transition duration-200"></i>
-        <span>Purchase Order</span>
-    </a>
+        <button
+            @click="open ? orderOpen = !orderOpen : open = true"
+            class="w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg hover:bg-blue-700"
+        >
+            <i class="fas fa-envelope-open-text w-4 text-center"></i>
+            <span x-show="open">Order</span>
 
-    <!-- LHPP Icon -->
-    <a href="{{ route('admin.lhpp.index') }}"
-       class="block px-3 py-2 mt-1 text-[11px] font-medium text-white rounded-lg flex items-center group
-              {{ request()->routeIs('admin.lhpp.index') ? 'bg-blue-800' : 'hover:bg-blue-700' }}"
-       @click="open = false">
-        <i class="fas fa-file-alt mr-1 text-sm group-hover:text-blue-300 transition duration-200"></i>
-        <span>LHPP</span>
-    </a>
-
-    <!-- LPJ Icon -->
-    <a href="{{ route('admin.lpj') }}"
-       class="block px-3 py-2 mt-1 text-[11px] font-medium text-white rounded-lg flex items-center group
-              {{ request()->routeIs('admin.lpj') ? 'bg-blue-800' : 'hover:bg-blue-700' }}"
-       @click="open = false">
-        <i class="fas fa-folder-open mr-1 text-sm group-hover:text-blue-300 transition duration-200"></i>
-        <span>LPJ/PPL</span>
-    </a>
-
-<!-- Garansi Icon -->
-<a href="{{ route('admin.garansi.index') }}"
-   class="block px-3 py-2 mt-1 text-[11px] font-medium text-white rounded-lg flex items-center group
-          {{ request()->routeIs('admin.garansi.index') ? 'bg-blue-800' : 'hover:bg-blue-700' }}"
-   @click="open = false">
-    <i class="fas fa-shield-alt mr-1 text-sm group-hover:text-blue-300 transition duration-200"></i>
-    <span>Garansi</span>
-</a>
-
-    <!-- Dropdown Lainnya -->
-    <div x-data="{ openSub: false }">
-        <button @click="openSub = !openSub" class="w-full flex items-center justify-between px-4 py-2 mt-2 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg">
-            <div class="flex items-center">
-                <i class="fas fa-layer-group mr-2 text-lg"></i>
-                <span>Lainnya</span>
-            </div>
-            <i :class="openSub ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+            <template x-if="open">
+                <i :class="orderOpen ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"
+                   class="ml-auto text-[10px]"></i>
+            </template>
         </button>
-        <div x-show="openSub" x-transition class="ml-4 mt-1 space-y-1">
-            <a href="{{ route('admin.updateoa') }}"
-               class="block px-4 py-2 text-xs text-white rounded-lg hover:bg-blue-700 {{ request()->routeIs('admin.updateoa') ? 'bg-blue-800' : '' }}">
-                <i class="fas fa-clipboard-list mr-2"></i> Kuota Anggaran & OA
+
+        <!-- SUBMENU ORDER -->
+        <div x-show="orderOpen && open" x-collapse class="ml-6 mt-1 space-y-1">
+
+            <a href="{{ route('notifikasi.index', ['tab' => 'notif']) }}"
+               class="flex items-center justify-between px-3 py-2 text-xs rounded-lg
+                      hover:bg-blue-700 {{ request('tab') === 'notif' ? 'bg-blue-800' : '' }}">
+                <span class="font-medium">Order Pekerjaan Jasa</span>
+                @if(!empty($jumlahOrderPekerjaan))
+                    <span class="bg-red-500 text-[10px] px-2 rounded-full">
+                        {{ $jumlahOrderPekerjaan }}
+                    </span>
+                @endif
             </a>
-           <a href="{{ route('admin.jenis-kawat-las.index') }}"
-   class="block px-4 py-2 text-xs text-white rounded-lg hover:bg-blue-700 {{ request()->routeIs('admin.jenis-kawat-las.*') ? 'bg-blue-800' : '' }}">
-    <i class="fas fa-boxes mr-2"></i> Stock Kawat Las
-</a>
+
+            <a href="{{ route('notifikasi.index', ['tab' => 'kawatlas']) }}"
+               class="flex items-center justify-between px-3 py-2 text-xs rounded-lg
+                      hover:bg-blue-700 {{ request('tab') === 'kawatlas' ? 'bg-blue-800' : '' }}">
+                <span class="font-medium">Order Kawat Las</span>
+                @if(!empty($jumlahOrderKawatLas))
+                    <span class="bg-yellow-400 text-black text-[10px] px-2 rounded-full">
+                        {{ $jumlahOrderKawatLas }}
+                    </span>
+                @endif
+            </a>
+
+            <a href="{{ route('admin.orderbengkel.index') }}"
+               class="px-3 py-2 text-xs font-medium rounded-lg hover:bg-blue-700
+                      {{ request()->routeIs('admin.orderbengkel.*') ? 'bg-blue-800' : '' }}">
+                Order Pekerjaan Bengkel
+            </a>
+
+        </div>
+    </div>
+
+    <!-- MENU UTAMA -->
+    @php
+        $menus = [
+            ['route'=>'admin.inputhpp.index','icon'=>'fa-pencil-alt','label'=>'Create HPP'],
+            ['route'=>'admin.verifikasianggaran.index','icon'=>'fa-money-check-alt','label'=>'Verifikasi Anggaran'],
+            ['route'=>'admin.purchaseorder','icon'=>'fa-tasks','label'=>'Purchase Order'],
+            ['route'=>'admin.lhpp.index','icon'=>'fa-file-alt','label'=>'LHPP'],
+            ['route'=>'admin.lpj','icon'=>'fa-folder-open','label'=>'LPJ/PPL'],
+            ['route'=>'admin.garansi.index','icon'=>'fa-shield-alt','label'=>'Garansi'],
+        ];
+    @endphp
+
+    @foreach($menus as $m)
+        <a href="{{ route($m['route']) }}"
+           class="flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg hover:bg-blue-700
+                  {{ request()->routeIs($m['route']) ? 'bg-blue-800' : '' }}"
+           @click="open = false"
+        >
+            <i class="fas {{ $m['icon'] }} w-4 text-center"></i>
+            <span x-show="open">{{ $m['label'] }}</span>
+        </a>
+    @endforeach
+
+    <!-- LAINNYA -->
+    <div x-data="{ openSub: false }">
+
+        <button
+            @click="open ? openSub = !openSub : open = true"
+            class="w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg hover:bg-blue-700"
+        >
+            <i class="fas fa-layer-group w-4 text-center"></i>
+            <span x-show="open">Lainnya</span>
+
+            <template x-if="open">
+                <i :class="openSub ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"
+                   class="ml-auto text-[10px]"></i>
+            </template>
+        </button>
+
+        <!-- SUBMENU LAINNYA -->
+        <div x-show="openSub && open" x-collapse class="ml-6 mt-1 space-y-1">
+
+            <a href="{{ route('admin.updateoa') }}"
+               class="block px-3 py-2 text-xs font-medium rounded-lg hover:bg-blue-700
+                      {{ request()->routeIs('admin.updateoa') ? 'bg-blue-800' : '' }}">
+                Kuota Anggaran & OA
+            </a>
+
+            <a href="{{ route('admin.jenis-kawat-las.index') }}"
+               class="block px-3 py-2 text-xs font-medium rounded-lg hover:bg-blue-700
+                      {{ request()->routeIs('admin.jenis-kawat-las.*') ? 'bg-blue-800' : '' }}">
+                Stock Kawat Las
+            </a>
 
             <a href="{{ route('admin.users.index') }}"
-               class="block px-4 py-2 text-xs text-white rounded-lg hover:bg-blue-700 {{ request()->routeIs('admin.users.index') ? 'bg-blue-800' : '' }}">
-                <i class="fas fa-user-circle mr-2"></i> User Panel
+               class="block px-3 py-2 text-xs font-medium rounded-lg hover:bg-blue-700
+                      {{ request()->routeIs('admin.users.index') ? 'bg-blue-800' : '' }}">
+                User Panel
             </a>
+
             <a href="{{ route('admin.uploadinfo') }}"
-               class="block px-4 py-2 text-xs text-white rounded-lg hover:bg-blue-700 {{ request()->routeIs('admin.uploadinfo') ? 'bg-blue-800' : '' }}">
-                <i class="fas fa-upload mr-2"></i> Upload Informasi
+               class="block px-3 py-2 text-xs font-medium rounded-lg hover:bg-blue-700
+                      {{ request()->routeIs('admin.uploadinfo') ? 'bg-blue-800' : '' }}">
+                Upload Informasi
             </a>
+
             <a href="{{ route('admin.unit_work.index') }}"
-               class="block px-4 py-2 text-xs text-white rounded-lg hover:bg-blue-700 {{ request()->routeIs('admin.unit_work.index') ? 'bg-blue-800' : '' }}">
-                <i class="fas fa-building mr-2"></i> Unit Kerja
+               class="block px-3 py-2 text-xs font-medium rounded-lg hover:bg-blue-700
+                      {{ request()->routeIs('admin.unit_work.index') ? 'bg-blue-800' : '' }}">
+                Unit Kerja
             </a>
+
         </div>
     </div>
+
 </nav>
 
-</aside>
+    </aside>
+
 <!-- Main content -->
-<div :class="open ? 'ml-56' : 'ml-0'" class="flex-1 flex flex-col transition-all duration-300 bg-gray-100 overflow-y-auto">
-    <!-- Top Navigation -->
-    <nav class="shadow-lg bg-blue-900">
+<div :class="open ? 'ml-56' : 'ml-16'"
+     class="flex-1 flex flex-col transition-all duration-300 bg-gray-100">
+
+
+    <!-- Top Navigation (STICKY) -->
+    <nav class="sticky top-0 z-40 shadow-lg bg-blue-900">
         <div class="px-4 sm:px-6 lg:px-8">
             <div class="relative flex items-center justify-between h-16">
+
+                <!-- LEFT -->
                 <div class="flex items-center">
-                    <!-- Logo SIG di sebelah kiri -->
                     <img src="{{ asset('images/logo-sig.png') }}" alt="SIG Logo" class="h-10 w-auto mr-2">
-                    <!-- Logo Semen Tonasa di sebelah kiri -->
                     <img src="{{ asset('images/logo-st2.png') }}" alt="Semen Tonasa Logo" class="h-10 w-auto mr-2">
-                    <!-- Text Section (Hidden di Mobile) -->
+
                     <div class="hidden sm:flex flex-col text-white">
                         <span class="font-bold text-lg">SECTION OF WORKSHOP</span>
                         <span class="text-sm">Dept. Of Project Management & Main Support</span>
                     </div>
                 </div>
+
+                <!-- RIGHT -->
                 <div class="flex items-center space-x-4">
-                    <!-- Icon Lonceng Notifikasi -->
-                    <div class="relative">
-                        <button class="text-white focus:outline-none relative">
+
+                    <!-- 🔔 NOTIFICATION -->
+                    <div x-data="{ open: false }" class="relative">
+                        <button
+                            @click="open = !open"
+                            @click.outside="open = false"
+                            class="relative text-white focus:outline-none"
+                        >
                             <i class="fas fa-bell text-xl"></i>
-                            <!-- Badge Notifikasi Dinamis -->
-                            <span x-show="true" 
-                                  class="absolute top-0 right-0 inline-flex items-center justify-center w-4 h-4 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-                                  3 <!-- Ganti angka sesuai jumlah notifikasi -->
-                            </span>
+
+                            @if($adminUnreadCount > 0)
+                                <span class="absolute -top-1 -right-1 w-4 h-4 text-[10px]
+                                             bg-red-600 text-white rounded-full
+                                             flex items-center justify-center">
+                                    {{ $adminUnreadCount > 9 ? '9+' : $adminUnreadCount }}
+                                </span>
+                            @endif
                         </button>
+
+                        <!-- DROPDOWN (DIBATASI + SCROLL) -->
+                        <div
+                            x-show="open"
+                            x-transition
+                            class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl
+                                   border border-gray-200 z-50
+                                   max-h-[420px] overflow-y-auto"
+                        >
+                            @include('admin.partials.notification-dropdown')
+                        </div>
                     </div>
 
                     <!-- Dropdown Profil di Sebelah Kanan -->

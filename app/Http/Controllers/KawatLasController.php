@@ -7,6 +7,7 @@ use App\Models\KawatLas;
 use App\Models\KawatLasDetail;
 use App\Models\JenisKawatLas;
 use App\Models\UnitWork;
+use App\Services\NotificationService;
 use Illuminate\Support\Facades\DB;
 
 class KawatLasController extends Controller
@@ -89,9 +90,23 @@ class KawatLasController extends Controller
 
             $kawatLas->details()->createMany($request->detail_kawat);
 
-            DB::commit();
-            return redirect()->route('kawatlas.index')
-                             ->with('success', 'Permintaan kawat las berhasil dibuat.');
+DB::commit();
+
+// 🔔 EVENT: Order Kawat Las Baru
+NotificationService::notifyAdmin([
+    'entity_type' => 'kawat_las',
+    'entity_id'   => $kawatLas->order_number,
+    'action'      => 'created',
+    'title'       => 'Permintaan Kawat Las Baru',
+    'description' => 'Unit ' . $kawatLas->unit_work
+        . ($kawatLas->seksi ? ' – Seksi ' . $kawatLas->seksi : ''),
+    'url'         => route('notifikasi.index', ['tab' => 'kawatlas']),
+    'priority'    => 'normal',
+]);
+
+return redirect()->route('kawatlas.index')
+                 ->with('success', 'Permintaan kawat las berhasil dibuat.');
+
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()

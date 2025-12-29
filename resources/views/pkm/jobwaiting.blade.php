@@ -61,15 +61,51 @@
 
                                     <div class="text-right min-w-[70px]">
                                         <div class="text-[10px] font-semibold opacity-90">Prioritas</div>
-                                        <div class="text-xs font-semibold">
-                                            @switch($notification->priority)
-                                                @case('Urgently') <span class="text-red-100">Urgent</span>@break
-                                                @case('Hard')     <span class="text-yellow-100">High</span>@break
-                                                @case('Medium')   <span class="text-blue-100">Medium</span>@break
-                                                @case('Low')      <span class="text-green-100">Low</span>@break
-                                                @default         <span class="text-gray-100">Not Set</span>
-                                            @endswitch
-                                        </div>
+                                       <div class="text-xs">
+    @switch($notification->priority)
+
+        @case('Urgently')
+            <span class="px-2 py-0.5 rounded-full 
+                         bg-red-700 text-white 
+                         font-extrabold uppercase 
+                         tracking-wide animate-pulse">
+                URGENT
+            </span>
+        @break
+
+        @case('Hard')
+            <span class="px-2 py-0.5 rounded-full 
+                         bg-yellow-400 text-yellow-900 
+                         font-bold">
+                HIGH
+            </span>
+        @break
+
+        @case('Medium')
+            <span class="px-2 py-0.5 rounded-full 
+                         bg-blue-400 text-blue-900 
+                         font-semibold">
+                MEDIUM
+            </span>
+        @break
+
+        @case('Low')
+            <span class="px-2 py-0.5 rounded-full 
+                         bg-green-400 text-green-900 
+                         font-medium">
+                LOW
+            </span>
+        @break
+
+        @default
+            <span class="px-2 py-0.5 rounded-full 
+                         bg-gray-300 text-gray-700">
+                NOT SET
+            </span>
+
+    @endswitch
+</div>
+
                                     </div>
                                 </div>
                             </div>
@@ -143,18 +179,32 @@
         @endif
     </div>
 
-{{-- HPP  --}}
+{{-- HPP --}}
 <div class="flex items-center gap-2">
     <i class="fas fa-file-pdf text-xs" style="color:#d9460d"></i>
 
-    @if(!empty($notification->isHppAvailable) || !empty($notification->has_hpp_fallback))
-        @if(!empty($notification->download_route_name) && \Illuminate\Support\Facades\Route::has($notification->download_route_name))
-            <a href="{{ route($notification->download_route_name, $notification->notification_number) }}" class="text-orange-600 font-medium truncate" target="_blank" rel="noopener noreferrer">HPP</a>
-        @elseif(!empty($notification->has_hpp_fallback) && !empty($notification->hpp_file_path))
-            <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($notification->hpp_file_path) }}" class="text-orange-600 font-medium truncate" target="_blank" rel="noopener noreferrer">HPP</a>
+    @if($notification->isHppAvailable)
+
+        {{-- PRIORITAS 1: FILE UPLOAD DIREKTUR (PRIVATE) --}}
+        @if(!empty($notification->hpp_file_path))
+            <a href="{{ route('pkm.hpp.download_director', $notification->notification_number) }}"
+               class="text-orange-600 font-medium truncate"
+               target="_blank" rel="noopener noreferrer">
+                HPP
+            </a>
+
+        {{-- PRIORITAS 2: PDF GENERATE --}}
+        @elseif(!empty($notification->download_route_name) && Route::has($notification->download_route_name))
+            <a href="{{ route($notification->download_route_name, $notification->notification_number) }}"
+               class="text-orange-600 font-medium truncate"
+               target="_blank" rel="noopener noreferrer">
+                HPP
+            </a>
+
         @else
             <span class="text-orange-600 font-medium truncate">HPP (tersedia)</span>
         @endif
+
     @else
         <span class="text-gray-400 truncate">HPP -</span>
     @endif

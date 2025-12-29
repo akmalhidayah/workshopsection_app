@@ -138,61 +138,33 @@
 </td>
 
                     <td class="px-4 py-3">
-                        @if($notification->priority == 'Urgently')
-                            <span class="inline-flex items-center px-2 py-0.5 rounded bg-red-600 text-white text-xs">Emergency</span>
-                        @elseif($notification->priority == 'Hard')
-                            <span class="inline-flex items-center px-2 py-0.5 rounded bg-orange-500 text-white text-xs">High</span>
-                        @elseif($notification->priority == 'Medium')
-                            <span class="inline-flex items-center px-2 py-0.5 rounded bg-yellow-400 text-black text-xs">Medium</span>
-                        @else
-                            <span class="inline-flex items-center px-2 py-0.5 rounded bg-green-600 text-white text-xs">Low</span>
-                        @endif
+                      <span class="px-2 py-0.5 rounded text-xs {{ $notification->priority_badge['class'] }}">
+  {{ $notification->priority_badge['label'] }}
+</span>
+
                     </td>
 
                     <td class="px-4 py-3 text-gray-700 dark:text-gray-200">{{ $notification->input_date }}</td>
-
-<!-- Informasi Order: status + catatan + progress (modern) -->
+<!-- Informasi Order: status + catatan + progress (FINAL & CLEAN) -->
 <td class="px-4 py-3 align-top">
     @php
-        $status = $notification->status ?? 'Pending';
-        // Jika ada order_bengkel relasi, ambil progress dari situ (jika ada)
-        $orderBengkel = $notification->orderBengkel ?? null;
-        $progressStatus = $orderBengkel->progress_status ?? null;
-        $progressNote = $orderBengkel->keterangan_progress ?? null;
-
-        // Map warna untuk status notifikasi (sama seperti sebelumnya, tapi mudah di-custom)
-        $statusClasses = [
-            'Pending' => 'bg-yellow-500 text-white',
-            'Reject'  => 'bg-red-500 text-white',
-            'Approved'=> 'bg-green-600 text-white',
-            'Default' => 'bg-gray-500 text-white'
-        ];
-        $badgeClass = $statusClasses[$status] ?? $statusClasses['Default'];
-
-        // Map warna & icon untuk progress (simple)
-        $progressMap = [
-            'not_started' => ['label' => 'Belum Mulai', 'color' => 'bg-gray-400', 'icon' => 'fas fa-clock'],
-            'waiting_schedule' => ['label' => 'Waiting Schedule', 'color' => 'bg-indigo-500', 'icon' => 'fas fa-calendar-alt'],
-            'on_process' => ['label' => 'On Process', 'color' => 'bg-sky-600', 'icon' => 'fas fa-cogs'],
-            'in_progress' => ['label' => 'Sedang Berjalan', 'color' => 'bg-sky-600', 'icon' => 'fas fa-cogs'],
-            'finish' => ['label' => 'Selesai', 'color' => 'bg-emerald-600', 'icon' => 'fas fa-check-circle'],
-            'done' => ['label' => 'Selesai', 'color' => 'bg-emerald-600', 'icon' => 'fas fa-check-circle'],
-            'default' => ['label' => ucfirst(str_replace('_',' ',$progressStatus ?? 'Not Started')), 'color' => 'bg-gray-400', 'icon' => 'fas fa-info-circle'],
-        ];
-        $pmap = $progressMap[$progressStatus] ?? $progressMap['default'];
+        $orderBengkel = $notification->orderBengkel;
     @endphp
 
     <div class="flex items-start gap-3">
-        {{-- Status utama --}}
+
+        {{-- STATUS UTAMA --}}
         <div class="min-w-[84px]">
-            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-semibold {{ $badgeClass }}">
-                {{ $status }}
+            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-semibold {{ $notification->status_badge['class'] }}">
+                {{ $notification->status_badge['label'] }}
             </span>
         </div>
 
-        {{-- Catatan + small meta --}}
+        {{-- DETAIL --}}
         <div class="flex-1 min-w-0">
             <div class="text-[12px] leading-tight text-gray-700 dark:text-gray-200">
+
+                {{-- CATATAN NOTIFIKASI --}}
                 <div class="mb-1 line-clamp-2">
                     <strong class="text-[11px]">Catatan:</strong>
                     <span class="text-[11px] text-gray-600 dark:text-gray-300">
@@ -200,7 +172,7 @@
                     </span>
                 </div>
 
-                {{-- Jika ada order_bengkel, tampilkan ringkasan kecil (Nomor Order ada di kolom lain) --}}
+                {{-- RINGKASAN ORDER BENGKEL --}}
                 @if($orderBengkel)
                     <div class="text-[11px] text-gray-500 dark:text-gray-400 mb-1">
                         <span class="opacity-70">Order Bengkel:</span>
@@ -208,41 +180,41 @@
                     </div>
                 @endif
 
-                {{-- Progress block (hanya tampil jika ada progressStatus / order_bengkel ada) --}}
-                @if($progressStatus)
+                {{-- PROGRESS ORDER BENGKEL --}}
+                @if($orderBengkel && $orderBengkel->progress_meta)
+                    @php $p = $orderBengkel->progress_meta; @endphp
+
                     <div class="mt-1 flex items-center gap-2">
-                        <div class="inline-flex items-center px-2 py-0.5 rounded text-[11px] {{ $pmap['color'] }} text-white shadow-sm">
-                            <i class="{{ $pmap['icon'] }} text-[11px] mr-2"></i>
-                            <span class="font-semibold">{{ $pmap['label'] }}</span>
+                        <div class="inline-flex items-center px-2 py-0.5 rounded text-[11px] {{ $p['color'] }} text-white shadow-sm">
+                            <i class="{{ $p['icon'] }} text-[11px] mr-2"></i>
+                            <span class="font-semibold">{{ $p['label'] }}</span>
                         </div>
 
-                        @if($progressNote)
+                        @if(!empty($orderBengkel->keterangan_progress))
                             <div class="text-[11px] text-gray-600 dark:text-gray-300 truncate">
-                                — {{ \Illuminate\Support\Str::limit($progressNote, 60) }}
+                                — {{ \Illuminate\Support\Str::limit($orderBengkel->keterangan_progress, 60) }}
                             </div>
                         @endif
                     </div>
 
-                    {{-- Optional: mini progress bar visual (inferred states only, not numeric) --}}
+                    {{-- PROGRESS BAR --}}
                     <div class="mt-2 w-full max-w-[240px]">
-                        @php
-                            // convert some statuses to percent for display purposes
-                            $percent = 0;
-                            if (in_array($progressStatus, ['not_started'])) $percent = 5;
-                            elseif (in_array($progressStatus, ['waiting_schedule'])) $percent = 20;
-                            elseif (in_array($progressStatus, ['on_process','in_progress'])) $percent = 60;
-                            elseif (in_array($progressStatus, ['finish','done'])) $percent = 100;
-                        @endphp
-
                         <div class="h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                            <div style="width: {{ $percent }}%" class="h-2 rounded-full {{ $percent === 100 ? 'bg-emerald-500' : 'bg-indigo-500' }}"></div>
+                            <div
+                                class="h-2 rounded-full {{ $p['percent'] === 100 ? 'bg-emerald-500' : 'bg-indigo-500' }}"
+                                style="width: {{ $p['percent'] }}%">
+                            </div>
                         </div>
-                        <div class="text-[10px] text-gray-500 mt-1">{{ $percent }}% selesai</div>
+                        <div class="text-[10px] text-gray-500 mt-1">
+                            {{ $p['percent'] }}% selesai
+                        </div>
                     </div>
                 @else
-                    {{-- no progress yet --}}
-                    <div class="mt-1 text-[11px] text-gray-500 italic">Status pekerjaan belum tersedia</div>
+                    <div class="mt-1 text-[11px] text-gray-500 italic">
+                        Status pekerjaan belum tersedia
+                    </div>
                 @endif
+
             </div>
         </div>
     </div>
@@ -251,18 +223,14 @@
 
 <!-- Verifikasi Anggaran / Order Bengkel -->
 <td class="px-4 py-3 align-top">
-    @php
-        $verif = $notification->verifikasiAnggaran ?? null;
-        $orderBengkel = $notification->orderBengkel ?? null;
+   @php
+    $verif        = $notification->verifikasiAnggaran;
+    $orderBengkel = $notification->orderBengkel;
 
-        // Flag: apakah order_bengkel yang memicu tampilnya UI?
-        // Kita anggap trigger Order Bengkel adalah status_anggaran == 'Waiting Budget'
-        $isOrderBengkelWaitingBudget = ($orderBengkel && ($orderBengkel->status_anggaran ?? '') === 'Waiting Budget');
+    $isOrderBengkelWaitingBudget = $orderBengkel?->isWaitingBudget() ?? false;
+    $showEkorinForm              = $notification->canShowEkorinForm();
+@endphp
 
-        // Show ekorin form if verif->Tidak Tersedia OR order_bengkel Waiting Budget
-        $showEkorinForm = ($verif && ($verif->status_anggaran ?? '') === 'Tidak Tersedia')
-                         || $isOrderBengkelWaitingBudget;
-    @endphp
 
     {{-- CASE A: Jika ini triggered oleh ORDER BENGKEL WAITING BUDGET --}}
     @if($isOrderBengkelWaitingBudget)
@@ -349,7 +317,7 @@
             </div>
 
             {{-- E-KORIN: hanya saat verif->status_anggaran === 'Tidak Tersedia' --}}
-            @if(($verif->status_anggaran ?? '') === 'Tidak Tersedia')
+            @if($verif->isUnavailable())
                 <div class="mt-2 p-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                     <form method="POST"
                           action="{{ route('verifikasianggaran.ekorin.update', $notification->notification_number) }}"
@@ -399,36 +367,58 @@
         </div>
     @endif
 </td>
+<td class="px-4 py-3">
+    <div class="flex flex-col items-end gap-1.5">
 
+        {{-- Baris 1: Edit & Delete --}}
+        <div class="flex items-center gap-1.5">
+            {{-- Edit --}}
+            <button
+                class="btn-edit inline-flex items-center justify-center
+                       w-7 h-7 rounded
+                       bg-emerald-500/90 hover:bg-emerald-600
+                       text-white text-[11px]"
+                data-number="{{ $notification->notification_number }}"
+                title="Edit">
+                <i class="fas fa-pen text-[11px]"></i>
+            </button>
 
+            {{-- Delete --}}
+            <form action="{{ route('notifications.destroy', $notification->notification_number) }}"
+                  method="POST">
+                @csrf
+                @method('DELETE')
+                <button type="submit"
+                        class="btn-delete inline-flex items-center justify-center
+                               w-7 h-7 rounded
+                               bg-rose-500/90 hover:bg-rose-600
+                               text-white text-[11px]"
+                        title="Hapus">
+                    <i class="fas fa-trash text-[11px]"></i>
+                </button>
+            </form>
+        </div>
 
-                    <!-- Aksi: Edit | Hapus | Lengkapi Dokumen -->
-                    <td class="px-4 py-3">
-                        <div class="flex items-center justify-end gap-2">
-                            <!-- Edit -->
-                            <button class="btn-edit inline-flex items-center px-3 py-1 rounded bg-green-600 hover:bg-green-700 text-white"
-                                    data-number="{{ $notification->notification_number }}" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>
+        {{-- Baris 2: Lengkapi Dokumen --}}
+        @if($notification->shouldShowLengkapiDokumenButton())
+            <a href="{{ route('dokumen_orders.index', ['notification_number' => $notification->notification_number]) }}"
+               title="Lengkapi Dokumen"
+               class="
+                    inline-flex items-center gap-1
+                    px-2.5 py-1 rounded
+                    text-[11px] font-medium
+                    bg-orange-100 text-orange-700
+                    hover:bg-orange-200
+                    ring-1 ring-orange-200
+                    animate-pulse
+               ">
+                <i class="fas fa-file-alt text-[11px]"></i>
+                Lengkapi
+            </a>
+        @endif
 
-                            <!-- Delete -->
-                            <form action="{{ route('notifications.destroy', $notification->notification_number) }}" method="POST" class="inline"
-                                  data-number="{{ $notification->notification_number }}">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="inline-flex items-center px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white btn-delete" title="Hapus">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                            </form>
-
-                            <!-- Lengkapi Dokumen (ke halaman dokumen, sertakan notification sebagai query param) -->
-                            <a href="{{ route('dokumen_orders.index', ['notification_number' => $notification->notification_number]) }}"
-                               class="inline-flex items-center px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white"
-                               title="Lengkapi Dokumen">
-                                <i class="fas fa-file-upload mr-1"></i> Lengkapi Dokumen
-                            </a>
-                        </div>
-                    </td>
+    </div>
+</td>
                 </tr>
             @empty
                 <tr>

@@ -232,7 +232,7 @@
 
                                     <td class="px-3 py-2">{{ number_format($data->total_amount, 0, ',', '.') }}</td>
 {{-- status cell sudah ada di file partial lain --}}
-@include('admin.inputhpp.partials._actions_hpp1')
+@include('admin.inputhpp.partials._actions_hpp_generic', ['data' => $data])
                                 </tr>
                             @empty
                                 <tr>

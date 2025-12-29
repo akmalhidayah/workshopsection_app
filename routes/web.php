@@ -12,6 +12,7 @@ use App\Http\Controllers\Abnormalitas\AbnormalitasController;
 use App\Http\Controllers\ScopeOfWork\ScopeOfWorkController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\KawatLasController;
+use App\Http\Controllers\Admin\AdminNotificationController;
 use App\Http\Controllers\Admin\JenisKawatLasController;
 use App\Http\Controllers\Admin\OrderBengkelController;
 use App\Http\Controllers\GambarTeknikController;
@@ -32,7 +33,7 @@ use App\Http\Controllers\LHPPApprovalController as TokenLHPPApprovalController;
 use App\Http\Controllers\ItemsController;
 use App\Http\Controllers\PKMDashboardController;
 use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Approval\SPKApprovalController;
+use App\Http\Controllers\Admin\SPKApprovalController;
 use App\Http\Controllers\Admin\UploadInfoController;
 use App\Http\Controllers\WelcomeController;
 use Illuminate\Support\Facades\Route;
@@ -166,27 +167,39 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/uploadinfo/toggle-visibility', [UploadInfoController::class, 'toggleVisibility'])->name('admin.uploadinfo.toggle');
 });
 
-// Admin dashboard route
-Route::middleware(['auth', 'admin'])->group(function () {
-    Route::get('/admin/dashboard', [HomeController::class, 'index'])->name('admin.dashboard');
-    Route::get('/admin/get-years', [HomeController::class, 'getYears']);
-    Route::get('/admin/realisasi-biaya', [HomeController::class, 'realisasiBiaya']);
-    Route::get('/admin/get-months', [HomeController::class, 'getMonths']);
-    Route::get('/admin/notifikasi', [HomeController::class, 'notifikasi'])->name('notifikasi.index');
-    // ✅ Halaman Verifikasi Anggaran (tampil tabel)
-    Route::get('/admin/verifikasianggaran', [HomeController::class, 'verifikasiAnggaran'])
-        ->name('admin.verifikasianggaran.index');
+    // Admin dashboard route
+    Route::middleware(['auth', 'admin'])->group(function () {
+        Route::get('/admin/dashboard', [HomeController::class, 'index'])->name('admin.dashboard');
+        Route::get('/admin/get-years', [HomeController::class, 'getYears']);
+        Route::get('/admin/realisasi-biaya', [HomeController::class, 'realisasiBiaya']);
+        Route::get('/admin/get-months', [HomeController::class, 'getMonths']);
+        Route::get('/admin/notifikasi', [HomeController::class, 'notifikasi'])->name('notifikasi.index');
+        // ✅ Halaman Verifikasi Anggaran (tampil tabel)
+        Route::get('/admin/verifikasianggaran', [HomeController::class, 'verifikasiAnggaran'])
+            ->name('admin.verifikasianggaran.index');
 
-    // ✅ Route baru untuk update Verifikasi Anggaran
-    Route::patch('/admin/verifikasianggaran/{notification_number}', [HomeController::class, 'updateVerifikasiAnggaran'])
-        ->name('admin.verifikasianggaran.update');
-    Route::get('/admin/purchaserequest', [HomeController::class, 'purchaseRequest'])->name('admin.purchaserequest');
-    Route::get('/admin/purchaseorder', [PurchaseOrderController::class, 'index'])->name('admin.purchaseorder');
-    Route::post('admin/purchaseorder/{notification_number}', [PurchaseOrderController::class, 'update'])->name('admin.purchaseorder.update');
-    Route::get('/admin/updateoa', [HomeController::class, 'updateOA'])->name('admin.updateoa');
-    Route::post('/admin/updateoa', [HomeController::class, 'storeOA'])->name('admin.storeOA');
-    
-});
+        // ✅ Route baru untuk update Verifikasi Anggaran
+        Route::patch('/admin/verifikasianggaran/{notification_number}', [HomeController::class, 'updateVerifikasiAnggaran'])
+            ->name('admin.verifikasianggaran.update');
+        Route::get('/admin/purchaserequest', [HomeController::class, 'purchaseRequest'])->name('admin.purchaserequest');
+        Route::get('/admin/purchaseorder', [PurchaseOrderController::class, 'index'])->name('admin.purchaseorder');
+        Route::post('admin/purchaseorder/{notification_number}', [PurchaseOrderController::class, 'update'])->name('admin.purchaseorder.update');
+        Route::get('/admin/updateoa', [HomeController::class, 'updateOA'])->name('admin.updateoa');
+        Route::post('/admin/updateoa', [HomeController::class, 'storeOA'])->name('admin.storeOA');
+        
+    });
+    Route::middleware(['auth', 'admin'])
+        ->prefix('admin')
+        ->name('admin.notifications.')
+        ->group(function () {
+
+            Route::get('/notifications/dropdown', [AdminNotificationController::class, 'dropdown'])
+                ->name('dropdown');
+
+            Route::get('/notifications/read/{id}', [AdminNotificationController::class, 'markAsRead'])
+                ->name('read');
+        });
+
 // User update E-KORIN (hanya nomor + status)
 Route::middleware(['auth'])->patch('/verifikasianggaran/{notification_number}/ekorin', 
     [App\Http\Controllers\NotificationController::class, 'updateEkorin']
@@ -204,6 +217,28 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     // Route untuk melihat detail SPK berdasarkan nomor notifikasi
     Route::get('/spk/{notification_number}', [SPKController::class, 'show'])->name('spk.show');
 });
+
+/* =========================
+   APPROVAL SPK (TOKEN LINK)
+   ========================= */
+Route::middleware(['auth'])
+    ->prefix('approval/spk')
+    ->name('approval.spk.')
+    ->group(function () {
+
+        // (opsional) list SPK approval untuk user login
+        Route::get('/', [SPKApprovalController::class, 'index'])
+            ->name('index');
+
+        // halaman approve via TOKEN
+        Route::get('{token}', [SPKApprovalController::class, 'show'])
+            ->name('sign');
+
+        // submit tanda tangan
+        Route::post('{token}', [SPKApprovalController::class, 'sign'])
+            ->name('do');
+    });
+
 /* =========================
    ADMIN / HPP
    ========================= */
@@ -413,14 +448,15 @@ Route::middleware(['auth', PkmMiddleware::class])
             Route::get('lhpp/{notification_number}/download-pdf', [LHPPController::class, 'downloadPDF'])->name('lhpp.download_pdf');
     Route::get('/get-item-data/{notification_number}', [ItemsController::class, 'getItemData'])->name('getItemData');
 
-// Routes for SPK Approval
-Route::middleware(['auth'])->group(function () {
-    Route::get('/approval/spk', [SPKApprovalController::class, 'index'])->name('approval.spk.index'); // Mengarahkan ke rute yang benar
-    Route::post('/approval/spk/sign/{signType}/{nomorSpk}', [SPKApprovalController::class, 'saveSignature'])->name('approval.spk.saveSignature');
-});
+Route::get('/pkm/hpp/director/{notification}', 
+    [PKMDashboardController::class, 'downloadDirectorHpp']
+)->name('pkm.hpp.download_director');
 
-Route::post('/webhook/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'receive']);
-Route::get('/webhook/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'verify']); // challenge verify (optional)
+
+
+
+// Route::post('/webhook/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'receive']);
+// Route::get('/webhook/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'verify']); // challenge verify (optional)
 
 
 

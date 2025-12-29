@@ -9,41 +9,61 @@ class CreateSpksTable extends Migration
     public function up()
     {
         Schema::create('spks', function (Blueprint $table) {
-            $table->string('nomor_spk')->primary(); // Nomor SPK menjadi primary key
-            $table->string('perihal');
-            $table->date('tanggal_spk');
-            $table->string('notification_number'); // Nomor notifikasi
-            $table->string('unit_work'); // Unit kerja
-            $table->string('keterangan_pekerjaan')->nullable(); // Keterangan pengerjaan bisa nullable
-            $table->json('functional_location')->nullable(); // Functional Location bisa nullable
-            $table->json('scope_pekerjaan')->nullable(); // Scope Pekerjaan bisa nullable
-            $table->json('qty')->nullable(); // Qty bisa nullable
-            $table->json('stn')->nullable(); // Satuan bisa nullable
-            $table->json('keterangan')->nullable(); // Keterangan bisa nullable
-            $table->text('manager_signature')->nullable(); // Tanda tangan Manager
-            $table->text('senior_manager_signature')->nullable(); // Tanda tangan Senior Manager
-            $table->timestamps();
-        });
+            // Nomor SPK sebagai primary key string (sesuai model Anda)
+            $table->string('nomor_spk')->primary();
 
-        // Menambahkan primary key ke tabel notifications hanya jika belum ada
-        Schema::table('notifications', function (Blueprint $table) {
-            if (!Schema::hasColumn('notifications', 'notification_number')) {
-                $table->string('notification_number')->primary()->change(); // Mengubah notification_number menjadi primary key
+            // Basic fields
+            $table->string('perihal');
+            $table->date('tanggal_spk')->nullable();
+            $table->string('notification_number')->index();
+            $table->string('unit_work')->nullable();
+            $table->text('keterangan_pekerjaan')->nullable();
+
+            // Arrays json
+            $table->json('functional_location')->nullable();
+            $table->json('scope_pekerjaan')->nullable();
+            $table->json('qty')->nullable();
+            $table->json('stn')->nullable();
+            $table->json('keterangan')->nullable();
+
+            // Approval / signatures (store base64 or storage path / large text)
+            $table->longText('manager_signature')->nullable();
+            $table->unsignedBigInteger('manager_signature_user_id')->nullable()->index();
+            $table->timestamp('manager_signed_at')->nullable()->index();
+
+            $table->longText('senior_manager_signature')->nullable();
+            $table->unsignedBigInteger('senior_manager_signature_user_id')->nullable()->index();
+            $table->timestamp('senior_manager_signed_at')->nullable()->index();
+
+            // Tambahan: status singkat (optional)
+            $table->string('status')->default('draft')->index(); // draft|submitted|approved|rejected
+
+            $table->timestamps();
+
+            // Foreign key reference (opsional, tambahkan kalau notifications.notification_number memang pk)
+            if (Schema::hasTable('notifications')) {
+                // gunakan->nullable() di FK tidak perlu karena notification_number required di bisnis lain
+                $table->foreign('notification_number')
+                      ->references('notification_number')
+                      ->on('notifications')
+                      ->cascadeOnDelete();
             }
         });
     }
 
     public function down()
     {
-        Schema::dropIfExists('spks');
+        // drop foreign if exists (guard)
+        if (Schema::hasTable('spks')) {
+            Schema::table('spks', function (Blueprint $table) {
+                // jika FK terdaftar, laravel akan drop otomatis saat drop table
+                // tapi aman untuk cek
+                if (Schema::hasColumn('spks', 'notification_number')) {
+                    // no-op: letting dropIfExists handle it
+                }
+            });
+        }
 
-        // Mengembalikan perubahan di tabel notifications
-        Schema::table('notifications', function (Blueprint $table) {
-            if (Schema::hasColumn('notifications', 'notification_number')) {
-                $table->dropPrimary(['notification_number']);
-            }
-        });
+        Schema::dropIfExists('spks');
     }
 }
-
-

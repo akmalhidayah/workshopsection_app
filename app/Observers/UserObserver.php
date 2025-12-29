@@ -7,10 +7,14 @@ use App\Models\Hpp1;
 use App\Models\HppApprovalToken;
 use App\Models\LHPP;
 use App\Models\LHPPApprovalToken;
+use App\Models\SPK;
+use App\Models\SpkApprovalToken;
 use App\Services\HppApprovalLinkService;
 use App\Services\LHPPApprovalLinkService;
+use App\Services\SpkApprovalLinkService;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+
 
 class UserObserver
 {
@@ -39,6 +43,7 @@ class UserObserver
     {
         $this->maybeIssueHppTokens($user);   // logika lama HPP dipindah ke sini
         $this->maybeIssueLhppTokens($user);  // logika baru LHPP PKM
+         $this->maybeIssueSpkTokens($user);  // logika baru SPK
     }
 
    protected function maybeIssueHppTokens(User $user): void
@@ -290,6 +295,89 @@ protected function maybeIssueLhppTokens(User $user): void
 
 
     /**
+     * Auto-issue tokens untuk SPK (Manager -> Senior Manager).
+     *
+     * Rules (heuristik):
+     *  - SPK perlu dua tanda tangan: manager (unit peminta) lalu senior_manager (workshop/senior)
+     *  - Manager: jabatan mengandung 'manager' && unit_work == spk.unit_work
+     *  - Senior Manager: jabatan mengandung 'senior' OR (jabatan mengandung 'manager' && unit_work mengandung 'workshop'/'bengkel' OR equals 'Unit Of Workshop')
+     *
+     * NOTE: Sesuaikan nama model SpkApprovalToken / SpkApprovalLinkService jika berbeda.
+     */
+protected function maybeIssueSpkTokens(User $user): void
+{
+    $svc = app(SpkApprovalLinkService::class);
+
+    $jabatan  = strtolower(trim($user->jabatan ?? ''));
+    $unitWork = trim($user->unit_work ?? '');
+
+    if ($jabatan === '' || $unitWork === '') {
+        return;
+    }
+
+    $spks = SPK::all()->filter(fn (SPK $spk) => ! $spk->isFullyApproved());
+
+    foreach ($spks as $spk) {
+        $signType = ! $spk->isManagerSigned()
+            ? 'manager'
+            : (! $spk->isSeniorManagerSigned() ? 'senior_manager' : null);
+
+        if (! $signType) {
+            continue;
+        }
+
+        // === cek approver ===
+        $isApprover = match ($signType) {
+            'manager' => str_contains($jabatan, 'manager')
+                && strcasecmp($user->unit_work, $spk->unit_work) === 0,
+
+            'senior_manager' => str_contains($jabatan, 'senior')
+                || (
+                    str_contains($jabatan, 'manager') &&
+                    str_contains(strtolower($user->unit_work), 'workshop')
+                ),
+
+            default => false,
+        };
+
+        if (! $isApprover) {
+            continue;
+        }
+
+        // === token sudah ada? ===
+        $exists = SpkApprovalToken::where('nomor_spk', $spk->nomor_spk)
+            ->where('sign_type', $signType)
+            ->where('user_id', $user->id)
+            ->whereNull('used_at')
+            ->where(fn ($q) =>
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>', now())
+            )
+            ->exists();
+
+        if ($exists) {
+            continue;
+        }
+
+        // === issue token ===
+        try {
+            $svc->issue($spk->nomor_spk, $signType, $user->id);
+            Log::info('[SPK-AUTO] Issued token', [
+                'spk' => $spk->nomor_spk,
+                'sign_type' => $signType,
+                'user' => $user->id,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('[SPK-AUTO] Failed issue token', [
+                'spk' => $spk->nomor_spk,
+                'err' => $e->getMessage(),
+            ]);
+        }
+    }
+}
+
+
+    /**
      * Heuristic: given expected sign_type ('manager','sm','gm','dir','mgr_req',...),
      * return whether the next approver unit is 'controller' or 'request'.
      */
@@ -299,4 +387,21 @@ protected function maybeIssueLhppTokens(User $user): void
             ? 'request'
             : 'controller';
     }
+}
+
+/**
+ * Helper kecil: cek apakah kolom ada di DB tanpa melempar exception bila tabel/kolom belum dibuat.
+ * (kita gunakan ini karena nama kolom token SPK bisa berbeda; fungsi ini aman dipakai di observer).
+ */
+if (! function_exists('SchemaHasColumnSafe')) {
+    function SchemaHasColumnSafe(string $table, string $column): bool
+    {
+        try {
+            return \Illuminate\Support\Facades\Schema::hasColumn($table, $column);
+        } catch (\Throwable $e) {
+            \Log::warning('[SchemaHasColumnSafe] gagal cek kolom', ['table'=>$table,'column'=>$column,'err'=>$e->getMessage()]);
+            return false;
+        }
+    }
+
 }

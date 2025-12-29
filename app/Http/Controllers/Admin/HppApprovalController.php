@@ -515,12 +515,13 @@ private function expectedSignTypeForStatus(?string $status, ?Hpp1 $hpp = null): 
 
         // HPP3 : kalau maunya cuma sampai GM (tanpa jalur peminta), bisa:
         // manager ctrl → sm ctrl → gm ctrl → (opsional dir)
-        'createhpp3' => [
-            'submitted'             => 'manager',
-            'approved_manager'      => 'sm',
-            'approved_sm'           => 'gm',
-            // 'approved_gm'        => 'dir', // kalau mau lanjut direktur
-        ],
+'createhpp3' => [
+    'submitted'        => 'manager',
+    'approved_manager' => 'sm',
+    'approved_sm'      => 'gm',
+    // approved_gm = FINAL
+],
+
 
         // HPP4 : contoh sampai SM saja (silakan sesuaikan kebutuhan asli)
         'createhpp4' => [
@@ -562,12 +563,12 @@ private function expectedSignTypeForStatus(?string $status, ?Hpp1 $hpp = null): 
         $map_createhpp2['gm'] = null;
 
         // createhpp3: manager -> sm -> gm -> dir
-        $map_createhpp3 = [
-            'manager'  => ['key' => 'sm', 'role' => 'Senior Manager', 'type' => 'controller'],
-            'sm'       => ['key' => 'gm', 'role' => 'General Manager', 'type' => 'controller'],
-            'gm'       => ['key' => 'dir','role' => 'Director', 'type' => 'controller'],
-            'dir'      => null,
+            $map_createhpp3 = [
+            'manager' => ['key' => 'sm', 'role' => 'Senior Manager', 'type' => 'controller'],
+            'sm'      => ['key' => 'gm', 'role' => 'General Manager', 'type' => 'controller'],
+            'gm'      => null, // 🔥 FINAL DI GM
         ];
+
 
         // createhpp4: manager -> sm -> gm (final)
         $map_createhpp4 = [

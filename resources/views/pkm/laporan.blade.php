@@ -74,41 +74,59 @@
                                 <td class="px-3 py-2 text-center align-top">
                                     <div class="flex items-center justify-center gap-3">
 
-                                        {{-- HPP --}}
-                                        @php
-                                            $source = $notification->source_form ?? '';
-                                            $hppBg = match($source) {
-                                                'createhpp1' => 'bg-red-600',
-                                                'createhpp2' => 'bg-blue-600',
-                                                'createhpp3' => 'bg-green-600',
-                                                'createhpp4' => 'bg-green-700',
-                                                default => 'bg-gray-600',
-                                            };
-                                        @endphp
-                                        <div class="flex flex-col items-center text-[10px]">
-                                            @if(!empty($notification->isHppAvailable) || !empty($notification->has_hpp_fallback))
-                                                @if(!empty($notification->download_route_name) && \Illuminate\Support\Facades\Route::has($notification->download_route_name))
-                                                    <a href="{{ route($notification->download_route_name, $notification->notification_number) }}" title="HPP" target="_blank"
-                                                       class="w-7 h-7 inline-flex items-center justify-center rounded {{ $hppBg }} text-white text-[11px]">
-                                                        <i class="fas fa-file-pdf"></i>
-                                                    </a>
-                                                @elseif(!empty($notification->has_hpp_fallback) && !empty($notification->hpp_file_path))
-                                                    <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($notification->hpp_file_path) }}" title="HPP" target="_blank"
-                                                       class="w-7 h-7 inline-flex items-center justify-center rounded {{ $hppBg }} text-white text-[11px]">
-                                                        <i class="fas fa-file-pdf"></i>
-                                                    </a>
-                                                @else
-                                                    <span title="HPP tersedia" class="w-7 h-7 inline-flex items-center justify-center rounded {{ $hppBg }}/80 text-white text-[11px] opacity-80">
-                                                        <i class="fas fa-file-pdf"></i>
-                                                    </span>
-                                                @endif
-                                            @else
-                                                <span title="HPP - tidak ada" class="w-7 h-7 inline-flex items-center justify-center rounded bg-gray-100 text-gray-400 text-[11px]">
-                                                    <i class="fas fa-file-pdf"></i>
-                                                </span>
-                                            @endif
-                                            <div class="mt-1 text-[10px] text-center text-gray-700">HPP</div>
-                                        </div>
+                                   {{-- HPP --}}
+@php
+    $source = $notification->source_form ?? '';
+    $hppBg = match($source) {
+        'createhpp1' => 'bg-red-600',
+        'createhpp2' => 'bg-blue-600',
+        'createhpp3' => 'bg-green-600',
+        'createhpp4' => 'bg-green-700',
+        default => 'bg-gray-600',
+    };
+@endphp
+
+<div class="flex flex-col items-center text-[10px]">
+
+    @if(!empty($notification->isHppAvailable))
+
+        {{-- PRIORITAS 1: FILE UPLOAD DIREKTUR (PRIVATE) --}}
+        @if(($notification->download_route_name ?? null) === 'pkm.hpp.download_director')
+            <a href="{{ route('pkm.hpp.download_director', $notification->notification_number) }}"
+               title="HPP (Upload Direktur)"
+               target="_blank"
+               class="w-7 h-7 inline-flex items-center justify-center rounded {{ $hppBg }} text-white text-[11px]">
+                <i class="fas fa-file-pdf"></i>
+            </a>
+
+        {{-- PRIORITAS 2: PDF GENERATE --}}
+        @elseif(!empty($notification->download_route_name) && \Illuminate\Support\Facades\Route::has($notification->download_route_name))
+            <a href="{{ route($notification->download_route_name, $notification->notification_number) }}"
+               title="HPP (PDF)"
+               target="_blank"
+               class="w-7 h-7 inline-flex items-center justify-center rounded {{ $hppBg }} text-white text-[11px]">
+                <i class="fas fa-file-pdf"></i>
+            </a>
+
+        {{-- HPP ADA TAPI TIDAK ADA AKSES --}}
+        @else
+            <span title="HPP tersedia"
+                  class="w-7 h-7 inline-flex items-center justify-center rounded {{ $hppBg }}/80 text-white text-[11px] opacity-80">
+                <i class="fas fa-file-pdf"></i>
+            </span>
+        @endif
+
+    @else
+        {{-- TIDAK ADA HPP --}}
+        <span title="HPP - tidak ada"
+              class="w-7 h-7 inline-flex items-center justify-center rounded bg-gray-100 text-gray-400 text-[11px]">
+            <i class="fas fa-file-pdf"></i>
+        </span>
+    @endif
+
+    <div class="mt-1 text-[10px] text-center text-gray-700">HPP</div>
+</div>
+
 
                                         {{-- PO --}}
                                         <div class="flex flex-col items-center text-[10px]">

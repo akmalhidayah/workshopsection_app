@@ -7,6 +7,7 @@ use App\Models\Notification;
 use App\Models\UnitWork;
 use App\Models\VerifikasiAnggaran;
 use App\Models\OrderBengkel;
+use App\Services\NotificationService;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,13 @@ class NotificationController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Notification::query();
+            $query = Notification::with([
+    'dokumenOrders',
+    'scopeOfWork',
+    'orderBengkel',
+    'verifikasiAnggaran',
+]);
+
 
             if (auth()->user()->usertype != 'admin') {
                 $query->where('user_id', auth()->id());
@@ -92,17 +99,31 @@ class NotificationController extends Controller
         ]);
 
         try {
-            Notification::create([
-                'notification_number' => $request->notification_number,
-                'job_name' => $request->job_name,
-                'unit_work' => $request->unit_work,
-                'seksi' => $request->seksi,
-                'priority' => $request->priority,
-                'input_date' => $request->input_date,
-                'usage_plan_date' => $request->usage_plan_date,
-                'user_id' => auth()->id(),
-                'status'              => Notification::STATUS_PENDING,
-            ]);
+$notification = Notification::create([
+    'notification_number' => $request->notification_number,
+    'job_name' => $request->job_name,
+    'unit_work' => $request->unit_work,
+    'seksi' => $request->seksi,
+    'priority' => $request->priority,
+    'input_date' => $request->input_date,
+    'usage_plan_date' => $request->usage_plan_date,
+    'user_id' => auth()->id(),
+    'status' => Notification::STATUS_PENDING,
+]);
+NotificationService::notifyAdmin([
+    'entity_type' => 'notification',
+    'entity_id'   => $notification->notification_number,
+    'action'      => 'created',
+    'title'       => 'Order pekerjaan baru',
+    'description' => 'Dari Unit ' . $notification->unit_work,
+    'url'         => route('notifikasi.index', ['tab' => 'notif']),
+    'priority'    => NotificationService::mapPriorityFromNotification(
+        $notification->priority
+    ),
+]);
+
+
+
 
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json(['message' => 'Order berhasil dibuat.'], Response::HTTP_CREATED);

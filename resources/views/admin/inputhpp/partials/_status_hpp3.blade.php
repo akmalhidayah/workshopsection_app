@@ -1,16 +1,40 @@
-{{-- Partial: status HPP3 --}}
+{{-- =========================================================
+   PARTIAL: STATUS HPP3 (STATUS ONLY – TANPA AKSI)
+   Alur:
+   Manager Bengkel → Senior Manager Workshop → GM → Upload Direktur
+========================================================= --}}
+
 @if (is_null($data->manager_signature))
-    <span class="text-red-500">Menunggu tanda tangan Manager Bengkel Mesin</span>
+    <span class="text-red-500">
+        Menunggu tanda tangan Manager Bengkel Mesin
+    </span>
 
 @elseif (is_null($data->senior_manager_signature))
-    <span class="text-red-500">Menunggu tanda tangan Senior Manager Workshop</span>
+    <span class="text-red-500">
+        Menunggu tanda tangan Senior Manager Workshop
+    </span>
 
 @elseif (is_null($data->general_manager_signature))
-    <span class="text-red-500">Menunggu tanda tangan General Manager</span>
+    <span class="text-red-500">
+        Menunggu tanda tangan General Manager
+    </span>
 
-@elseif (is_null($data->director_signature))
-    <span class="text-red-500">Menunggu tanda tangan Direktur Operasional</span>
+{{-- ===== DIREKTUR (STATUS SAJA) ===== --}}
+@elseif (empty($data->director_uploaded_file))
+    <span class="text-red-500">
+        Menunggu upload dokumen Direktur Operasional
+    </span>
 
 @else
-    <span class="text-green-600 font-semibold">Telah Ditandatangani Semua</span>
+    <div class="space-y-1">
+        <span class="text-green-600 font-semibold">
+            Telah Disetujui Semua
+        </span>
+
+        <div class="mt-1 inline-flex items-center gap-2 px-2 py-0.5 rounded
+                    text-[10px] bg-slate-100 text-slate-700 ring-1 ring-slate-200">
+            <i class="fas fa-file-upload text-[9px]"></i>
+            Dokumen Direktur Terunggah
+        </div>
+    </div>
 @endif

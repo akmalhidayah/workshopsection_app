@@ -11,7 +11,6 @@ class OrderBengkel extends Model
 
     protected $table = 'order_bengkels';
 
-    // PK adalah notification_number (string)
     protected $primaryKey = 'notification_number';
     public $incrementing = false;
     protected $keyType = 'string';
@@ -31,14 +30,39 @@ class OrderBengkel extends Model
         'catatan',
     ];
 
-    // Relasi: OrderBengkel BELONGS TO Notification
+    /* =========================
+     |  RELATIONSHIP
+     ========================= */
     public function notification()
     {
         return $this->belongsTo(Notification::class, 'notification_number', 'notification_number');
     }
-    public function getShowMaterialAttribute() 
-    { 
-        return $this->konfirmasi_anggaran === 'Material Ready';
-     }
 
+    /* =========================
+     |  BUSINESS LOGIC (INI YANG KURANG)
+     ========================= */
+
+    /**
+     * Order Bengkel sedang menunggu anggaran
+     */
+    public function isWaitingBudget(): bool
+    {
+        return $this->status_anggaran === 'Waiting Budget';
+    }
+
+    /**
+     * Anggaran tidak tersedia
+     */
+    public function isUnavailable(): bool
+    {
+        return $this->status_anggaran === 'Tidak Tersedia';
+    }
+
+    /* =========================
+     |  UI HELPERS
+     ========================= */
+    public function getShowMaterialAttribute()
+    {
+        return $this->konfirmasi_anggaran === 'Material Ready';
+    }
 }

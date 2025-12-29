@@ -64,4 +64,32 @@ class VerifikasiAnggaran extends Model
     {
         return $query->whereBetween('tanggal_verifikasi', [$start, $end]);
     }
+    /* =====================================================
+ |  BUSINESS LOGIC (INSTANCE METHODS)
+ ===================================================== */
+
+/**
+ * Anggaran tidak tersedia
+ */
+public function isUnavailable(): bool
+{
+    return $this->status_anggaran === 'Tidak Tersedia';
+}
+
+/**
+ * Anggaran masih menunggu
+ */
+public function isWaiting(): bool
+{
+    return $this->status_anggaran === 'Menunggu';
+}
+
+/**
+ * Anggaran tersedia
+ */
+public function isAvailable(): bool
+{
+    return $this->status_anggaran === 'Tersedia';
+}
+
 }

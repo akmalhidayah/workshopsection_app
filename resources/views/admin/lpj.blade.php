@@ -164,14 +164,14 @@
                                                             <label id="lpj_upload_label_t1_{{ $notification->notification_number }}" for="lpj_document_{{ $notification->notification_number }}_t1"
                                                                    class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-600 hover:bg-green-700 text-white border border-green-700 rounded text-xs cursor-pointer hidden">
                                                                 <i class="fas fa-upload text-[10px]"></i>
-                                                                <span class="ml-1 text-[11px]" id="lpj_upload_text_t1_{{ $notification->notification_number }}">(T1)</span>
+                                                                <span class="ml-1 text-[11px]" id="lpj_upload_text_t1_{{ $notification->notification_number }}">(Upload LPJ T1)</span>
                                                             </label>
                                                             <input id="lpj_document_{{ $notification->notification_number }}_t1" type="file" name="lpj_document" form="form-{{ $notification->notification_number }}" accept=".pdf,.doc,.docx" class="hidden" onchange="showFileName(this,'lpj_filename_{{ $notification->notification_number }}')">
 
                                                             <label id="lpj_upload_label_t2_{{ $notification->notification_number }}" for="lpj_document_{{ $notification->notification_number }}_t2"
                                                                    class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-600 hover:bg-green-700 text-white border border-green-700 rounded text-xs cursor-pointer hidden">
                                                                 <i class="fas fa-upload text-[10px]"></i>
-                                                                <span class="ml-1 text-[11px]" id="lpj_upload_text_t2_{{ $notification->notification_number }}">(T2)</span>
+                                                                <span class="ml-1 text-[11px]" id="lpj_upload_text_t2_{{ $notification->notification_number }}">(Upload LPJ T2)</span>
                                                             </label>
                                                             <input id="lpj_document_{{ $notification->notification_number }}_t2" type="file" name="lpj_document_termin2" form="form-{{ $notification->notification_number }}" accept=".pdf,.doc,.docx" class="hidden" onchange="showFileName(this,'lpj_filename_{{ $notification->notification_number }}')">
                                                         </div>
@@ -197,14 +197,14 @@
                                                             <label id="ppl_upload_label_t1_{{ $notification->notification_number }}" for="ppl_document_{{ $notification->notification_number }}_t1"
                                                                    class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-600 hover:bg-green-700 text-white border border-green-700 rounded text-xs cursor-pointer hidden">
                                                                 <i class="fas fa-upload text-[10px]"></i>
-                                                                <span class="ml-1 text-[11px]" id="ppl_upload_text_t1_{{ $notification->notification_number }}">(T1)</span>
+                                                                <span class="ml-1 text-[11px]" id="ppl_upload_text_t1_{{ $notification->notification_number }}">(Upload PPL T1)</span>
                                                             </label>
                                                             <input id="ppl_document_{{ $notification->notification_number }}_t1" type="file" name="ppl_document" form="form-{{ $notification->notification_number }}" accept=".pdf,.doc,.docx" class="hidden" onchange="showFileName(this,'ppl_filename_{{ $notification->notification_number }}')">
 
                                                             <label id="ppl_upload_label_t2_{{ $notification->notification_number }}" for="ppl_document_{{ $notification->notification_number }}_t2"
                                                                    class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-600 hover:bg-green-700 text-white border border-green-700 rounded text-xs cursor-pointer hidden">
                                                                 <i class="fas fa-upload text-[10px]"></i>
-                                                                <span class="ml-1 text-[11px]" id="ppl_upload_text_t2_{{ $notification->notification_number }}">(T2)</span>
+                                                                <span class="ml-1 text-[11px]" id="ppl_upload_text_t2_{{ $notification->notification_number }}">(Upload PPL 2)</span>
                                                             </label>
                                                             <input id="ppl_document_{{ $notification->notification_number }}_t2" type="file" name="ppl_document_termin2" form="form-{{ $notification->notification_number }}" accept=".pdf,.doc,.docx" class="hidden" onchange="showFileName(this,'ppl_filename_{{ $notification->notification_number }}')">
                                                         </div>

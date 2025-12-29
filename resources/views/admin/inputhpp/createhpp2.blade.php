@@ -9,7 +9,7 @@
 
             <div class="bg-white shadow-lg rounded-lg p-6">
                 <h2 class="font-semibold text-2xl text-gray-800 leading-tight mb-6 border-b pb-3">
-                    Form Input HPP di atas 250 Juta
+                    Form Input HPP di bawah 250 Juta
                 </h2>
 
                 <!-- Form Input -->

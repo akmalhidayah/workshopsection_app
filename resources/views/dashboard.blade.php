@@ -211,55 +211,119 @@
             @endif
         </td>
 
-        {{-- Approval HPP --}}
-        <td class="px-3 py-2 text-gray-700 dark:text-gray-300 text-sm leading-tight">
-            @php $hpp = $notification->hpp1 ?? null; @endphp
+{{-- =======================
+   APPROVAL HPP (USER)
+======================= --}}
+<td class="px-3 py-2 text-gray-700 dark:text-gray-300 text-sm leading-tight">
+    @php
+        $hpp    = $notification->hpp1 ?? null;
+        $source = $hpp->source_form ?? null;
 
-            @if(!$hpp)
-                <span class="text-gray-500 italic">Belum dibuat</span>
-            @else
-                @php $source = $hpp->source_form ?? ''; @endphp
+        // helper badge
+        $badgeWaiting = 'inline-flex items-center gap-1 px-2 py-0.5 rounded
+                         text-[11px] bg-red-100 text-red-700 ring-1 ring-red-200';
+        $badgeDone    = 'inline-flex items-center gap-1 px-2 py-0.5 rounded
+                         text-[11px] bg-green-100 text-green-700 ring-1 ring-green-200 font-semibold';
+    @endphp
 
-                @if ($source === 'createhpp1')
-                    @php
-                        $steps = [
-                            ['field'=>'manager_signature','label'=>'Manager Bengkel Mesin'],
-                            ['field'=>'senior_manager_signature','label'=>'Senior Manager Workshop'],
-                            ['field'=>'manager_signature_requesting_unit','label'=>'Manager Peminta'],
-                            ['field'=>'senior_manager_signature_requesting_unit','label'=>'Senior Manager Peminta'],
-                            ['field'=>'general_manager_signature_requesting_unit','label'=>'General Manager Peminta'],
-                            ['field'=>'general_manager_signature','label'=>'General Manager'],
-                            ['field'=>'__director__','label'=>'Direktur Operasional'],
-                        ];
-                        $pending = null;
-                        foreach ($steps as $s) {
-                            $f = $s['field']; $label = $s['label'];
-                            if ($f === '__director__') {
-                                $done = !empty($hpp->director_signature) || !empty($hpp->director_uploaded_file);
-                                if (! $done) $pending = $label;
-                                break;
-                            }
-                            if (empty($hpp->{$f})) { $pending = $label; break; }
+    @if (! $hpp)
+        <span class="text-gray-500 italic">Belum dibuat</span>
+
+    @else
+
+        {{-- =================================================
+           CREATE HPP 1
+        ================================================= --}}
+        @if ($source === 'createhpp1')
+            @php
+                $steps = [
+                    ['field'=>'manager_signature','label'=>'Manager Bengkel Mesin'],
+                    ['field'=>'senior_manager_signature','label'=>'Senior Manager Workshop'],
+                    ['field'=>'manager_signature_requesting_unit','label'=>'Manager Peminta'],
+                    ['field'=>'senior_manager_signature_requesting_unit','label'=>'Senior Manager Peminta'],
+                    ['field'=>'general_manager_signature_requesting_unit','label'=>'General Manager Peminta'],
+                    ['field'=>'general_manager_signature','label'=>'General Manager'],
+                    ['field'=>'__director__','label'=>'Direktur Operasional'],
+                ];
+
+                $pending = null;
+                foreach ($steps as $s) {
+                    if ($s['field'] === '__director__') {
+                        if (empty($hpp->director_uploaded_file)) {
+                            $pending = $s['label'];
                         }
-                    @endphp
+                        break;
+                    }
+                    if (empty($hpp->{$s['field']})) {
+                        $pending = $s['label'];
+                        break;
+                    }
+                }
+            @endphp
 
-                    @if ($pending)
-                        <span class="text-red-500">Menunggu TTD: {{ $pending }}</span>
-                    @else
-                        <span class="text-green-600 font-semibold">Telah Ditandatangani Semua</span>
-                    @endif
-
-                @elseif ($source === 'createhpp2')
-                    @include('admin.inputhpp.partials._status_hpp2', ['data' => $hpp])
-                @elseif ($source === 'createhpp3')
-                    @include('admin.inputhpp.partials._status_hpp3', ['data' => $hpp])
-                @elseif ($source === 'createhpp4')
-                    @include('admin.inputhpp.partials._status_hpp4', ['data' => $hpp])
-                @else
-                    <span class="text-slate-400">Tidak diketahui</span>
-                @endif
+            @if ($pending)
+                <span class="{{ $badgeWaiting }}">
+                    <i class="fas fa-clock text-[9px]"></i>
+                    Menunggu TTD: {{ $pending }}
+                </span>
+            @else
+                <span class="{{ $badgeDone }}">
+                    <i class="fas fa-check-circle text-[9px]"></i>
+                    Telah Ditandatangani Semua
+                </span>
             @endif
-        </td>
+
+
+        {{-- =================================================
+           CREATE HPP 2 (TETAP PARTIAL)
+        ================================================= --}}
+        @elseif ($source === 'createhpp2')
+            @include('admin.inputhpp.partials._status_hpp2', ['data' => $hpp])
+
+
+        {{-- =================================================
+           CREATE HPP 3 (KONSISTEN, TANPA UPLOAD)
+        ================================================= --}}
+        @elseif ($source === 'createhpp3')
+            @php
+                if (empty($hpp->manager_signature)) {
+                    $pending = 'Manager Bengkel Mesin';
+                } elseif (empty($hpp->senior_manager_signature)) {
+                    $pending = 'Senior Manager Workshop';
+                } elseif (empty($hpp->general_manager_signature)) {
+                    $pending = 'General Manager';
+                } elseif (empty($hpp->director_uploaded_file)) {
+                    $pending = 'Direktur Operasional';
+                } else {
+                    $pending = null;
+                }
+            @endphp
+
+            @if ($pending)
+                <span class="{{ $badgeWaiting }}">
+                    <i class="fas fa-clock text-[9px]"></i>
+                    Menunggu TTD: {{ $pending }}
+                </span>
+            @else
+                <span class="{{ $badgeDone }}">
+                    <i class="fas fa-check-circle text-[9px]"></i>
+                    Telah Ditandatangani Semua
+                </span>
+            @endif
+
+
+        {{-- =================================================
+           CREATE HPP 4 (TETAP PARTIAL)
+        ================================================= --}}
+        @elseif ($source === 'createhpp4')
+            @include('admin.inputhpp.partials._status_hpp4', ['data' => $hpp])
+
+        @else
+            <span class="text-slate-400 italic">Tidak diketahui</span>
+        @endif
+    @endif
+</td>
+
 
         {{-- Progress --}}
         <td class="px-3 py-2 text-center">
@@ -321,7 +385,7 @@
                 @php $lpj = optional($notification->lpj); @endphp
 
                 <div x-data="{ t: '1' }" class="flex items-center gap-2">
-                    <select x-model="t" class="text-[11px] px-2 py-1 border rounded bg-white dark:bg-gray-800">
+                    <select x-model="t" class="text-[11px] dark:text-gray-100 px-2 py-1 border rounded bg-white dark:bg-gray-800">
                         <option value="1">Termin 1</option>
                         <option value="2">Termin 2</option>
                     </select>
