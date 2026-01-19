@@ -395,43 +395,43 @@ private function filterNotifications(Request $request, $withHpp = false, $withDa
                  ->paginate($entries)
                  ->appends($request->all());
 }
-
 public function notifikasi(Request $request)
 {
-    // ✅ Panggil helper biar konsisten filter & pagination
+    // ✅ filter & pagination
     $notifications = $this->filterNotifications($request, false, false);
+
     // ===============================
-// ACTIVE TOKEN SPK (untuk index)
-// ===============================
-$activeSpkTokens = collect();
+    // ACTIVE TOKEN SPK (untuk index)
+    // ===============================
+    $activeSpkTokens = collect();
 
-try {
-    $notifNumbers = $notifications
-        ->pluck('notification_number')
-        ->filter()
-        ->unique()
-        ->values()
-        ->all();
+    try {
+        $notifNumbers = $notifications->getCollection()
+            ->pluck('notification_number')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
-    if (!empty($notifNumbers)) {
-        $activeSpkTokens = SPKApprovalToken::whereIn('notification_number', $notifNumbers)
-            ->whereNull('used_at')
-            ->where(function ($q) {
-                $q->whereNull('expires_at')
-                  ->orWhere('expires_at', '>', now());
-            })
-            ->orderByDesc('created_at')
-            ->get()
-            ->groupBy('notification_number')
-            ->map(fn ($g) => $g->first()); // token aktif terbaru
+        if (!empty($notifNumbers)) {
+            $activeSpkTokens = SPKApprovalToken::whereIn('notification_number', $notifNumbers)
+                ->whereNull('used_at')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')
+                      ->orWhere('expires_at', '>', now());
+                })
+                ->orderByDesc('created_at')
+                ->get()
+                ->groupBy('notification_number')
+                ->map(fn ($g) => $g->first());
+        }
+    } catch (\Throwable $e) {
+        Log::error('[SPK] gagal ambil active token', [
+            'error' => $e->getMessage()
+        ]);
     }
-} catch (\Throwable $e) {
-    Log::error('[SPK] gagal ambil active token', [
-        'error' => $e->getMessage()
-    ]);
-}
 
-
+    // flag-flag helper untuk view
     foreach ($notifications as $notification) {
         $notification->isAbnormalAvailable = $notification->dokumenOrders
             ->where('jenis_dokumen', 'abnormalitas')
@@ -446,18 +446,22 @@ try {
         $notification->isAbnormalSigned = false;
     }
 
-    $outstandingNotifications = $notifications->filter(function ($notification) {
-        return $notification->isAbnormalAvailable &&
-               $notification->isScopeOfWorkAvailable &&
-               $notification->isGambarTeknikAvailable;
-    })->count();
+    // ✅ pakai collection dari paginator
+    $outstandingNotifications = $notifications->getCollection()
+        ->filter(function ($notification) {
+            return $notification->isAbnormalAvailable &&
+                   $notification->isScopeOfWorkAvailable &&
+                   $notification->isGambarTeknikAvailable;
+        })
+        ->count();
 
-    // 🔥 ambil order kawat las + jenis list
-    $kawatLasOrders      = KawatLas::with('details')->orderBy('created_at', 'desc')->paginate(10);
-    $jumlahOrderKawatLas = $kawatLasOrders->total(); // biar konsisten dengan pagination
+    // 🔥 kawat las
+    $kawatLasOrders      = KawatLas::with('details')
+        ->orderBy('created_at', 'desc')
+        ->paginate(10);
+    $jumlahOrderKawatLas = $kawatLasOrders->total();
     $jenisList           = JenisKawatLas::orderBy('kode')->get();
 
-    // 🔥 distinct Unit untuk filter dropdown
     $units = KawatLas::select('unit_work')
         ->distinct()
         ->orderBy('unit_work')
@@ -473,6 +477,7 @@ try {
         'activeSpkTokens'
     ));
 }
+
 public function inputHppIndex(Request $request)
 {
     $query = \App\Models\Hpp1::query()->orderBy('created_at', 'desc');

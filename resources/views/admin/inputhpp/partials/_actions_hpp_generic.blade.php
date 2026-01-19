@@ -15,6 +15,8 @@
         'createhpp2' => 'admin.inputhpp.download_hpp2',
         'createhpp3' => 'admin.inputhpp.download_hpp3',
         'createhpp4' => 'admin.inputhpp.download_hpp4',
+        'createhpp5' => 'admin.inputhpp.download_hpp5',
+        'createhpp6' => 'admin.inputhpp.download_hpp6',
     ];
 
     $editMap = [
@@ -22,6 +24,8 @@
         'createhpp2' => 'admin.inputhpp.edit_hpp2',
         'createhpp3' => 'admin.inputhpp.edit_hpp3',
         'createhpp4' => 'admin.inputhpp.edit_hpp4',
+        'createhpp5' => 'admin.inputhpp.edit_hpp5',
+        'createhpp6' => 'admin.inputhpp.edit_hpp6',
     ];
 
     $deleteMap = [
@@ -29,6 +33,8 @@
         'createhpp2' => 'admin.inputhpp.destroy_hpp2',
         'createhpp3' => 'admin.inputhpp.destroy_hpp3',
         'createhpp4' => 'admin.inputhpp.destroy_hpp4',
+        'createhpp5' => 'admin.inputhpp.destroy_hpp5',
+        'createhpp6' => 'admin.inputhpp.destroy_hpp6',
     ];
 
     $downloadRouteName = $downloadMap[$source] ?? null;
@@ -44,7 +50,7 @@
 
     // source yang MEMANG boleh upload direktur
     // >>> PERUBAHAN UTAMA: createhpp1 & createhpp3
-    $isDirectorFlowSource = in_array($source, ['createhpp1', 'createhpp3'], true);
+    $isDirectorFlowSource = in_array($source, ['createhpp1', 'createhpp3', 'createhpp5'], true);
 
     // GM sudah tanda tangan?
     // (PASTIKAN FIELD INI BENAR SESUAI DB ANDA)

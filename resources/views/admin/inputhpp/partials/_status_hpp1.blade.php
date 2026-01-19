@@ -39,15 +39,11 @@
     </span>
 
 @else
-    <div class="space-y-1">
-        <span class="text-green-600 font-semibold">
-            Telah Disetujui Semua
-        </span>
-
-        <div class="mt-1 inline-flex items-center gap-2 px-2 py-0.5 rounded
-                    text-[10px] bg-slate-100 text-slate-700 ring-1 ring-slate-200">
+    <div>
+        <span class="text-green-600 font-semibold">Telah Disetujui Semua</span>
+        <div class="mt-1 flex items-center gap-1 text-[10px] text-slate-600">
             <i class="fas fa-file-upload text-[9px]"></i>
-            Dokumen Direktur Terunggah
+            Dokumen direktur terunggah
         </div>
     </div>
 @endif

@@ -1,21 +1,21 @@
-<div class="bg-white shadow-sm rounded-lg p-3 mb-4 border border-gray-200">
-    <form method="GET" action="{{ url()->current() }}" class="flex flex-wrap items-end gap-3">
+<div class="admin-card p-5 mb-4">
+    <form method="GET" action="{{ url()->current() }}" class="admin-filter">
         {{-- Search --}}
         @if($search)
             <div class="flex flex-col">
-                <label class="text-[11px] font-semibold text-gray-600 mb-1">Pencarian</label>
+                <label class="text-xs font-semibold text-slate-600 mb-1">Pencarian</label>
                 <input type="text" name="search" value="{{ request('search') }}"
                     placeholder="{{ $searchPlaceholder ?? 'Cari...' }}"
-                    class="w-40 border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
+                    class="admin-input w-44">
             </div>
         @endif
 
         {{-- Status --}}
         @if(!empty($statusOptions))
             <div class="flex flex-col">
-                <label class="text-[11px] font-semibold text-gray-600 mb-1">Status</label>
+                <label class="text-xs font-semibold text-slate-600 mb-1">Status</label>
                 <select name="status"
-                    class="w-40 border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
+                    class="admin-select w-44">
                     <option value="">-- Semua --</option>
                     @foreach($statusOptions as $val => $label)
                         <option value="{{ $val }}" {{ request('status') === $val ? 'selected' : '' }}>
@@ -29,14 +29,14 @@
         {{-- Date Filter --}}
         @if($dateFilter)
             <div class="flex flex-col">
-                <label class="text-[11px] font-semibold text-gray-600 mb-1">Tanggal (Dari)</label>
+                <label class="text-xs font-semibold text-slate-600 mb-1">Tanggal (Dari)</label>
                 <input type="date" name="start_date" value="{{ request('start_date') }}"
-                    class="w-40 border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
+                    class="admin-input w-44">
             </div>
             <div class="flex flex-col">
-                <label class="text-[11px] font-semibold text-gray-600 mb-1">Tanggal (Sampai)</label>
+                <label class="text-xs font-semibold text-slate-600 mb-1">Tanggal (Sampai)</label>
                 <input type="date" name="end_date" value="{{ request('end_date') }}"
-                    class="w-40 border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
+                    class="admin-input w-44">
             </div>
         @endif
 
@@ -45,9 +45,9 @@
 
         {{-- Entries --}}
         <div class="flex flex-col">
-            <label class="text-[11px] font-semibold text-gray-600 mb-1">Tampilkan</label>
+            <label class="text-xs font-semibold text-slate-600 mb-1">Tampilkan</label>
             <select name="entries"
-                class="w-28 border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
+                class="admin-select w-28">
                 @foreach($entriesOptions as $e)
                     <option value="{{ $e }}" {{ request('entries', 10) == $e ? 'selected' : '' }}>
                         {{ $e }} data
@@ -59,12 +59,12 @@
         {{-- Tombol --}}
         <div class="ml-auto flex gap-2">
             <button type="submit"
-                class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">
-                Filter
+                class="admin-btn admin-btn-primary">
+                <i data-lucide="filter" class="w-4 h-4"></i> Filter
             </button>
             <a href="{{ url()->current() }}"
-                class="bg-gray-400 text-white px-4 py-2 rounded text-sm hover:bg-gray-500">
-                Reset
+                class="admin-btn admin-btn-ghost">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset
             </a>
         </div>
     </form>

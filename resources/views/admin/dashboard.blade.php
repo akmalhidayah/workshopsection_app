@@ -1,9 +1,17 @@
 <x-admin-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-lg text-gray-800 leading-tight">
-            {{ __('Notification Process Overview') }}
-        </h2>
-    </x-slot>
+    <div class="admin-card p-5 mb-4">
+        <div class="admin-header">
+            <div class="flex items-center gap-3">
+                <span class="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                </span>
+                <div>
+                    <h1 class="admin-title">Dashboard Admin</h1>
+                    <p class="admin-subtitle">Ringkasan proses notifikasi, HPP, dan approval.</p>
+                </div>
+            </div>
+        </div>
+    </div>
     @php
     /**
      * cleanNumber: bersihkan satu nilai menjadi integer aman

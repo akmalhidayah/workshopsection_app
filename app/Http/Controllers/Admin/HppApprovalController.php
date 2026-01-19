@@ -8,9 +8,9 @@ use App\Models\DokumenOrder;
 use App\Models\User;
 use App\Models\Notification;
 use App\Services\HppApprovalLinkService;
+use App\Services\HppApproverResolver;
 use App\Services\SignatureService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +30,19 @@ class HppApprovalController extends Controller
                 'link_user'=> $link->user_id ?? null,
                 'auth_user'=> $user->id ?? null,
             ]);
-            abort(Response::HTTP_FORBIDDEN, 'Token ini bukan untuk akun Anda.');
+            if ((int) $link->user_id !== (int) ($user->id ?? 0)) {
+    Log::info('[HPP] Token dibuka oleh user bukan pemilik', [
+        'token_id'   => $link->id,
+        'token_user' => $link->user_id,
+        'auth_user'  => $user->id ?? null,
+    ]);
+
+    return response()
+        ->view('admin.inputhpp.token_not_yours', [
+            'message' => 'Token approval ini bukan ditujukan untuk akun Anda.',
+        ], Response::HTTP_FORBIDDEN);
+}
+
         }
 
         $hpp = Hpp1::where('notification_number', $link->notification_number)
@@ -308,6 +320,8 @@ public function sign(string $token, Request $request, HppApprovalLinkService $sv
                 'createhpp2' => route('approval.hpp.download_hpp2', $hpp->notification_number),
                 'createhpp3' => route('approval.hpp.download_hpp3', $hpp->notification_number),
                 'createhpp4' => route('approval.hpp.download_hpp4', $hpp->notification_number),
+                'createhpp5' => route('approval.hpp.download_hpp5', $hpp->notification_number),
+                'createhpp6' => route('approval.hpp.download_hpp6', $hpp->notification_number),
                 default      => route('approval.hpp.download_hpp1', $hpp->notification_number),
             };
 
@@ -333,16 +347,34 @@ public function sign(string $token, Request $request, HppApprovalLinkService $sv
         $svc->markUsed($link);
 
         // === Issue token untuk approver berikutnya ===
-        if ($next = $this->nextApprover($link->sign_type, $hpp)) {
+        $next = $this->nextApprover($link->sign_type, $hpp);
+        $nextUser = null;
+        while ($next) {
 
             // pilih unit target berdasarkan tipe approver
             $targetUnit = $next['type'] === 'request'
                 ? optional($hpp->notification)->unit_work
                 : ($hpp->controlling_unit ?: 'Unit of Workshop & Design');
 
-            $nextUser = $this->findUserByRoleUnit($next['role'], (string)$targetUnit);
+            $nextUser = app(HppApproverResolver::class)->resolveApprover($hpp, $next['key']);
 
             if (!$nextUser) {
+                if ($this->isSpecialFlow($hpp) && $next['type'] === 'request') {
+                    $skipStatus = $map[$next['key']]['approved'] ?? null;
+                    if ($skipStatus) {
+                        $hpp->update(['status' => $skipStatus]);
+                    }
+
+                    Log::info('[HPP] Special requesting stage skipped', [
+                        'source_form' => $hpp->source_form,
+                        'notif'       => $hpp->notification_number,
+                        'sign_type'   => $next['key'],
+                    ]);
+
+                    $next = $this->nextApprover($next['key'], $hpp);
+                    continue;
+                }
+
                 Log::warning('[HPP] Approver berikutnya tidak ditemukan', [
                     'notif' => $hpp->notification_number,
                     'role'  => $next['role'],
@@ -356,6 +388,8 @@ public function sign(string $token, Request $request, HppApprovalLinkService $sv
                     'createhpp2' => route('approval.hpp.download_hpp2', $hpp->notification_number),
                     'createhpp3' => route('approval.hpp.download_hpp3', $hpp->notification_number),
                     'createhpp4' => route('approval.hpp.download_hpp4', $hpp->notification_number),
+                    'createhpp5' => route('approval.hpp.download_hpp5', $hpp->notification_number),
+                    'createhpp6' => route('approval.hpp.download_hpp6', $hpp->notification_number),
                     default      => route('approval.hpp.download_hpp1', $hpp->notification_number),
                 };
 
@@ -372,42 +406,7 @@ public function sign(string $token, Request $request, HppApprovalLinkService $sv
                 $nextUser->id,
                 60 * 24 * 30 // 30 hari in minutes
             );
-
-            // Kirim WA (best-effort)
-            try {
-                Http::withHeaders([
-                    'Authorization' => env('FONNTE_TOKEN', 'KBTe2RszCgc6aWhYapcv')
-                ])->post('https://api.fonnte.com/send', [
-                    'target'  => $nextUser->whatsapp_number,
-                    'message' =>
-                        "✍️ *Permintaan Tanda Tangan HPP*\n".
-                        "No: {$hpp->notification_number}\n".
-                        "Role: {$next['role']}\n".
-                        "Klik untuk menandatangani:\n".$svc->url($nextTok)."\n\n".
-                        "_Link berlaku 30 hari & hanya untuk Anda_",
-                ]);
-            } catch (\Throwable $e) {
-                Log::error('[HPP] Gagal kirim WA approver berikutnya', [
-                    'notif' => $hpp->notification_number,
-                    'user'  => $nextUser->id,
-                    'error' => $e->getMessage(),
-                ]);
-
-                // tetap redirect ke dashboard, sertakan open_pdf agar SweetAlert membuka file
-                $pdfUrl = match($hpp->source_form ?? 'createhpp1') {
-                    'createhpp1' => route('approval.hpp.download_hpp1', $hpp->notification_number),
-                    'createhpp2' => route('approval.hpp.download_hpp2', $hpp->notification_number),
-                    'createhpp3' => route('approval.hpp.download_hpp3', $hpp->notification_number),
-                    'createhpp4' => route('approval.hpp.download_hpp4', $hpp->notification_number),
-                    default      => route('approval.hpp.download_hpp1', $hpp->notification_number),
-                };
-
-                return redirect()
-                    ->route('dashboard')
-                    ->with('warning', 'Disetujui. Namun notifikasi WA ke approver berikutnya gagal terkirim.')
-                    ->with('open_pdf', $pdfUrl)
-                    ->setStatusCode(Response::HTTP_OK);
-            }
+            break;
         }
 
         // tentukan pdf url sesuai source_form (sama logika seperti Blade)
@@ -416,6 +415,8 @@ public function sign(string $token, Request $request, HppApprovalLinkService $sv
             'createhpp2' => route('approval.hpp.download_hpp2', $hpp->notification_number),
             'createhpp3' => route('approval.hpp.download_hpp3', $hpp->notification_number),
             'createhpp4' => route('approval.hpp.download_hpp4', $hpp->notification_number),
+            'createhpp5' => route('approval.hpp.download_hpp5', $hpp->notification_number),
+            'createhpp6' => route('approval.hpp.download_hpp6', $hpp->notification_number),
             default      => route('approval.hpp.download_hpp1', $hpp->notification_number),
         };
 
@@ -461,80 +462,7 @@ public function sign(string $token, Request $request, HppApprovalLinkService $sv
  */
 private function expectedSignTypeForStatus(?string $status, ?Hpp1 $hpp = null): string
 {
-    $source = (string) ($hpp->source_form ?? '');
-
-    /**
-     * DEFAULT (fallback umum, kalau source_form tidak dikenali)
-     *
-     * Status → sedang menunggu siapa?
-     * - submitted            : Manager controlling
-     * - approved_manager     : Senior Manager controlling
-     * - approved_sm          : Manager Peminta
-     * - approved_manager_req : Senior Manager Peminta
-     * - approved_sm_req      : General Manager Peminta
-     * - approved_gm_req      : General Manager controlling
-     * - approved_gm          : sudah final (tidak ada yang tanda tangan lagi)
-     */
-    $default = [
-        'submitted'             => 'manager',
-        'approved_manager'      => 'sm',
-        'approved_sm'           => 'mgr_req',
-        'approved_manager_req'  => 'sm_req',
-        'approved_sm_req'       => 'gm_req',
-        'approved_gm_req'       => 'gm',
-        // 'approved_gm'        => null (final, tidak butuh sign_type lagi)
-    ];
-
-    /**
-     * Mapping per source_form
-     * createhpp1 & createhpp2: full flow sampai GM controlling
-     * createhpp3 & createhpp4: bisa disesuaikan sendiri kalau mau beda
-     */
-    $maps = [
-        // HPP1 : Manager ctrl → SM ctrl → Mgr req → SM req → GM req → GM ctrl (final)
-        'createhpp1' => [
-            'submitted'             => 'manager',
-            'approved_manager'      => 'sm',
-            'approved_sm'           => 'mgr_req',
-            'approved_manager_req'  => 'sm_req',
-            'approved_sm_req'       => 'gm_req',
-            'approved_gm_req'       => 'gm',
-            // 'approved_gm'        => null
-        ],
-
-        // HPP2 : alur sama (sampai GM controlling, tanpa Direktur)
-        'createhpp2' => [
-            'submitted'             => 'manager',
-            'approved_manager'      => 'sm',
-            'approved_sm'           => 'mgr_req',
-            'approved_manager_req'  => 'sm_req',
-            'approved_sm_req'       => 'gm_req',
-            'approved_gm_req'       => 'gm',
-            // 'approved_gm'        => null
-        ],
-
-        // HPP3 : kalau maunya cuma sampai GM (tanpa jalur peminta), bisa:
-        // manager ctrl → sm ctrl → gm ctrl → (opsional dir)
-'createhpp3' => [
-    'submitted'        => 'manager',
-    'approved_manager' => 'sm',
-    'approved_sm'      => 'gm',
-    // approved_gm = FINAL
-],
-
-
-        // HPP4 : contoh sampai SM saja (silakan sesuaikan kebutuhan asli)
-        'createhpp4' => [
-            'submitted'             => 'manager',
-            'approved_manager'      => 'sm',
-            // 'approved_sm'        => 'gm', // kalau ternyata perlu GM, tinggal aktifkan
-        ],
-    ];
-
-    $mapping = $maps[$source] ?? $default;
-
-    // return mapped expected sign_type, fallback ke default, terakhir ke 'manager'
-    return $mapping[$status] ?? ($default[$status] ?? 'manager');
+    return app(HppApproverResolver::class)->expectedSignTypeForStatus($status, $hpp);
 }
 
     /**
@@ -577,12 +505,20 @@ private function expectedSignTypeForStatus(?string $status, ?Hpp1 $hpp = null): 
             'gm'       => null,
         ];
 
+        // createhpp5: same as createhpp1
+        $map_createhpp5 = $map_createhpp1;
+
+        // createhpp6: same as createhpp2
+        $map_createhpp6 = $map_createhpp2;
+
         // pick map
         $map = match ($source) {
             'createhpp1' => $map_createhpp1,
             'createhpp2' => $map_createhpp2,
             'createhpp3' => $map_createhpp3,
             'createhpp4' => $map_createhpp4,
+            'createhpp5' => $map_createhpp5,
+            'createhpp6' => $map_createhpp6,
             default      => $map_createhpp1,
         };
 
@@ -603,60 +539,13 @@ private function expectedSignTypeForStatus(?string $status, ?Hpp1 $hpp = null): 
         };
     }
 
-    /**
-     * Cari approver berdasarkan jabatan + unit.
-     * - Cocokkan case-insensitive pada `unit_work` (prefix match)
-     * - Atau `related_units` (JSON array) mengandung unit (full match / prefix varian)
-     */
-    private function findUserByRoleUnit(string $role, string $unit): ?User
+    private function isSpecialFlow(Hpp1 $hpp): bool
     {
-        $unit = trim($unit ?? '');
-        $role = trim($role ?? '');
+        $source = strtolower(trim((string) ($hpp->source_form ?? '')));
 
-        if ($role === '') return null;
-
-        // Alias jabatan biar fleksibel (case-insensitive)
-        $aliases = match (strtolower($role)) {
-            'manager'          => ['manager'],
-            'senior manager'   => ['senior manager','sr manager','senior mgr'],
-            'general manager'  => ['general manager','gm'],
-            'director'         => [
-                'director',
-                'operational director',
-                'operation director',
-                'director of operation',
-                'operational direction',
-                'operation direction',
-                'operation directorate',
-                'operation directorat',
-                'operation directorate (do)',
-                'operation directorate.',   // antisipasi varian input
-                'operation directorate '    // spasi nyasar
-            ],
-            default            => [strtolower($role)],
-        };
-
-        $q = User::query()
-            ->where(function ($w) use ($aliases) {
-                foreach ($aliases as $a) {
-                    $w->orWhereRaw('LOWER(jabatan) = ?', [strtolower($a)]);
-                }
-            });
-
-        if ($unit !== '') {
-            $q->where(function ($sub) use ($unit) {
-                // 1) unit_work prefix-match
-                $sub->whereRaw('LOWER(unit_work) LIKE ?', [strtolower($unit).'%'])
-                    // 2) related_units JSON contains (exact)
-                    ->orWhere(function ($qq) use ($unit) {
-                        $qq->whereNotNull('related_units')
-                           ->whereJsonContains('related_units', $unit);
-                    });
-        });
-        }
-
-        return $q->first();
+        return in_array($source, ['createhpp5', 'createhpp6'], true);
     }
+
     public function reissueToken(Request $request, string $notification_number, HppApprovalLinkService $svc)
 {
     // minimal: pastikan user punya hak (middleware admin sudah ada, tapi double-check if needed)
@@ -721,14 +610,7 @@ private function expectedSignTypeForStatus(?string $status, ?Hpp1 $hpp = null): 
 
         // Jika targetUser tidak diberikan atau tidak ditemukan, cari user default berdasarkan role+unit
         if (! $targetUser) {
-            // tentukan target unit sesuai nextApprover logic (mirip kode kamu)
-            $next = $this->nextApprover($signType, $hpp) ?? ['type' => 'controller', 'role' => $this->labelOf($signType)];
-            $targetUnit = $next['type'] === 'request'
-                ? optional($hpp->notification)->unit_work
-                : ($hpp->controlling_unit ?: null);
-
-            // reuse method yang sudah ada untuk menemukan user
-            $targetUser = $this->findUserByRoleUnit($next['role'], (string)($targetUnit ?? ''));
+            $targetUser = app(HppApproverResolver::class)->resolveApprover($hpp, $signType);
         }
 
         if (! $targetUser) {
@@ -743,17 +625,6 @@ private function expectedSignTypeForStatus(?string $status, ?Hpp1 $hpp = null): 
         $newTokId = $svc->issue($notification_number, $signType, $targetUser->id, $minutes);
 
         DB::commit();
-
-        // optional: send WA asynchronously (best-effort here, you may dispatch a job)
-        try {
-            Http::withHeaders(['Authorization' => env('FONNTE_TOKEN', 'KBTe2RszCgc6aWhYapcv')])
-                ->post('https://api.fonnte.com/send', [
-                    'target' => $targetUser->whatsapp_number,
-                    'message' => "✍️ *Permintaan Tanda Tangan HPP (reissued)*\nNo: {$hpp->notification_number}\nRole: {$signType}\nKlik: " . $svc->url($newTokId) . "\n_Link berlaku 30 hari_",
-                ]);
-        } catch (\Throwable $e) {
-            Log::warning("[HPP] WA notify reissue failed: {$e->getMessage()}", ['notif' => $notification_number, 'user' => $targetUser->id]);
-        }
 
         // return json (for JS)
         return response()->json([

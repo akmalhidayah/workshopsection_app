@@ -22,11 +22,14 @@ use App\Http\Controllers\Admin\Hpp1Controller;
 use App\Http\Controllers\Admin\Hpp2Controller;
 use App\Http\Controllers\Admin\Hpp3Controller;
 use App\Http\Controllers\Admin\Hpp4Controller;
+use App\Http\Controllers\Admin\Hpp5Controller;
+use App\Http\Controllers\Admin\Hpp6Controller;
 use App\Http\Controllers\Admin\HppApprovalController;
 use App\Http\Controllers\SignatureController;
 use App\Http\Controllers\Approval\HPPApprovalMagicController;
 use App\Http\Controllers\Admin\SPKController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
+use App\Http\Controllers\Admin\AdminAccessController;
 use App\Http\Controllers\LHPPController;
 use App\Http\Controllers\Admin\LHPPAdminController;
 use App\Http\Controllers\LHPPApprovalController as TokenLHPPApprovalController;
@@ -55,13 +58,15 @@ Route::get('/dashboard', [DashboardUserController::class, 'index'])->name('dashb
 Route::get('lhpp/{notification_number}', [App\Http\Controllers\LHPPController::class, 'show'])->name('lhpp.show');
 
 // Notifikasi routes
-Route::get('/notifikasi', [NotificationController::class, 'index'])->name('notifications.index');
-Route::post('/notifikasi', [NotificationController::class, 'store'])->name('notifications.store');
-Route::get('/notifikasi/{notification_number}/edit', [NotificationController::class, 'edit'])->name('notifications.edit');
-Route::patch('/notifikasi/{notification_number}', [NotificationController::class, 'update'])->name('notifications.update');
-Route::delete('/notifikasi/{notification_number}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
-Route::patch('/notifikasi/{notification_number}/priority', [NotificationController::class, 'updatePriority'])->name('notifications.updatePriority');
-Route::get('/notifikasi/{notification_number}', [NotificationController::class, 'show'])->name('notifications.show');
+Route::middleware('admin.menu')->group(function () {
+    Route::get('/notifikasi', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifikasi', [NotificationController::class, 'store'])->name('notifications.store');
+    Route::get('/notifikasi/{notification_number}/edit', [NotificationController::class, 'edit'])->name('notifications.edit');
+    Route::patch('/notifikasi/{notification_number}', [NotificationController::class, 'update'])->name('notifications.update');
+    Route::delete('/notifikasi/{notification_number}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::patch('/notifikasi/{notification_number}/priority', [NotificationController::class, 'updatePriority'])->name('notifications.updatePriority');
+    Route::get('/notifikasi/{notification_number}', [NotificationController::class, 'show'])->name('notifications.show');
+});
 
 
 // ===================================
@@ -186,6 +191,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::post('admin/purchaseorder/{notification_number}', [PurchaseOrderController::class, 'update'])->name('admin.purchaseorder.update');
         Route::get('/admin/updateoa', [HomeController::class, 'updateOA'])->name('admin.updateoa');
         Route::post('/admin/updateoa', [HomeController::class, 'storeOA'])->name('admin.storeOA');
+        Route::get('/admin/access-control', [AdminAccessController::class, 'index'])->name('admin.access-control.index');
+        Route::post('/admin/access-control', [AdminAccessController::class, 'update'])->name('admin.access-control.update');
         
     });
     Route::middleware(['auth', 'admin'])
@@ -294,7 +301,7 @@ Route::post('{notification_number}/reissue-token', [HppApprovalController::class
             Route::get('download-hpp3/{notification_number}',  'downloadPDF')->name('download_hpp3');
         });
 
-        // HPP 4 — Bengkel <250JT
+        // HPP 4 – Bengkel <250JT
         Route::controller(Hpp4Controller::class)->group(function () {
             Route::get('create-hpp4', 'create')->name('create_hpp4');
             Route::post('store-hpp4',  'store')->name('store_hpp4');
@@ -302,6 +309,26 @@ Route::post('{notification_number}/reissue-token', [HppApprovalController::class
             Route::put('update-hpp4/{notification_number}', 'update')->name('update_hpp4');
             Route::delete('delete-hpp4/{notification_number}', 'destroy')->name('destroy_hpp4');
             Route::get('download-hpp4/{notification_number}',  'downloadPDF')->name('download_hpp4');
+        });
+
+        // HPP 5 – placeholder
+        Route::controller(Hpp5Controller::class)->group(function () {
+            Route::get('create-hpp5', 'create')->name('create_hpp5');
+            Route::post('store-hpp5',  'store')->name('store_hpp5');
+            Route::get('edit-hpp5/{notification_number}',   'edit')->name('edit_hpp5');
+            Route::put('update-hpp5/{notification_number}', 'update')->name('update_hpp5');
+            Route::delete('delete-hpp5/{notification_number}', 'destroy')->name('destroy_hpp5');
+            Route::get('download-hpp5/{notification_number}',  'downloadPDF')->name('download_hpp5');
+        });
+
+        // HPP 6 – placeholder
+        Route::controller(Hpp6Controller::class)->group(function () {
+            Route::get('create-hpp6', 'create')->name('create_hpp6');
+            Route::post('store-hpp6',  'store')->name('store_hpp6');
+            Route::get('edit-hpp6/{notification_number}',   'edit')->name('edit_hpp6');
+            Route::put('update-hpp6/{notification_number}', 'update')->name('update_hpp6');
+            Route::delete('delete-hpp6/{notification_number}', 'destroy')->name('destroy_hpp6');
+            Route::get('download-hpp6/{notification_number}',  'downloadPDF')->name('download_hpp6');
         });
     });
 });
@@ -319,6 +346,8 @@ Route::prefix('approval/hpp')->middleware(['auth'])->name('approval.hpp.')->grou
     Route::get('{notification_number}/download-hpp2', [Hpp2Controller::class, 'downloadPDF'])->name('download_hpp2');
     Route::get('{notification_number}/download-hpp3', [Hpp3Controller::class, 'downloadPDF'])->name('download_hpp3');
     Route::get('{notification_number}/download-hpp4', [Hpp4Controller::class, 'downloadPDF'])->name('download_hpp4');
+    Route::get('{notification_number}/download-hpp5', [Hpp5Controller::class, 'downloadPDF'])->name('download_hpp5');
+    Route::get('{notification_number}/download-hpp6', [Hpp6Controller::class, 'downloadPDF'])->name('download_hpp6');
 });
 
 
@@ -457,7 +486,4 @@ Route::get('/pkm/hpp/director/{notification}',
 
 // Route::post('/webhook/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'receive']);
 // Route::get('/webhook/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'verify']); // challenge verify (optional)
-
-
-
 

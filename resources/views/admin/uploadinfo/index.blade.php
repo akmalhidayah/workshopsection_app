@@ -1,17 +1,25 @@
 <x-admin-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Upload Informasi') }}
-        </h2>
-    </x-slot>
+    <div class="py-6">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
-    <div class="py-10">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
+            <div class="admin-card p-5">
+                <div class="admin-header mb-4">
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                            <i data-lucide="upload" class="w-5 h-5"></i>
+                        </span>
+                        <div>
+                            <h1 class="admin-title">Upload Informasi</h1>
+                            <p class="admin-subtitle">Kelola dokumen informasi berdasarkan kategori dan role.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {{-- ========================= --}}
             {{-- FORM UPLOAD --}}
             {{-- ========================= --}}
-            <div class="bg-white shadow rounded-lg p-6">
+            <div class="admin-card p-5">
                 <h3 class="text-lg font-semibold mb-4 text-gray-700">
                     Unggah Dokumen Informasi
                 </h3>
@@ -66,7 +74,7 @@
                     {{-- SUBMIT --}}
                     <div class="md:col-span-2 flex justify-end">
                         <button type="submit"
-                                class="px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                                class="admin-btn admin-btn-primary">
                             Upload Dokumen
                         </button>
                     </div>
@@ -76,7 +84,7 @@
             {{-- ========================= --}}
             {{-- LIST DOKUMEN --}}
             {{-- ========================= --}}
-            <div class="bg-white shadow rounded-lg p-6 space-y-10">
+            <div class="admin-card p-5 space-y-10">
 
                 {{-- ===== CARA KERJA PER ROLE ===== --}}
                 <div>

@@ -1,9 +1,5 @@
 <x-admin-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-sm text-gray-700 leading-tight">Order Pekerjaan Bengkel</h2>
-    </x-slot>
-
-    @php
+@php
         $chipBase = 'inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full text-white shadow-sm';
         $progressOptions = [
             'menunggu_jadwal' => 'Menunggu Jadwal',
@@ -19,47 +15,51 @@
 
     <div class="py-6">
         <div class="w-full max-w-[100%] mx-auto">
-            <!-- Header: title + filters -->
-            <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 mb-4">
-                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
-                    <div>
-                        <h3 class="text-sm font-semibold text-slate-800">Order Pekerjaan Bengkel</h3>
-                        <p class="text-xs text-slate-500 mt-1">Daftar order yang diarahkan ke Bengkel Mesin</p>
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <div class="relative">
-                            <input id="searchOrder" name="search" value="{{ request('search') }}"
-                                   type="text" placeholder="Cari nomor / deskripsi / unit..."
-                                   class="text-[11px] rounded-md px-2.5 py-1.5 w-64 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-                            <button id="clearSearch" type="button" class="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">Clear</button>
+            <div class="admin-card p-5 mb-4">
+                <div class="admin-header">
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                            <i data-lucide="factory" class="w-5 h-5"></i>
+                        </span>
+                        <div>
+                            <h1 class="admin-title">Order Pekerjaan Bengkel</h1>
+                            <p class="admin-subtitle">Daftar order yang diarahkan ke Bengkel Mesin</p>
                         </div>
-
-                        <select id="filterProgress" name="progress" class="text-[11px] rounded-md px-2 py-1.5">
-                            <option value="">Semua Progress</option>
-                            @foreach($progressOptions as $val => $label)
-                                <option value="{{ $val }}" {{ request('progress') === $val ? 'selected' : '' }}>{{ $label }}</option>
-                            @endforeach
-                        </select>
-
-                        <select id="perPage" name="perPage" class="text-[11px] rounded-md px-2 py-1.5">
-                            <option value="10" {{ request('perPage', 10) == 10 ? 'selected' : '' }}>10</option>
-                            <option value="25" {{ request('perPage') == 25 ? 'selected' : '' }}>25</option>
-                            <option value="50" {{ request('perPage') == 50 ? 'selected' : '' }}>50</option>
-                        </select>
-
-                        <select id="filterRegu" name="regu" class="text-[11px] rounded-md px-2 py-1.5 border">
-                            <option value="">Semua Regu</option>
-                            @foreach($reguOptions as $r)
-                                <option value="{{ $r }}" {{ request('regu') == $r ? 'selected' : '' }}>{{ $r }}</option>
-                            @endforeach
-                        </select>
                     </div>
+                </div>
+
+                <div class="admin-filter mt-4">
+                    <div class="relative">
+                        <input id="searchOrder" name="search" value="{{ request('search') }}"
+                               type="text" placeholder="Cari nomor / deskripsi / unit..."
+                               class="admin-input w-64 pr-14" />
+                        <button id="clearSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-500">Clear</button>
+                    </div>
+
+                    <select id="filterProgress" name="progress" class="admin-select w-44">
+                        <option value="">Semua Progress</option>
+                        @foreach($progressOptions as $val => $label)
+                            <option value="{{ $val }}" {{ request('progress') === $val ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+
+                    <select id="perPage" name="perPage" class="admin-select w-24">
+                        <option value="10" {{ request('perPage', 10) == 10 ? 'selected' : '' }}>10</option>
+                        <option value="25" {{ request('perPage') == 25 ? 'selected' : '' }}>25</option>
+                        <option value="50" {{ request('perPage') == 50 ? 'selected' : '' }}>50</option>
+                    </select>
+
+                    <select id="filterRegu" name="regu" class="admin-select w-48">
+                        <option value="">Semua Regu</option>
+                        @foreach($reguOptions as $r)
+                            <option value="{{ $r }}" {{ request('regu') == $r ? 'selected' : '' }}>{{ $r }}</option>
+                        @endforeach
+                    </select>
                 </div>
             </div>
 
-            <!-- Table -->
-            <div class="bg-white shadow rounded-lg overflow-hidden">
+<!-- Table -->
+            <div class="admin-card overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 text-[10px] order-table">
                         <thead class="bg-gray-200">

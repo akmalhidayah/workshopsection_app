@@ -1,9 +1,5 @@
 <x-admin-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-[11px] text-gray-800 leading-tight">LHPP List</h2>
-    </x-slot>
-
-    @php
+@php
         /* STYLE PRESETS (konsisten dengan LPJ) */
         $baseSel = 'min-h-[26px] text-[10px] leading-[1.3] px-2 pr-9 rounded-[6px] appearance-none focus:ring-1 truncate';
         $baseInp = 'min-h-[26px] text-[10px] leading-[1.3] px-2 rounded-[6px] focus:ring-1';
@@ -16,67 +12,73 @@
         $btnGhost   = $baseBtn.' border border-slate-600 text-slate-700 hover:bg-slate-50';
     @endphp
 
-    <div class="py-4">
+    <div class="py-6">
         <div class="max-w-full mx-auto sm:px-4 lg:px-4">
 
             <!-- HEADER + FILTER -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-3 p-3">
-                <div class="mb-2">
-                    <h3 class="font-semibold text-[11px] text-slate-900 leading-tight">Laporan Hasil Pertanggung Jawaban Vendor</h3>
-                    <p class="text-[9px] text-slate-500 leading-tight">Cari dokumen berdasarkan nomor order, PO, unit, dan lainnya.</p>
+            <div class="admin-card p-5 mb-4">
+                <div class="admin-header">
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                            <i data-lucide="file-text" class="w-5 h-5"></i>
+                        </span>
+                        <div>
+                            <h1 class="admin-title">LHPP</h1>
+                            <p class="admin-subtitle">Cari dokumen berdasarkan nomor order, PO, unit, dan lainnya.</p>
+                        </div>
+                    </div>
                 </div>
 
-                <form action="{{ route('admin.lhpp.index') }}" method="GET" class="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
+                <form action="{{ route('admin.lhpp.index') }}" method="GET" class="admin-filter mt-4 overflow-x-auto whitespace-nowrap">
                     <div class="relative">
-                        <svg class="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"/>
-                        </svg>
-                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari dokumen…" class="{{ $selIndigo }} pl-6 w-72" />
-                        <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-indigo-600 text-[10px]">⌕</span>
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari dokumen" class="admin-input pl-9 w-72" />
                     </div>
 
-                    <button type="submit" class="{{ $btnPrimary }} ml-auto inline-flex items-center">
-                        <i class="fas fa-filter mr-1 text-[10px]"></i> Terapkan
+                    <button type="submit" class="admin-btn admin-btn-primary ml-auto">
+                        <i data-lucide="filter" class="w-4 h-4"></i> Terapkan
                     </button>
-                    <a href="{{ route('admin.lhpp.index') }}" class="{{ $btnGhost }} inline-flex items-center">
-                        <i class="fas fa-undo mr-1 text-[10px]"></i> Reset
+                    <a href="{{ route('admin.lhpp.index') }}" class="admin-btn admin-btn-ghost">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset
                     </a>
                 </form>
             </div>
 
             <!-- TABLE: modern, responsive, tanpa ubah logic data -->
-            <div class="bg-white overflow-x-auto shadow-xl rounded-lg">
-                <table class="min-w-full bg-white text-sm rounded-lg shadow-lg">
-                    <thead class="bg-gray-200 text-gray-700 border-b">
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white text-[11px] text-slate-700">
+                    <thead class="bg-slate-100 text-slate-700 uppercase tracking-wide">
                         <tr>
-                            <th class="px-4 py-3 text-left">Nomor Order</th>
-                            <th class="px-4 py-3 text-left">Nomor PO</th>
-                            <th class="px-4 py-3 text-left">Unit Kerja</th>
-                            <th class="px-4 py-3 text-left">Tanggal Selesai</th>
-                            <th class="px-4 py-3 text-left">Waktu</th>
-                            <th class="px-4 py-3 text-right">Total Biaya</th>
-                            <th class="px-4 py-3 text-center">Garansi</th>
-                            <th class="px-4 py-3 text-center">Dokumen</th>
+                            <th class="px-4 py-2 text-left font-semibold">Nomor Order</th>
+                            <th class="px-4 py-2 text-left font-semibold">Nomor PO</th>
+                            <th class="px-4 py-2 text-left font-semibold">Unit Kerja</th>
+                            <th class="px-4 py-2 text-left font-semibold">Tanggal Selesai</th>
+                            <th class="px-4 py-2 text-left font-semibold">Waktu</th>
+                            <th class="px-4 py-2 text-right font-semibold">Total Biaya</th>
+                            <th class="px-4 py-2 text-center font-semibold">Garansi</th>
+                            <th class="px-4 py-2 text-center font-semibold">Dokumen</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-100">
+                    <tbody class="bg-white divide-y divide-slate-100">
                         @foreach ($lhpps as $lhpp)
                             @php
-                                // tetap gunakan per-row lookup LPJ sesuai behavior lama (tidak mengubah controller)
-                                $lpj = \App\Models\Lpj::where('notification_number', $lhpp->notification_number)->first();
                                 $total_biaya = (float) ($lhpp->total_biaya ?? 0);
+                                $tanggalSelesai = $lhpp->tanggal_selesai
+                                    ? \Carbon\Carbon::parse($lhpp->tanggal_selesai)->format('d-m-Y')
+                                    : '-';
+                                $waktuPengerjaan = $lhpp->waktu_pengerjaan ? $lhpp->waktu_pengerjaan.' Hari' : '-';
                             @endphp
 
-                            <tr class="hover:bg-gray-50 transition duration-150">
-                                <td class="px-4 py-3 font-medium">{{ $lhpp->notification_number }}</td>
-                                <td class="px-4 py-3">{{ $lhpp->purchase_order_number }}</td>
-                                <td class="px-4 py-3">{{ $lhpp->unit_kerja }}</td>
-                                <td class="px-4 py-3">{{ $lhpp->tanggal_selesai }}</td>
-                                <td class="px-4 py-3">{{ $lhpp->waktu_pengerjaan }} Hari</td>
-                                <td class="px-4 py-3 text-right">Rp{{ number_format($total_biaya, 0, ',', '.') }}</td>
+                            <tr class="hover:bg-slate-50 transition duration-150">
+                                <td class="px-4 py-2 font-semibold text-slate-900">{{ $lhpp->notification_number }}</td>
+                                <td class="px-4 py-2">{{ $lhpp->purchase_order_number }}</td>
+                                <td class="px-4 py-2">{{ $lhpp->unit_kerja }}</td>
+                                <td class="px-4 py-2">{{ $tanggalSelesai }}</td>
+                                <td class="px-4 py-2">{{ $waktuPengerjaan }}</td>
+                                <td class="px-4 py-2 text-right">Rp{{ number_format($total_biaya, 0, ',', '.') }}</td>
 
                   <!-- GARANSI (DIPINDAHKAN DARI LPJ KE GARANSI) -->
-<td class="px-4 py-3 text-center align-top w-64">
+<td class="px-4 py-2 text-center align-top w-64">
     <form id="garansi-form-{{ $lhpp->notification_number }}"
           action="{{ route('admin.lhpp.storeGaransi', $lhpp->notification_number) }}"
           method="POST">
@@ -86,8 +88,9 @@
         <input type="hidden" name="redirect_to" value="{{ route('admin.lhpp.index') }}">
 
         @php
-            // Ambil garansi jika ada
-            $garansi = \App\Models\Garansi::where('notification_number', $lhpp->notification_number)->first();
+            $garansi = isset($garansiMap)
+                ? $garansiMap->get($lhpp->notification_number)
+                : null;
         @endphp
 
         <div class="flex items-center gap-2 justify-center">
@@ -121,18 +124,19 @@
 
 
                                 <!-- ACTIONS: approve/reject/pdf sama seperti sebelumnya -->
-                                <td class="px-4 py-3 text-center flex justify-center space-x-2">
+                                <td class="px-4 py-2 text-center">
+                                    <div class="inline-flex items-center gap-2">
                                     @if ($lhpp->status_approve === 'Pending')
-                                        <form action="{{ route('admin.lhpp.approve', ['notification_number' => $lhpp->notification_number]) }}" method="POST">
+                                        <form action="{{ route('admin.lhpp.approve', ['notification_number' => $lhpp->notification_number]) }}" method="POST" class="lhpp-approve-form">
                                             @csrf
-                                            <button type="submit" class="bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-700 transition">
-                                                <i class="fas fa-check"></i>
-                                            </button>
                                         </form>
 
-                                        <button onclick="openRejectModal('{{ $lhpp->notification_number }}')" class="bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-700 transition">
-                                            <i class="fas fa-times"></i>
-                                        </button>
+                                        <select class="text-[11px] px-2 py-1 rounded border border-slate-300 bg-white lhpp-approval-select"
+                                                data-notif="{{ $lhpp->notification_number }}">
+                                            <option value="">Pilih Aksi</option>
+                                            <option value="approve">Setujui</option>
+                                            <option value="reject">Tolak</option>
+                                        </select>
                                     @endif
 
                                     <a href="{{ route('admin.lhpp.download_pdf', ['notification_number' => $lhpp->notification_number]) }}"
@@ -140,17 +144,18 @@
                                        rel="noopener"
                                        title="Lihat LHPP (PDF)"
                                        aria-label="Lihat LHPP PDF"
-                                       class="inline-flex items-center justify-center w-9 h-9 rounded-md bg-red-600 hover:bg-red-700 text-white shadow-sm transition"
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-slate-700 hover:bg-slate-800 text-white shadow-sm transition"
                                     >
                                         <i class="fas fa-file-pdf text-lg"></i>
                                     </a>
+                                    </div>
 
                                 </td>
                             </tr>
 
                             @if($lhpp->status_approve === 'Rejected' || in_array('rejected', [$lhpp->manager_signature, $lhpp->manager_signature_requesting, $lhpp->manager_pkm_signature]))
                                 <tr class="bg-red-50">
-                                    <td colspan="8" class="px-4 py-3 text-sm text-red-600">
+                                    <td colspan="8" class="px-4 py-3 text-xs text-red-600">
                                         <strong>Dokumen ditolak</strong> -
                                         @php
                                             $rejecter = match (true) {
@@ -230,6 +235,24 @@
         function closeRejectModal() {
             document.getElementById('rejectModal').classList.add('hidden');
         }
+
+        document.querySelectorAll('.lhpp-approval-select').forEach((sel) => {
+            sel.addEventListener('change', () => {
+                const action = sel.value;
+                const row = sel.closest('td');
+                if (!row) return;
+
+                if (action === 'approve') {
+                    const form = row.querySelector('.lhpp-approve-form');
+                    if (form) form.submit();
+                } else if (action === 'reject') {
+                    const notif = sel.getAttribute('data-notif');
+                    if (notif) openRejectModal(notif);
+                }
+
+                sel.value = '';
+            });
+        });
     </script>
 
     <!-- SweetAlert -->

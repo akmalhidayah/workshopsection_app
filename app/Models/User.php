@@ -22,6 +22,7 @@ class User extends Authenticatable
         'email',
         'password',
         'usertype',
+        'role',
         'departemen',
         'unit_work',
         'seksi',
@@ -158,5 +159,72 @@ class User extends Authenticatable
               // Related units JSON array
               ->orWhereJsonContains('related_units', $unit);
         });
+    }
+
+
+    // ⬇️ Tambahan BARU mulai dari sini
+    public function scopeUsertype($q, string|array $type)
+    {
+        if (is_array($type)) {
+            return $q->whereIn('usertype', $type);
+        }
+
+        return $q->where('usertype', $type);
+    }
+
+    public function scopeApproval($q)
+    {
+        return $q->where('usertype', 'approval');
+    }
+public function scopeGeneralManagers($q)
+{
+    return $q->approval();
+}
+
+public function scopeSeniorManagers($q)
+{
+    return $q->approval();
+}
+
+    public function scopeSectionManagers($q)
+    {
+        return $q->approval();
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->usertype === 'admin' && $this->role === 'super_admin';
+    }
+
+    public function adminRole(): string
+    {
+        return $this->role ?: 'admin';
+    }
+
+    public function hasAdminPermission(string $key): bool
+    {
+        if ($this->usertype !== 'admin') {
+            return false;
+        }
+
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        return \DB::table('role_permissions')
+            ->where('role', $this->adminRole())
+            ->where('permission_key', $key)
+            ->exists();
+    }
+
+    public function hasAnyAdminPermission(array $keys): bool
+    {
+        foreach ($keys as $key) {
+            if ($this->hasAdminPermission($key)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

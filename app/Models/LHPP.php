@@ -40,6 +40,9 @@ class LHPP extends Model
         'manager_signature',                   // Manager Workshop
         'manager_signature_requesting',        // Manager Peminta (Manager User)
         'manager_pkm_signature',               // Manager PKM
+        'manager_signature_at',
+        'manager_signature_requesting_at',
+        'manager_pkm_signature_at',
 
         'controlling_notes',                   // Catatan QC / PKM
         'requesting_notes',                    // Catatan unit peminta
@@ -60,6 +63,9 @@ class LHPP extends Model
         'upah_harga_satuan'    => 'array',
         'upah_jumlah'          => 'array',
         'images'               => 'array',
+        'manager_signature_at' => 'datetime',
+        'manager_signature_requesting_at' => 'datetime',
+        'manager_pkm_signature_at' => 'datetime',
 
         // notes kalau mau bentuk array
         'controlling_notes' => 'array',

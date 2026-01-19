@@ -55,6 +55,8 @@
         'createhpp2' => ['title' => 'Edit HPP di bawah 250 Juta', 'sub' => 'Form HPP untuk nilai < 250 juta'],
         'createhpp3' => ['title' => 'Edit HPP Bengkel Mesin > 250 Juta', 'sub' => 'Bengkel Mesin, > 250 jt'],
         'createhpp4' => ['title' => 'Edit HPP Bengkel Mesin < 250 Juta', 'sub' => 'Bengkel Mesin, < 250 jt'],
+        'createhpp5' => ['title' => 'Edit HPP Khusus di atas 250 Juta', 'sub' => 'Form HPP khusus di atas 250 juta'],
+        'createhpp6' => ['title' => 'Edit HPP Khusus di bawah 250 Juta', 'sub' => 'Form HPP khusus di bawah 250 juta'],
     ];
     $key = $hpp->source_form ?? 'createhpp1';
     $meta = $labels[$key] ?? ['title' => 'Edit HPP', 'sub' => ''];

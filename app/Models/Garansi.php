@@ -14,6 +14,7 @@ class Garansi extends Model
     protected $fillable = [
         'notification_number',
         'garansi_months',
+        'garansi_label',
         'start_date',
         'end_date',
         'status',

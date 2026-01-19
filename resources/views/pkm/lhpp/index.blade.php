@@ -170,7 +170,7 @@
                 'waiting_user'      => 'Menunggu TTD Manager User',
                 'waiting_workshop'  => 'Menunggu TTD Manager Workshop',
                 'waiting_pkm'       => 'Menunggu TTD Manager PKM',
-                'completed'         => 'Semua Tanda Tangan Lengkap',
+                'completed'         => 'Dokumen Telah di Tandatangani',
                 'partial'           => 'Proses Tanda Tangan',
                 default             => 'Proses Tanda Tangan',
             };
@@ -208,6 +208,16 @@
             {{-- Unit Kerja --}}
             <td class="px-3 py-2">
                 <div class="text-slate-800">{{ $row->unit_kerja ?? '-' }}</div>
+                @php $seksi = $row->seksi ?? null; @endphp
+                @if(!empty($seksi))
+                    <div class="mt-1">
+                        <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold
+                                     bg-slate-100 text-slate-700 ring-1 ring-slate-200">
+                            <i class="fas fa-sitemap text-[9px] opacity-80"></i>
+                            {{ $seksi }}
+                        </span>
+                    </div>
+                @endif
             </td>
 
             {{-- Tanggal Selesai --}}
@@ -235,27 +245,28 @@
                     {{ $signLabel }}
                 </div>
 
-                {{-- Info token approval aktif (jika ada) --}}
-                @if($hasTok)
-                    @if(!$isExpired)
-                        <div class="mt-1 flex items-center gap-2 text-[10px]">
-                            <button type="button"
-                                    class="copy-next-link inline-flex items-center gap-1 px-2 py-0.5 rounded-md
-                                           bg-slate-100 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200"
-                                    data-link="{{ route('approval.lhpp.sign', $tok->id) }}">
-                                <i class="fas fa-copy text-[9px]"></i> Salin Link Approve
-                            </button>
-                            <span class="font-medium text-slate-700">
-                                kadaluarsa: {{ $tok->expires_at?->format('d/m H:i') }}
-                            </span>
-                        </div>
-                    @else
-                        <div class="mt-1 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md
-                                    bg-amber-100 text-amber-800 ring-1 ring-amber-200">
-                            <i class="fas fa-clock text-[9px]"></i> Token kedaluwarsa
-                        </div>
-                    @endif
-                @endif
+           {{-- Info token approval aktif (jika ada) --}}
+@if($hasTok && $signStage !== 'completed')
+    @if(!$isExpired)
+        <div class="mt-1 flex items-center gap-2 text-[10px]">
+            <button type="button"
+                    class="copy-next-link inline-flex items-center gap-1 px-2 py-0.5 rounded-md
+                           bg-slate-100 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200"
+                    data-link="{{ route('approval.lhpp.sign', $tok->id) }}">
+                <i class="fas fa-copy text-[9px]"></i> Salin Link Approve
+            </button>
+            <span class="font-medium text-slate-700">
+                kadaluarsa: {{ $tok->expires_at?->format('d/m H:i') }}
+            </span>
+        </div>
+    @else
+        <div class="mt-1 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md
+                    bg-amber-100 text-amber-800 ring-1 ring-amber-200">
+            <i class="fas fa-clock text-[9px]"></i> Token kedaluwarsa
+        </div>
+    @endif
+@endif
+
             </td>
 
             {{-- Status Payment --}}
@@ -361,11 +372,29 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
 
+            function copyTextToClipboard(text) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    return navigator.clipboard.writeText(text);
+                }
+                const temp = document.createElement('textarea');
+                temp.value = text;
+                temp.setAttribute('readonly', '');
+                temp.style.position = 'absolute';
+                temp.style.left = '-9999px';
+                document.body.appendChild(temp);
+                temp.select();
+                temp.setSelectionRange(0, temp.value.length);
+                const ok = document.execCommand('copy');
+                document.body.removeChild(temp);
+                return ok ? Promise.resolve() : Promise.reject();
+            }
+
             // COPY LINK TOKEN (kalau ada token PKM)
             document.querySelectorAll('.copy-next-link').forEach(btn => {
                 btn.addEventListener('click', (ev) => {
                     const link = ev.currentTarget.getAttribute('data-link');
-                    navigator.clipboard.writeText(link).then(() => {
+                    if (!link) return;
+                    copyTextToClipboard(link).then(() => {
                         Swal.fire({
                             icon: 'success',
                             title: 'Tersalin',

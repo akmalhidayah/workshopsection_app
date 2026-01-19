@@ -62,6 +62,10 @@
                 <label for="unit_kerja_peminta" class="block text-sm font-medium text-gray-700">Unit Kerja Peminta</label>
                 <input type="text" id="unit_kerja_peminta" name="unit_work" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" readonly value="{{ $notification->unit_work ?? old('unit_work', '') }}">
             </div>
+            <div class="mb-4">
+                <label for="seksi_peminta" class="block text-sm font-medium text-gray-700">Seksi Peminta</label>
+                <input type="text" id="seksi_peminta" name="seksi" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" readonly value="{{ $notification->seksi ?? old('seksi', '') }}">
+            </div>
 
             <!-- Tombol untuk menambah dan menghapus Functional Location -->
             <div class="flex justify-end mb-4">
@@ -97,22 +101,22 @@
                                 <td>
                                     <input type="text" name="functional_location[]" 
                                            value="{{ $oldFL[$i] ?? '' }}" 
-                                           class="w-full rounded-md border-gray-300 shadow-sm">
+                                           class="w-full rounded-md border-gray-300 shadow-sm" required>
                                 </td>
                                 <td>
                                     <input type="text" name="scope_pekerjaan[]" 
                                            value="{{ $oldScope[$i] ?? '' }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm">
+                                           class="w-full rounded-md border-gray-300 shadow-sm" required>
                                 </td>
                                 <td>
                                     <input type="number" name="qty[]" 
                                            value="{{ $oldQty[$i] ?? '' }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm">
+                                           class="w-full rounded-md border-gray-300 shadow-sm" min="1" required>
                                 </td>
                                 <td>
                                     <input type="text" name="stn[]" 
                                            value="{{ $oldStn[$i] ?? '' }}"
-                                           class="w-full rounded-md border-gray-300 shadow-sm">
+                                           class="w-full rounded-md border-gray-300 shadow-sm" required>
                                 </td>
                                 <td>
                                     <input type="text" name="keterangan[]" 
@@ -149,10 +153,10 @@
                 rowCount++;
                 let newFunctionalLocation = `
                     <tr id="functional_location_${rowCount}">
-                        <td><input type="text" name="functional_location[]" class="w-full rounded-md border-gray-300 shadow-sm"></td>
-                        <td><input type="text" name="scope_pekerjaan[]" class="w-full rounded-md border-gray-300 shadow-sm"></td>
-                        <td><input type="number" name="qty[]" class="w-full rounded-md border-gray-300 shadow-sm"></td>
-                        <td><input type="text" name="stn[]" class="w-full rounded-md border-gray-300 shadow-sm"></td>
+                        <td><input type="text" name="functional_location[]" class="w-full rounded-md border-gray-300 shadow-sm" required></td>
+                        <td><input type="text" name="scope_pekerjaan[]" class="w-full rounded-md border-gray-300 shadow-sm" required></td>
+                        <td><input type="number" name="qty[]" class="w-full rounded-md border-gray-300 shadow-sm" min="1" required></td>
+                        <td><input type="text" name="stn[]" class="w-full rounded-md border-gray-300 shadow-sm" required></td>
                         <td><input type="text" name="keterangan[]" class="w-full rounded-md border-gray-300 shadow-sm"></td>
                     </tr>
                 `;
@@ -176,6 +180,7 @@
                 inputs.forEach(input => {
                     // skip hidden or readonly fields
                     if (input.type === 'hidden' || input.readOnly) return;
+                    if (input.type === 'number') return;
 
                     // skip inputs that explicitly should be left empty (you can add classes to skip)
                     if (input.classList.contains('skip-fill')) return;

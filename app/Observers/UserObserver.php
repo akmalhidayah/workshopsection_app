@@ -3,15 +3,19 @@
 namespace App\Observers;
 
 use App\Models\User;
+use App\Models\Notification;
+use App\Models\UnitWork;
+use App\Models\UnitWorkSection;
 use App\Models\Hpp1;
 use App\Models\HppApprovalToken;
 use App\Models\LHPP;
 use App\Models\LHPPApprovalToken;
 use App\Models\SPK;
-use App\Models\SpkApprovalToken;
+use App\Models\SPKApprovalToken;
+use App\Services\SPKApprovalLinkService;
 use App\Services\HppApprovalLinkService;
+use App\Services\HppApproverResolver;
 use App\Services\LHPPApprovalLinkService;
-use App\Services\SpkApprovalLinkService;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
@@ -49,144 +53,61 @@ class UserObserver
    protected function maybeIssueHppTokens(User $user): void
 {
     $svc = app(\App\Services\HppApprovalLinkService::class);
+    $resolver = app(\App\Services\HppApproverResolver::class);
 
-    // Normalize user's jabatan & unit
-    $userJabatan = strtolower(trim($user->jabatan ?? ''));
-    $userUnit    = trim($user->unit_work ?? '');
-
-    if ($userJabatan === '') {
-        \Log::debug('[HPP-AUTO] user jabatan kosong, skip', ['user'=>$user->id]);
-        return;
-    }
-
-    // Map jabatan -> sign_type HPP
-    $jabatanToSignType = [
-        'manager'             => 'manager',
-        'senior manager'      => 'sm',
-        'sr manager'          => 'sm',
-        'senior mgr'          => 'sm',
-        'general manager'     => 'gm',
-        'gm'                  => 'gm',
-        'director'            => 'dir',
-        'director of operation' => 'dir',
-        'operation director'  => 'dir',
-        'operational director'=> 'dir',
-    ];
-
-    $possibleSignTypes = [];
-    foreach ($jabatanToSignType as $needle => $signType) {
-        if (str_contains($userJabatan, $needle)) {
-            $possibleSignTypes[] = $signType;
-        }
-    }
-    if (empty($possibleSignTypes)) {
-        \Log::debug('[HPP-AUTO] no possibleSignTypes', ['user'=>$user->id,'jabatan'=>$user->jabatan]);
-        return;
-    }
-
-    // Status -> expected sign_type mapping (mirror controller)
-    $statusToExpected = [
-        'submitted'            => 'manager',
-        'approved_manager'     => 'sm',
-        'approved_sm'          => 'mgr_req',
-        'approved_manager_req' => 'sm_req',
-        'approved_sm_req'      => 'gm',
-        'approved_gm'          => 'gm_req',
-        'approved_gm_req'      => 'dir',
-    ];
-
-    $statuses = array_keys($statusToExpected);
-    $candidates = Hpp1::whereIn('status', $statuses)->get();
+    $statuses = $resolver->pendingStatuses();
+    $candidates = Hpp1::whereIn('status', $statuses)
+        ->with('notification')
+        ->get();
 
     foreach ($candidates as $hpp) {
-        $expected = $statusToExpected[$hpp->status] ?? null;
-        if (!$expected) continue;
-        if (! in_array($expected, $possibleSignTypes)) continue;
-
-        // Determine target unit (improved)
-        $nextType = $this->signTypeToNextType($expected);
-        if ($nextType === 'request') {
-            $targetUnit = !empty($hpp->requesting_unit) ? $hpp->requesting_unit : optional($hpp->notification)->unit_work;
-        } else {
-            $targetUnit = $hpp->controlling_unit ?: null;
-        }
-        if (!$targetUnit) {
-            \Log::debug('[HPP-AUTO] targetUnit empty, skip', ['notif'=>$hpp->notification_number,'expected'=>$expected]);
+        $map = $resolver->statusMapForSourceForm($hpp->source_form ?? null);
+        $expected = $map[$hpp->status] ?? null;
+        if (! $expected) {
             continue;
         }
 
-        $targetUnitNormalized = strtolower(trim((string) $targetUnit));
-        $userUnitNormalized = strtolower(trim((string) $userUnit));
-
-        // matching: prefix, related_units (array), reverse prefix
-        $unitMatches = false;
-        if ($userUnitNormalized !== '' && str_starts_with($targetUnitNormalized, $userUnitNormalized)) {
-            $unitMatches = true;
-        } else {
-            $related = $user->related_units ?? null;
-            if (is_array($related) && !empty($related)) {
-                foreach ($related as $ru) {
-                    $ruClean = strtolower(trim((string)$ru));
-                    if ($ruClean !== '' && str_starts_with($targetUnitNormalized, $ruClean)) {
-                        $unitMatches = true; break;
-                    }
-                }
-            }
-            // reverse prefix: handle cases target is shorter
-            if (!$unitMatches && $userUnitNormalized !== '' && str_starts_with($userUnitNormalized, $targetUnitNormalized)) {
-                $unitMatches = true;
-            }
-        }
-
-        if (!$unitMatches) {
-            \Log::debug('[HPP-AUTO] unit not match', [
-                'notif' => $hpp->notification_number,
-                'target' => $targetUnitNormalized,
-                'userUnit' => $userUnitNormalized
-            ]);
+        $expectedUser = $resolver->resolveApprover($hpp, $expected);
+        if (! $expectedUser || (int) $expectedUser->id != (int) $user->id) {
             continue;
         }
 
-        // Check existing active token for notif+sign_type
         $exists = HppApprovalToken::where('notification_number', $hpp->notification_number)
             ->where('sign_type', $expected)
             ->whereNull('used_at')
             ->where(function ($q) {
                 $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })->exists();
+            })
+            ->exists();
 
         if ($exists) {
-            \Log::debug('[HPP-AUTO] token exists, skip', ['notif'=>$hpp->notification_number,'sign'=>$expected]);
             continue;
         }
 
         try {
             $tokId = $svc->issue($hpp->notification_number, $expected, $user->id);
-            \Log::info('[HPP-AUTO] Issued token', ['notif'=>$hpp->notification_number,'sign'=>$expected,'user'=>$user->id,'tok'=>$tokId]);
+            \Log::info('[HPP-AUTO] Issued token', [
+                'notif' => $hpp->notification_number,
+                'sign'  => $expected,
+                'user'  => $user->id,
+                'tok'   => $tokId,
+            ]);
         } catch (\Throwable $e) {
-            \Log::error('[HPP-AUTO] Failed to issue token', ['notif'=>$hpp->notification_number,'err'=>$e->getMessage()]);
+            \Log::error('[HPP-AUTO] Failed to issue token', [
+                'notif' => $hpp->notification_number,
+                'err'   => $e->getMessage(),
+            ]);
         }
     }
 }
 
-
-    /* =======================================================
-     *  LHPP PKM: auto-issue token QC Manager PKM
-     * ======================================================= */
- /* =======================================================
- *  LHPP: auto-issue token berdasarkan TTD (bukan status_approve)
+/* =======================================================
+ *  LHPP: auto-issue token berdasarkan struktur organisasi
+ *  (Manager User, Manager Workshop, Manager PKM)
  * ======================================================= */
 protected function maybeIssueLhppTokens(User $user): void
 {
     $svc = app(LHPPApprovalLinkService::class);
-
-    $jabatan  = strtolower(trim($user->jabatan ?? ''));
-    $unitWork = trim($user->unit_work ?? '');
-
-    // kalau user belum jelas jabatannya / unit-nya, skip
-    if ($jabatan === '' || $unitWork === '') {
-        return;
-    }
 
     // Ambil semua LHPP yang BELUM lengkap 3 tanda tangan
     // (pakai helper hasAllSignatures() di model LHPP)
@@ -220,37 +141,16 @@ protected function maybeIssueLhppTokens(User $user): void
             continue;
         }
 
-        // ========= Cek apakah user ini memang calon approver untuk signType tsb =========
-        $isApprover = false;
+        // ========= Tentukan siapa APPROVER seharusnya menurut struktur organisasi =========
+        $expectedUser = $this->resolveLhppApproverUser($signType, $lhpp);
 
-        switch ($signType) {
-            case 'manager_user':
-                // Manager User: jabatan mengandung "manager" + unit_work == unit_kerja LHPP
-                $isApprover =
-                    str_contains($jabatan, 'manager') &&
-                    strcasecmp($user->unit_work ?? '', $lhpp->unit_kerja ?? '') === 0;
-                break;
-
-            case 'manager_workshop':
-                // Manager Workshop: jabatan Manager + unit mengandung "workshop" / "bengkel"
-                if (! str_contains($jabatan, 'manager')) {
-                    $isApprover = false;
-                    break;
-                }
-                $u = strtolower($user->unit_work ?? '');
-                $isApprover = str_contains($u, 'workshop') || str_contains($u, 'bengkel');
-                break;
-            case 'manager_pkm':
-                // Manager PKM: usertype approval + jabatan mengandung "manager" + unit_work == kontrak_pkm
-                $isApprover =
-                    strcasecmp($user->usertype ?? '', 'approval') === 0 &&
-                    str_contains($jabatan, 'manager') &&
-                    strcasecmp($user->unit_work ?? '', $lhpp->kontrak_pkm ?? '') === 0;
-                break;
-
+        // kalau struktur organisasi belum lengkap / approver belum di-set → skip
+        if (! $expectedUser) {
+            continue;
         }
 
-        if (! $isApprover) {
+        // User ini bukan approver yang diharapkan → skip
+        if ((int) $expectedUser->id !== (int) $user->id) {
             continue;
         }
 
@@ -304,78 +204,328 @@ protected function maybeIssueLhppTokens(User $user): void
      *
      * NOTE: Sesuaikan nama model SpkApprovalToken / SpkApprovalLinkService jika berbeda.
      */
-protected function maybeIssueSpkTokens(User $user): void
+    /**
+ * Tentukan user approver untuk LHPP berdasarkan sign_type & struktur organisasi.
+ */
+protected function resolveLhppApproverUser(string $signType, LHPP $lhpp): ?User
 {
-    $svc = app(SpkApprovalLinkService::class);
-
-    $jabatan  = strtolower(trim($user->jabatan ?? ''));
-    $unitWork = trim($user->unit_work ?? '');
-
-    if ($jabatan === '' || $unitWork === '') {
-        return;
-    }
-
-    $spks = SPK::all()->filter(fn (SPK $spk) => ! $spk->isFullyApproved());
-
-    foreach ($spks as $spk) {
-        $signType = ! $spk->isManagerSigned()
-            ? 'manager'
-            : (! $spk->isSeniorManagerSigned() ? 'senior_manager' : null);
-
-        if (! $signType) {
-            continue;
-        }
-
-        // === cek approver ===
-        $isApprover = match ($signType) {
-            'manager' => str_contains($jabatan, 'manager')
-                && strcasecmp($user->unit_work, $spk->unit_work) === 0,
-
-            'senior_manager' => str_contains($jabatan, 'senior')
-                || (
-                    str_contains($jabatan, 'manager') &&
-                    str_contains(strtolower($user->unit_work), 'workshop')
-                ),
-
-            default => false,
-        };
-
-        if (! $isApprover) {
-            continue;
-        }
-
-        // === token sudah ada? ===
-        $exists = SpkApprovalToken::where('nomor_spk', $spk->nomor_spk)
-            ->where('sign_type', $signType)
-            ->where('user_id', $user->id)
-            ->whereNull('used_at')
-            ->where(fn ($q) =>
-                $q->whereNull('expires_at')
-                  ->orWhere('expires_at', '>', now())
-            )
-            ->exists();
-
-        if ($exists) {
-            continue;
-        }
-
-        // === issue token ===
-        try {
-            $svc->issue($spk->nomor_spk, $signType, $user->id);
-            Log::info('[SPK-AUTO] Issued token', [
-                'spk' => $spk->nomor_spk,
-                'sign_type' => $signType,
-                'user' => $user->id,
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('[SPK-AUTO] Failed issue token', [
-                'spk' => $spk->nomor_spk,
-                'err' => $e->getMessage(),
-            ]);
-        }
-    }
+    return match ($signType) {
+        'manager_user'      => $this->getLhppManagerUser($lhpp),
+        'manager_workshop'  => $this->getLhppManagerWorkshop($lhpp),
+        'manager_pkm'       => $this->getLhppManagerPkm($lhpp),
+        default             => null,
+    };
 }
 
+/**
+ * Manager User:
+ * LHPP -> Notification (unit_work + seksi) -> UnitWork -> UnitWorkSection -> manager
+ */
+protected function getLhppManagerUser(LHPP $lhpp): ?User
+{
+    $notification = Notification::where('notification_number', $lhpp->notification_number)->first();
+
+    if (! $notification) {
+        Log::warning('[LHPP-AUTO][Resolver] Notification tidak ditemukan', [
+            'notif' => $lhpp->notification_number,
+        ]);
+        return null;
+    }
+
+    if (! $notification->unit_work || ! $notification->seksi) {
+        Log::warning('[LHPP-AUTO][Resolver] unit_work/seksi Notification kosong', [
+            'notif'      => $lhpp->notification_number,
+            'unit_work'  => $notification->unit_work,
+            'seksi'      => $notification->seksi,
+        ]);
+        return null;
+    }
+
+    $unitWork = UnitWork::where('name', $notification->unit_work)->first();
+
+    if (! $unitWork) {
+        Log::warning('[LHPP-AUTO][Resolver] UnitWork tidak ditemukan untuk Manager User', [
+            'notif'     => $lhpp->notification_number,
+            'unit_work' => $notification->unit_work,
+        ]);
+        return null;
+    }
+
+    /** @var UnitWorkSection|null $section */
+    $section = $unitWork->sections()
+        ->where('name', $notification->seksi)
+        ->first();
+
+    if (! $section) {
+        Log::warning('[LHPP-AUTO][Resolver] Section (seksi) tidak ditemukan untuk Manager User', [
+            'notif'     => $lhpp->notification_number,
+            'unit_work' => $notification->unit_work,
+            'seksi'     => $notification->seksi,
+        ]);
+        return null;
+    }
+
+    if (! $section->manager) {
+        Log::warning('[LHPP-AUTO][Resolver] Manager untuk seksi peminta belum di-set', [
+            'notif'  => $lhpp->notification_number,
+            'seksi'  => $section->name,
+        ]);
+        return null;
+    }
+
+    return $section->manager;
+}
+
+/**
+ * Manager Workshop:
+ * Selalu Manager dari seksi "Section of Machine Workshop"
+ * pada unit "Unit of Workshop & Design".
+ */
+protected function getLhppManagerWorkshop(LHPP $lhpp): ?User
+{
+    $unitWork = UnitWork::where('name', 'Unit of Workshop & Design')->first();
+
+    if (! $unitWork) {
+        Log::warning('[LHPP-AUTO][Resolver] UnitWork Workshop tidak ditemukan', [
+            'notif' => $lhpp->notification_number,
+        ]);
+        return null;
+    }
+
+    /** @var UnitWorkSection|null $section */
+    $section = $unitWork->sections()
+        ->where('name', 'Section of Machine Workshop')
+        ->first();
+
+    if (! $section) {
+        Log::warning('[LHPP-AUTO][Resolver] Section of Machine Workshop tidak ditemukan', [
+            'notif' => $lhpp->notification_number,
+        ]);
+        return null;
+    }
+
+    if (! $section->manager) {
+        Log::warning('[LHPP-AUTO][Resolver] Manager Section of Machine Workshop belum di-set', [
+            'notif' => $lhpp->notification_number,
+        ]);
+        return null;
+    }
+
+    return $section->manager;
+}
+
+/**
+ * Manager PKM:
+ * Unit "PT. Prima Karya Manunggal" + seksi sama dengan `lhpp.kontrak_pkm`
+ * (Fabrikasi / Konstruksi / Pengerjaan Mesin).
+ */
+protected function getLhppManagerPkm(LHPP $lhpp): ?User
+{
+    if (! $lhpp->kontrak_pkm) {
+        Log::warning('[LHPP-AUTO][Resolver] kontrak_pkm kosong', [
+            'notif' => $lhpp->notification_number,
+        ]);
+        return null;
+    }
+
+    $pkmUnit = UnitWork::where('name', 'PT. Prima Karya Manunggal')->first();
+
+    if (! $pkmUnit) {
+        Log::warning('[LHPP-AUTO][Resolver] UnitWork PKM tidak ditemukan', [
+            'notif' => $lhpp->notification_number,
+        ]);
+        return null;
+    }
+
+    /** @var UnitWorkSection|null $section */
+    $section = $pkmUnit->sections()
+        ->where('name', $lhpp->kontrak_pkm)
+        ->first();
+
+    if (! $section) {
+        Log::warning('[LHPP-AUTO][Resolver] Section PKM tidak ditemukan untuk kontrak_pkm', [
+            'notif'       => $lhpp->notification_number,
+            'kontrak_pkm' => $lhpp->kontrak_pkm,
+        ]);
+        return null;
+    }
+
+    if (! $section->manager) {
+        Log::warning('[LHPP-AUTO][Resolver] Manager PKM untuk kontrak_pkm belum di-set', [
+            'notif'       => $lhpp->notification_number,
+            'kontrak_pkm' => $lhpp->kontrak_pkm,
+        ]);
+        return null;
+    }
+
+    return $section->manager;
+}
+
+/* =======================================================
+     *  SPK: auto-issue token berdasarkan struktur WORKSHOP
+     * ======================================================= */
+    protected function maybeIssueSpkTokens(User $user): void
+    {
+        $svc = app(SPKApprovalLinkService::class);
+
+        // Ambil semua SPK yang belum lengkap tanda tangan
+        $spks = SPK::all()->filter(fn (SPK $spk) => ! $spk->isFullyApproved());
+
+        foreach ($spks as $spk) {
+            // Tentukan step approval berikutnya
+            $signType = ! $spk->isManagerSigned()
+                ? 'manager'
+                : (! $spk->isSeniorManagerSigned() ? 'senior_manager' : null);
+
+            if (! $signType) {
+                continue; // sudah lengkap
+            }
+
+            // ========= Tentukan approver seharusnya (struktur Workshop tetap) =========
+            $expectedUser = $this->resolveSpkApproverUser($signType, $spk);
+
+            if (! $expectedUser) {
+                continue;
+            }
+
+            // User ini bukan approver yang diharapkan → skip
+            if ((int) $expectedUser->id !== (int) $user->id) {
+                continue;
+            }
+
+            // ========= Cek token aktif untuk user & sign_type ini =========
+            $exists = SPKApprovalToken::where('nomor_spk', $spk->nomor_spk)
+                ->where('sign_type', $signType)
+                ->where('user_id', $user->id)
+                ->whereNull('used_at')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')
+                      ->orWhere('expires_at', '>', now());
+                })
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            // ========= Issue token baru =========
+            try {
+                $tokId = $svc->issue(
+                    $spk->nomor_spk,
+                    $spk->notification_number,
+                    $signType,
+                    $user->id,
+                    60 * 24 // 1 hari
+                );
+
+                Log::info('[SPK-AUTO] Issued token', [
+                    'spk'       => $spk->nomor_spk,
+                    'notif'     => $spk->notification_number,
+                    'sign_type' => $signType,
+                    'user'      => $user->id,
+                    'token_id'  => $tokId,
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('[SPK-AUTO] Failed issue token', [
+                    'spk'   => $spk->nomor_spk,
+                    'notif' => $spk->notification_number,
+                    'err'   => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Tentukan user approver untuk SPK berdasarkan sign_type & struktur Workshop.
+     */
+    protected function resolveSpkApproverUser(string $signType, SPK $spk): ?User
+    {
+        return match ($signType) {
+            'manager'        => $this->getSpkManagerUser($spk),
+            'senior_manager' => $this->getSpkSeniorManagerUser($spk),
+            default          => null,
+        };
+    }
+
+    /**
+     * Manager Workshop untuk SPK:
+     * Selalu Manager dari:
+     *   UnitWork.name = 'Unit of Workshop & Design'
+     *   Section.name  = 'Section of Machine Workshop'
+     */
+    protected function getSpkManagerUser(SPK $spk): ?User
+    {
+        // hanya untuk logging, bukan penentu struktur
+        $notification = Notification::where('notification_number', $spk->notification_number)->first();
+
+        $unitWork = UnitWork::where('name', 'Unit of Workshop & Design')->first();
+
+        if (! $unitWork) {
+            Log::warning('[SPK-AUTO][Resolver] UnitWork Workshop (Unit of Workshop & Design) tidak ditemukan', [
+                'spk'            => $spk->nomor_spk,
+                'notif'          => $spk->notification_number,
+                'notif_unitwork' => $notification?->unit_work,
+            ]);
+            return null;
+        }
+
+        /** @var UnitWorkSection|null $section */
+        $section = $unitWork->sections()
+            ->where('name', 'Section of Machine Workshop')
+            ->first();
+
+        if (! $section) {
+            Log::warning('[SPK-AUTO][Resolver] Section of Machine Workshop tidak ditemukan', [
+                'spk'       => $spk->nomor_spk,
+                'notif'     => $spk->notification_number,
+                'unit_work' => $unitWork->name,
+            ]);
+            return null;
+        }
+
+        if (! $section->manager) {
+            Log::warning('[SPK-AUTO][Resolver] Manager Section of Machine Workshop belum di-set', [
+                'spk'   => $spk->nomor_spk,
+                'notif' => $spk->notification_number,
+                'seksi' => $section->name,
+            ]);
+            return null;
+        }
+
+        return $section->manager;
+    }
+
+    /**
+     * Senior Manager Workshop untuk SPK:
+     * UnitWork 'Unit of Workshop & Design' -> relasi seniorManager
+     */
+    protected function getSpkSeniorManagerUser(SPK $spk): ?User
+    {
+        // hanya buat logging
+        $notification = Notification::where('notification_number', $spk->notification_number)->first();
+
+        $unitWork = UnitWork::where('name', 'Unit of Workshop & Design')->first();
+
+        if (! $unitWork) {
+            Log::warning('[SPK-AUTO][Resolver] UnitWork Workshop (Unit of Workshop & Design) tidak ditemukan untuk Senior Manager', [
+                'spk'            => $spk->nomor_spk,
+                'notif'          => $spk->notification_number,
+                'notif_unitwork' => $notification?->unit_work,
+            ]);
+            return null;
+        }
+
+        if (! $unitWork->seniorManager) {
+            Log::warning('[SPK-AUTO][Resolver] Senior Manager untuk Unit of Workshop & Design belum di-set', [
+                'spk'       => $spk->nomor_spk,
+                'notif'     => $spk->notification_number,
+                'unit_work' => $unitWork->name,
+            ]);
+            return null;
+        }
+
+        return $unitWork->seniorManager;
+    }
 
     /**
      * Heuristic: given expected sign_type ('manager','sm','gm','dir','mgr_req',...),
@@ -383,7 +533,7 @@ protected function maybeIssueSpkTokens(User $user): void
      */
     protected function signTypeToNextType(string $signType): string
     {
-        return in_array($signType, ['mgr_req','sm_req','gm_req'])
+        return in_array($signType, ['mgr_req', 'sm_req', 'gm_req'])
             ? 'request'
             : 'controller';
     }
@@ -391,7 +541,6 @@ protected function maybeIssueSpkTokens(User $user): void
 
 /**
  * Helper kecil: cek apakah kolom ada di DB tanpa melempar exception bila tabel/kolom belum dibuat.
- * (kita gunakan ini karena nama kolom token SPK bisa berbeda; fungsi ini aman dipakai di observer).
  */
 if (! function_exists('SchemaHasColumnSafe')) {
     function SchemaHasColumnSafe(string $table, string $column): bool
@@ -399,9 +548,12 @@ if (! function_exists('SchemaHasColumnSafe')) {
         try {
             return \Illuminate\Support\Facades\Schema::hasColumn($table, $column);
         } catch (\Throwable $e) {
-            \Log::warning('[SchemaHasColumnSafe] gagal cek kolom', ['table'=>$table,'column'=>$column,'err'=>$e->getMessage()]);
+            \Log::warning('[SchemaHasColumnSafe] gagal cek kolom', [
+                'table'  => $table,
+                'column' => $column,
+                'err'    => $e->getMessage(),
+            ]);
             return false;
         }
     }
-
 }

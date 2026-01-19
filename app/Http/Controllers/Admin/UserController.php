@@ -14,17 +14,29 @@ class UserController extends Controller
     {
         $usertype = $request->get('usertype', 'user');
         $jabatan = $request->get('jabatan');
+        $search = $request->get('search');
     
         $query = User::where('usertype', $usertype);
     
         if ($usertype === 'approval' && $jabatan) {
             $query->where('jabatan', $jabatan);
         }
-    
-        $users = $query->get();
-    $units = UnitWork::orderBy('name')->get();
 
-        return view('admin.user.index', compact('users', 'usertype', 'units'));
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%')
+                    ->orWhere('departemen', 'like', '%'.$search.'%')
+                    ->orWhere('unit_work', 'like', '%'.$search.'%')
+                    ->orWhere('seksi', 'like', '%'.$search.'%')
+                    ->orWhere('jabatan', 'like', '%'.$search.'%');
+            });
+        }
+    
+        $users = $query->orderBy('name')->get();
+        $units = UnitWork::orderBy('name')->get();
+
+        return view('admin.user.index', compact('users', 'usertype', 'units', 'search'));
     }
     
     // Fungsi untuk menampilkan form edit user
@@ -93,13 +105,21 @@ class UserController extends Controller
         'new_number'  => $user->whatsapp_number,
     ]);
 
-    return redirect()->route('admin.users.index')->with('success', 'User berhasil diperbarui.');
+    $redirectParams = [
+        'usertype' => $request->input('redirect_usertype', 'user'),
+        'jabatan' => $request->input('redirect_jabatan'),
+        'search' => $request->input('redirect_search'),
+    ];
+
+    return redirect()
+        ->route('admin.users.index', array_filter($redirectParams, fn ($v) => $v !== null && $v !== ''))
+        ->with('success', 'User berhasil diperbarui.');
 }
 
 
     
     // Fungsi untuk menghapus user
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         // Cari user berdasarkan ID
         $user = User::findOrFail($id);
@@ -108,6 +128,14 @@ class UserController extends Controller
         $user->delete();
 
         // Redirect kembali ke halaman daftar user dengan pesan sukses
-        return redirect()->route('admin.users.index')->with('success', 'User berhasil dihapus.');
+        $redirectParams = [
+            'usertype' => $request->input('redirect_usertype', 'user'),
+            'jabatan' => $request->input('redirect_jabatan'),
+            'search' => $request->input('redirect_search'),
+        ];
+
+        return redirect()
+            ->route('admin.users.index', array_filter($redirectParams, fn ($v) => $v !== null && $v !== ''))
+            ->with('success', 'User berhasil dihapus.');
     }
 }

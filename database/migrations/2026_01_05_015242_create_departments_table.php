@@ -11,19 +11,26 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('unit_work', function (Blueprint $table) {
+        Schema::create('departments', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique(); 
-            $table->json('seksi')->nullable();
+
+            $table->string('name')->unique();
+
+            // User yang menjabat sebagai General Manager departemen ini
+            $table->foreignId('general_manager_id')
+                  ->nullable()
+                  ->constrained('users')
+                  ->nullOnDelete();
+
             $table->timestamps();
         });
-    }    
+    }
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('unit_work');
+        Schema::dropIfExists('departments');
     }
 };

@@ -9,16 +9,19 @@ use App\Models\Hpp2;
 use App\Models\Hpp3;
 use App\Models\Hpp4;
 use App\Models\User;
+use App\Models\Notification;
+use App\Models\UnitWork;
+use App\Models\UnitWorkSection;
+use App\Models\SystemNotification;
 use App\Services\LHPPApprovalLinkService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class LHPPApprovalController extends Controller
 {
     /**
-     * (Opsional) List LHPP di kontrak PKM user login.
+     * (Opsional) List LHPP untuk Manager PKM (berdasarkan kontrak yang dia pegang).
      * status_approve di sini hanya untuk filter tampilan admin/PKM,
      * TIDAK dipakai di flow token approval.
      */
@@ -27,17 +30,36 @@ class LHPPApprovalController extends Controller
         try {
             $user = auth()->user();
 
+            if (! $user) {
+                abort(Response::HTTP_UNAUTHORIZED, 'Silakan login terlebih dahulu.');
+            }
+
             if (! $this->isPkmManager($user)) {
-                Log::warning('[LHPP][PKM] Akses index approval ditolak (bukan manager PKM)', [
+                Log::warning('[LHPP][PKM] Akses index approval ditolak (bukan manager PKM berdasar struktur org)', [
                     'user_id' => $user->id ?? null,
                 ]);
                 abort(Response::HTTP_FORBIDDEN, 'Anda bukan Manager PKM.');
             }
 
+            // Manager PKM bisa pegang beberapa seksi (Fabrikasi / Konstruksi / Pengerjaan Mesin)
+            $kontrakList = $this->getPkmManagedContracts($user); // array nama seksi di PKM
+
+            if (empty($kontrakList)) {
+                // Secara teori tidak masuk ke sini kalau isPkmManager() true,
+                // tapi jaga-jaga saja.
+                $lhpps  = LHPP::whereRaw('1 = 0')->paginate(15);
+                $status = $request->query('status', 'pending');
+
+                return view('pkm.lhpp.approval_index', [
+                    'lhpps'  => $lhpps,
+                    'status' => $status,
+                ]);
+            }
+
             $status = $request->query('status', 'pending'); // pending/approved/rejected/all
 
             $lhppQuery = LHPP::query()
-                ->where('kontrak_pkm', $user->unit_work ?? '')
+                ->whereIn('kontrak_pkm', $kontrakList)
                 ->orderByDesc('created_at');
 
             if ($status !== 'all') {
@@ -67,93 +89,93 @@ class LHPPApprovalController extends Controller
      *
      * Flow urutan pakai cek TTD, BUKAN status_approve.
      */
- public function show(string $token, LHPPApprovalLinkService $svc)
-{
-    try {
-        // 1. Validasi token (ada, belum used, belum expired)
-        $link = $svc->validate($token);
-        $user = auth()->user();
+    public function show(string $token, LHPPApprovalLinkService $svc)
+    {
+        try {
+            // 1. Validasi token (ada, belum used, belum expired)
+            $link = $svc->validate($token);
+            $user = auth()->user();
 
-        // 2. Pastikan token ditujukan ke user login
-        if ((int) $link->user_id !== (int) ($user->id ?? 0)) {
-            Log::warning('[LHPP] Token bukan milik user login', [
-                'token_id'  => $link->id ?? null,
-                'link_user' => $link->user_id ?? null,
-                'auth_user' => $user->id ?? null,
+            // 2. Pastikan token ditujukan ke user login
+            if (! $user || (int) $link->user_id !== (int) $user->id) {
+                Log::warning('[LHPP] Token bukan milik user login', [
+                    'token_id'  => $link->id ?? null,
+                    'link_user' => $link->user_id ?? null,
+                    'auth_user' => $user->id ?? null,
+                ]);
+                abort(Response::HTTP_FORBIDDEN, 'Token ini bukan untuk akun Anda.');
+            }
+
+            // 3. Ambil LHPP
+            $lhpp = LHPP::where('notification_number', $link->notification_number)->firstOrFail();
+
+            // 4. Cek apakah user berhak sign untuk sign_type ini (berdasar struktur organisasi)
+            if (! $this->canSignForType($user, $lhpp, $link->sign_type)) {
+                Log::warning('[LHPP] User tidak berhak sign LHPP', [
+                    'user_id'   => $user->id ?? null,
+                    'notif'     => $lhpp->notification_number,
+                    'sign_type' => $link->sign_type,
+                ]);
+                abort(Response::HTTP_FORBIDDEN, 'Anda tidak berhak menyetujui LHPP ini.');
+            }
+
+            // 5. Validasi urutan approval berbasis TTD, BUKAN status_approve
+            if (! $this->canProceedForSignType($lhpp, $link->sign_type)) {
+                Log::warning('[LHPP] Urutan approval belum sesuai', [
+                    'notif'     => $lhpp->notification_number,
+                    'sign_type' => $link->sign_type,
+                ]);
+                abort(
+                    Response::HTTP_FORBIDDEN,
+                    'Urutan approval belum sesuai. Pastikan langkah sebelumnya sudah ditandatangani.'
+                );
+            }
+
+            // 6. Cek apakah user ini punya TTD lama untuk sign_type ini (base64 yg sudah tersimpan)
+            $hasOldSignature = $this->hasOldSignatureForUser($user, $link->sign_type);
+
+            // 7. Label untuk ditampilkan di view
+            $label = $this->labelForSignType($link->sign_type);
+
+            // 8. URL PDF untuk preview (PAKAI ROUTE APPROVAL, BUKAN PKM)
+            $pdfUrl = route('approval.lhpp.download_pdf', $lhpp->notification_number);
+
+            // 9. Cari HPP terkait (HPP1/2/3/4) berdasarkan notification_number
+            $hpp = $this->findHppForNotification($lhpp->notification_number);
+
+            return view('pkm.lhpp.approval', [
+                'lhpp'            => $lhpp,
+                'pdfUrl'          => $pdfUrl,
+                'token'           => $token,
+                'sign_type'       => $link->sign_type,
+                'signTypeLabel'   => $label,
+                'hasOldSignature' => $hasOldSignature,
+                'hpp'             => $hpp, // supaya Blade bisa nampilin panel HPP
             ]);
-            abort(Response::HTTP_FORBIDDEN, 'Token ini bukan untuk akun Anda.');
-        }
-
-        // 3. Ambil LHPP
-        $lhpp = LHPP::where('notification_number', $link->notification_number)->firstOrFail();
-
-        // 4. Cek apakah user berhak sign untuk sign_type ini
-        if (! $this->canSignForType($user, $lhpp, $link->sign_type)) {
-            Log::warning('[LHPP] User tidak berhak sign LHPP', [
-                'user_id'   => $user->id ?? null,
-                'notif'     => $lhpp->notification_number,
-                'sign_type' => $link->sign_type,
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('[LHPP] LHPP tidak ditemukan saat show()', [
+                'token' => $token,
+                'err'   => $e->getMessage(),
             ]);
-            abort(Response::HTTP_FORBIDDEN, 'Anda tidak berhak menyetujui LHPP ini.');
-        }
-
-        // 5. Validasi urutan approval berbasis TTD, BUKAN status_approve
-        if (! $this->canProceedForSignType($lhpp, $link->sign_type)) {
-            Log::warning('[LHPP] Urutan approval belum sesuai', [
-                'notif'     => $lhpp->notification_number,
-                'sign_type' => $link->sign_type,
+            abort(Response::HTTP_NOT_FOUND, 'Dokumen LHPP tidak ditemukan.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            // abort() akan melempar HttpException — biarkan lewat apa adanya
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('[LHPP] Gagal membuka halaman approval', [
+                'token' => $token,
+                'err'   => $e->getMessage(),
             ]);
-            abort(
-                Response::HTTP_FORBIDDEN,
-                'Urutan approval belum sesuai. Pastikan langkah sebelumnya sudah ditandatangani.'
-            );
+            abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Terjadi kesalahan saat membuka halaman approval LHPP.');
         }
-
-        // 6. Cek apakah user ini punya TTD lama untuk sign_type ini (base64 yg sudah tersimpan)
-        $hasOldSignature = $this->hasOldSignatureForUser($user, $link->sign_type);
-
-        // 7. Label untuk ditampilkan di view
-        $label = $this->labelForSignType($link->sign_type);
-
-        // 8. URL PDF untuk preview (PAKAI ROUTE APPROVAL, BUKAN PKM)
-        $pdfUrl = route('approval.lhpp.download_pdf', $lhpp->notification_number);
-
-        // 9. Cari HPP terkait (HPP1/2/3/4) berdasarkan notification_number
-        $hpp = $this->findHppForNotification($lhpp->notification_number);
-
-        return view('pkm.lhpp.approval', [
-            'lhpp'            => $lhpp,
-            'pdfUrl'          => $pdfUrl,
-            'token'           => $token,
-            'sign_type'       => $link->sign_type,
-            'signTypeLabel'   => $label,
-            'hasOldSignature' => $hasOldSignature,
-            'hpp'             => $hpp, // ← supaya Blade bisa nampilin panel HPP
-        ]);
-    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-        Log::error('[LHPP] LHPP tidak ditemukan saat show()', [
-            'token' => $token,
-            'err'   => $e->getMessage(),
-        ]);
-        abort(Response::HTTP_NOT_FOUND, 'Dokumen LHPP tidak ditemukan.');
-    } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
-        // abort() akan melempar HttpException — biarkan lewat apa adanya
-        throw $e;
-    } catch (\Throwable $e) {
-        Log::error('[LHPP] Gagal membuka halaman approval', [
-            'token' => $token,
-            'err'   => $e->getMessage(),
-        ]);
-        abort(Response::HTTP_INTERNAL_SERVER_ERROR, 'Terjadi kesalahan saat membuka halaman approval LHPP.');
     }
-}
 
     /**
      * Proses submit APPROVE / REJECT via TOKEN.
      * Urutan step:
      *  - manager_user      → lanjut manager_workshop
      *  - manager_workshop  → lanjut manager_pkm
-     *  - manager_pkm       → akhir (kirim WA admin)
+     *  - manager_pkm       → akhir
      *
      * PENTING: TIDAK menyentuh status_approve.
      */
@@ -161,11 +183,11 @@ class LHPPApprovalController extends Controller
     {
         // Sama konsepnya seperti HPP: boleh pakai TTD lama atau gambar baru
         $rules = [
-            'action'           => 'required|in:approve,reject',
-            'reason'           => 'nullable|string|max:500',
-            'note'             => 'nullable|string|max:1000',
-            'note_target'      => 'nullable|in:controlling,requesting',
-            'use_old_signature'=> 'nullable|boolean',
+            'action'            => 'required|in:approve,reject',
+            'reason'            => 'nullable|string|max:500',
+            'note'              => 'nullable|string|max:1000',
+            'note_target'       => 'nullable|in:controlling,requesting',
+            'use_old_signature' => 'nullable|boolean',
         ];
 
         if (! $request->boolean('use_old_signature')) {
@@ -185,7 +207,7 @@ class LHPPApprovalController extends Controller
             $link = $svc->validate($token);
             $user = auth()->user();
 
-            if ((int) $link->user_id !== (int) ($user->id ?? 0)) {
+            if (! $user || (int) $link->user_id !== (int) $user->id) {
                 Log::warning('[LHPP] Token bukan milik user login (sign)', [
                     'token_id'  => $link->id ?? null,
                     'link_user' => $link->user_id ?? null,
@@ -272,7 +294,7 @@ class LHPPApprovalController extends Controller
             $noteTarget = $request->input('note_target');
             if (! $noteTarget) {
                 // default: pengendali (PKM/Workshop) ke controlling, peminta ke requesting
-                $noteTarget = in_array($link->sign_type, ['manager_pkm','manager_workshop'])
+                $noteTarget = in_array($link->sign_type, ['manager_pkm', 'manager_workshop'])
                     ? 'controlling'
                     : 'requesting';
             }
@@ -281,7 +303,7 @@ class LHPPApprovalController extends Controller
 
             $notesExisting = is_array($lhpp->$noteField) ? $lhpp->$noteField : [];
 
-            $noteText  = trim((string) $request->input('note', ''));
+            $noteText = trim((string) $request->input('note', ''));
             if ($noteText !== '') {
                 $notesExisting[] = [
                     'note'    => $noteText,
@@ -310,7 +332,7 @@ class LHPPApprovalController extends Controller
                     $nextUser = $this->findApproverUser($next['key'], $lhpp);
 
                     if (! $nextUser) {
-                        Log::warning('[LHPP] Approver berikutnya tidak ditemukan', [
+                        Log::warning('[LHPP] Approver berikutnya tidak ditemukan (cek struktur organisasi)', [
                             'notif' => $lhpp->notification_number,
                             'role'  => $next['role'],
                             'type'  => $next['key'],
@@ -324,30 +346,8 @@ class LHPPApprovalController extends Controller
                                 60 * 24 * 30 // 30 hari
                             );
 
-                            // Kirim WA ke approver berikutnya
-                            $url = $svc->url($nextTok);
-
-                            $message =
-                                "✍️ *Permintaan Tanda Tangan LHPP*\n".
-                                "Nomor Notifikasi: {$lhpp->notification_number}\n".
-                                "Peran: {$next['role']}\n\n".
-                                "Klik link berikut untuk menandatangani:\n{$url}\n\n".
-                                "_Link berlaku 30 hari & hanya untuk Anda_";
-
-                            Http::withHeaders([
-                                'Authorization' => env('FONNTE_TOKEN', 'KBTe2RszCgc6aWhYapcv'),
-                            ])->post('https://api.fonnte.com/send', [
-                                'target'  => $nextUser->whatsapp_number,
-                                'message' => $message,
-                            ]);
-
-                            Log::info('[LHPP] WA approver berikutnya terkirim', [
-                                'notif' => $lhpp->notification_number,
-                                'user'  => $nextUser->id,
-                                'role'  => $next['role'],
-                            ]);
                         } catch (\Throwable $e) {
-                            Log::error('[LHPP] Gagal issue token / kirim WA approver berikutnya', [
+                            Log::error('[LHPP] Gagal issue token approver berikutnya', [
                                 'notif' => $lhpp->notification_number,
                                 'user'  => $nextUser->id ?? null,
                                 'err'   => $e->getMessage(),
@@ -355,22 +355,22 @@ class LHPPApprovalController extends Controller
                         }
                     }
                 }
-
-                // Kalau PKM approve (step terakhir secara bisnis), kirim WA ke admin
-                if ($link->sign_type === 'manager_pkm') {
-                    $this->sendWhatsAppToAdmin($lhpp);
-                }
             }
 
+            // === Setelah semua proses sign ===
+            $pdfUrl = route('approval.lhpp.download_pdf', $lhpp->notification_number);
+
+            if ($isApprove) {
+                // 🎯 langsung arahkan ke PDF
+                return redirect()->to($pdfUrl);
+            }
+
+            // ❌ kalau ditolak tetap kembali ke index
             return redirect()
                 ->route('pkm.lhpp.index')
-                ->with(
-                    $isApprove ? 'success' : 'warning',
-                    $isApprove
-                        ? 'LHPP berhasil disetujui.'
-                        : 'LHPP ditolak.'
-                )
+                ->with('warning', 'LHPP ditolak.')
                 ->setStatusCode(Response::HTTP_OK);
+
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             Log::error('[LHPP] LHPP tidak ditemukan saat sign()', [
@@ -395,67 +395,64 @@ class LHPPApprovalController extends Controller
         }
     }
 
-    /* ================= HELPER ================= */
+    /* ================= HELPER ROLE & ORG ================= */
 
+    /**
+     * Cek apakah user ini adalah salah satu Manager PKM (manager seksi
+     * di unit "PT. Prima Karya Manunggal").
+     */
     private function isPkmManager(?User $user): bool
     {
         if (! $user) {
             return false;
         }
 
-        $usertype = strtolower(trim($user->usertype ?? ''));
-        $jabatan  = strtolower(trim($user->jabatan ?? ''));
+        $contracts = $this->getPkmManagedContracts($user);
 
-        // Manager PKM: usertype = approval + jabatan mengandung kata "manager"
-        return $usertype === 'approval'
-            && str_contains($jabatan, 'manager');
+        return ! empty($contracts);
     }
 
-
-    /** Manager User: jabatan Manager, unit_work == unit_kerja LHPP */
-    private function isUserManager(?User $user, LHPP $lhpp): bool
+    /**
+     * Ambil daftar nama seksi PKM (Fabrikasi / Konstruksi / Pengerjaan Mesin)
+     * yang dimanage oleh user ini.
+     */
+    private function getPkmManagedContracts(User $user): array
     {
-        if (! $user) {
-            return false;
+        $pkmUnit = UnitWork::where('name', 'PT. Prima Karya Manunggal')->first();
+
+        if (! $pkmUnit) {
+            return [];
         }
 
-        return strcasecmp($user->jabatan ?? '', 'Manager') === 0
-            && strcasecmp($user->unit_work ?? '', $lhpp->unit_kerja ?? '') === 0;
-    }
-
-    /** Manager Workshop: jabatan Manager, unit_work mengandung "workshop" / "bengkel" */
-    private function isWorkshopManager(?User $user): bool
-    {
-        if (! $user) {
-            return false;
-        }
-
-        if (strcasecmp($user->jabatan ?? '', 'Manager') !== 0) {
-            return false;
-        }
-
-        $unit = strtolower($user->unit_work ?? '');
-        return str_contains($unit, 'workshop') || str_contains($unit, 'bengkel');
+        return $pkmUnit->sections()
+            ->where('manager_id', $user->id)
+            ->pluck('name')
+            ->all();
     }
 
     /**
      * Validasi generic: boleh sign untuk sign_type tertentu?
+     * Sekarang berbasis struktur organisasi, BUKAN jabatan/usertype.
      */
     private function canSignForType(User $user, LHPP $lhpp, string $signType): bool
     {
-        return match ($signType) {
-            'manager_user' =>
-                $this->isUserManager($user, $lhpp),
-
-            'manager_workshop' =>
-                $this->isWorkshopManager($user),
-
-            'manager_pkm' =>
-                $this->isPkmManager($user)
-                && strcasecmp($user->unit_work ?? '', $lhpp->kontrak_pkm ?? '') === 0,
-
-            default => false,
+        $expected = match ($signType) {
+            'manager_user'      => $this->getManagerUserForLhpp($lhpp),
+            'manager_workshop'  => $this->getManagerWorkshopForLhpp($lhpp),
+            'manager_pkm'       => $this->getManagerPkmForLhpp($lhpp),
+            default             => null,
         };
+
+        if (! $expected) {
+            // konfigurasi struktur organisasi tidak lengkap
+            Log::warning('[LHPP] Expected approver tidak ditemukan (struktur org belum lengkap)', [
+                'notif'     => $lhpp->notification_number,
+                'sign_type' => $signType,
+            ]);
+            return false;
+        }
+
+        return (int) $expected->id === (int) $user->id;
     }
 
     /**
@@ -465,16 +462,16 @@ class LHPPApprovalController extends Controller
     {
         return match ($signType) {
             'manager_user' =>
-                !empty($lhpp->manager_signature_requesting) ||
-                !empty($lhpp->manager_signature_requesting_user_id),
+                ! empty($lhpp->manager_signature_requesting) ||
+                ! empty($lhpp->manager_signature_requesting_user_id),
 
             'manager_workshop' =>
-                !empty($lhpp->manager_signature) ||
-                !empty($lhpp->manager_signature_user_id),
+                ! empty($lhpp->manager_signature) ||
+                ! empty($lhpp->manager_signature_user_id),
 
             'manager_pkm' =>
-                !empty($lhpp->manager_pkm_signature) ||
-                !empty($lhpp->manager_pkm_signature_user_id),
+                ! empty($lhpp->manager_pkm_signature) ||
+                ! empty($lhpp->manager_pkm_signature_user_id),
 
             default => false,
         };
@@ -488,14 +485,14 @@ class LHPPApprovalController extends Controller
      */
     private function canProceedForSignType(LHPP $lhpp, string $signType): bool
     {
-        $userSigned = !empty($lhpp->manager_signature_requesting) ||
-                      !empty($lhpp->manager_signature_requesting_user_id);
+        $userSigned = ! empty($lhpp->manager_signature_requesting) ||
+                      ! empty($lhpp->manager_signature_requesting_user_id);
 
-        $workshopSigned = !empty($lhpp->manager_signature) ||
-                          !empty($lhpp->manager_signature_user_id);
+        $workshopSigned = ! empty($lhpp->manager_signature) ||
+                          ! empty($lhpp->manager_signature_user_id);
 
-        $pkmSigned = !empty($lhpp->manager_pkm_signature) ||
-                     !empty($lhpp->manager_pkm_signature_user_id);
+        $pkmSigned = ! empty($lhpp->manager_pkm_signature) ||
+                     ! empty($lhpp->manager_pkm_signature_user_id);
 
         return match ($signType) {
             'manager_user'      => ! $userSigned,
@@ -571,91 +568,178 @@ class LHPPApprovalController extends Controller
     }
 
     /**
-     * Cari user approver untuk sign_type tertentu, mengikuti aturan yang sama
-     * seperti canSignForType().
+     * Cari user approver untuk sign_type tertentu, mengikuti **struktur organisasi**.
      */
-       private function findApproverUser(string $signType, LHPP $lhpp): ?User
+    private function findApproverUser(string $signType, LHPP $lhpp): ?User
     {
         return match ($signType) {
-            'manager_user' => User::query()
-                ->whereRaw('LOWER(jabatan) = ?', ['manager'])
-                ->whereRaw('LOWER(unit_work) = ?', [strtolower($lhpp->unit_kerja ?? '')])
-                ->first(),
-
-            'manager_workshop' => User::query()
-                ->whereRaw('LOWER(jabatan) = ?', ['manager'])
-                ->where(function ($q) {
-                    $q->whereRaw('LOWER(unit_work) LIKE ?', ['%workshop%'])
-                      ->orWhereRaw('LOWER(unit_work) LIKE ?', ['%bengkel%']);
-                })
-                ->first(),
-
-            // 🔽 BAGIAN INI YANG DIUBAH
-            'manager_pkm' => User::query()
-                ->whereRaw('LOWER(usertype) = ?', ['approval'])
-                ->whereRaw('LOWER(jabatan) LIKE ?', ['%manager%'])
-                ->whereRaw('LOWER(unit_work) = ?', [strtolower($lhpp->kontrak_pkm ?? '')])
-                ->first(),
-            // 🔼
-
-            default => null,
+            'manager_user'      => $this->getManagerUserForLhpp($lhpp),
+            'manager_workshop'  => $this->getManagerWorkshopForLhpp($lhpp),
+            'manager_pkm'       => $this->getManagerPkmForLhpp($lhpp),
+            default             => null,
         };
     }
 
+    /* ================== RESOLVER APPROVER BERDASAR STRUKTUR ORG ================== */
 
     /**
-     * Copas dari LHPPController::sendWhatsAppToAdmin (biar berdiri sendiri).
+     * Manager User:
+     * LHPP -> Notification (unit_work + seksi) -> UnitWork -> UnitWorkSection -> manager
      */
-    private function sendWhatsAppToAdmin(LHPP $lhpp): void
+    private function getManagerUserForLhpp(LHPP $lhpp): ?User
     {
-        $admins = User::where('usertype', 'admin')->get();
+        $notification = Notification::where('notification_number', $lhpp->notification_number)->first();
 
-        foreach ($admins as $admin) {
-            try {
-                $message =
-                    "Review LHPP Diperlukan (QC PKM Selesai):\n".
-                    "Nomor Notifikasi: {$lhpp->notification_number}\n".
-                    "Deskripsi: {$lhpp->description_notifikasi}\n".
-                    "Unit Kerja: {$lhpp->unit_kerja}\n\n".
-                    "Silakan login untuk melakukan review:\n".
-                    "https://sectionofworkshop.com/admin/lhpp";
+        if (! $notification) {
+            Log::warning('[LHPP][Resolver] Notification tidak ditemukan', [
+                'notif' => $lhpp->notification_number,
+            ]);
+            return null;
+        }
 
-                Http::withHeaders([
-                    'Authorization' => env('FONNTE_TOKEN', 'KBTe2RszCgc6aWhYapcv'),
-                ])->post('https://api.fonnte.com/send', [
-                    'target'  => $admin->whatsapp_number,
-                    'message' => $message,
-                ]);
+        if (! $notification->unit_work || ! $notification->seksi) {
+            Log::warning('[LHPP][Resolver] unit_work/seksi Notification kosong', [
+                'notif'      => $lhpp->notification_number,
+                'unit_work'  => $notification->unit_work,
+                'seksi'      => $notification->seksi,
+            ]);
+            return null;
+        }
 
-                Log::info('[LHPP][PKM] WA terkirim ke admin', [
-                    'admin' => $admin->id,
-                    'notif' => $lhpp->notification_number,
-                ]);
-            } catch (\Throwable $e) {
-                Log::error('[LHPP][PKM] Gagal kirim WA ke admin', [
-                    'admin' => $admin->id,
-                    'notif' => $lhpp->notification_number,
-                    'err'   => $e->getMessage(),
-                ]);
+        $unitWork = UnitWork::where('name', $notification->unit_work)->first();
+
+        if (! $unitWork) {
+            Log::warning('[LHPP][Resolver] UnitWork tidak ditemukan untuk Manager User', [
+                'notif'     => $lhpp->notification_number,
+                'unit_work' => $notification->unit_work,
+            ]);
+            return null;
+        }
+
+        /** @var UnitWorkSection|null $section */
+        $section = $unitWork->sections()
+            ->where('name', $notification->seksi)
+            ->first();
+
+        if (! $section) {
+            Log::warning('[LHPP][Resolver] Section (seksi) tidak ditemukan untuk Manager User', [
+                'notif'     => $lhpp->notification_number,
+                'unit_work' => $notification->unit_work,
+                'seksi'     => $notification->seksi,
+            ]);
+            return null;
+        }
+
+        if (! $section->manager) {
+            Log::warning('[LHPP][Resolver] Manager untuk seksi peminta belum di-set', [
+                'notif'  => $lhpp->notification_number,
+                'seksi'  => $section->name,
+            ]);
+            return null;
+        }
+
+        return $section->manager;
+    }
+
+    /**
+     * Manager Workshop:
+     * Selalu Manager dari seksi "Section of Machine Workshop"
+     * pada unit "Unit of Workshop & Design".
+     */
+    private function getManagerWorkshopForLhpp(LHPP $lhpp): ?User
+    {
+        $unitWork = UnitWork::where('name', 'Unit of Workshop & Design')->first();
+
+        if (! $unitWork) {
+            Log::warning('[LHPP][Resolver] UnitWork Workshop tidak ditemukan', [
+                'notif' => $lhpp->notification_number,
+            ]);
+            return null;
+        }
+
+        /** @var UnitWorkSection|null $section */
+        $section = $unitWork->sections()
+            ->where('name', 'Section of Machine Workshop')
+            ->first();
+
+        if (! $section) {
+            Log::warning('[LHPP][Resolver] Section of Machine Workshop tidak ditemukan', [
+                'notif' => $lhpp->notification_number,
+            ]);
+            return null;
+        }
+
+        if (! $section->manager) {
+            Log::warning('[LHPP][Resolver] Manager Section of Machine Workshop belum di-set', [
+                'notif' => $lhpp->notification_number,
+            ]);
+            return null;
+        }
+
+        return $section->manager;
+    }
+
+    /**
+     * Manager PKM:
+     * Unit "PT. Prima Karya Manunggal" + seksi sama dengan `lhpp.kontrak_pkm`
+     * (Fabrikasi / Konstruksi / Pengerjaan Mesin).
+     */
+    private function getManagerPkmForLhpp(LHPP $lhpp): ?User
+    {
+        if (! $lhpp->kontrak_pkm) {
+            Log::warning('[LHPP][Resolver] kontrak_pkm kosong', [
+                'notif' => $lhpp->notification_number,
+            ]);
+            return null;
+        }
+
+        $pkmUnit = UnitWork::where('name', 'PT. Prima Karya Manunggal')->first();
+
+        if (! $pkmUnit) {
+            Log::warning('[LHPP][Resolver] UnitWork PKM tidak ditemukan', [
+                'notif' => $lhpp->notification_number,
+            ]);
+            return null;
+        }
+
+        /** @var UnitWorkSection|null $section */
+        $section = $pkmUnit->sections()
+            ->where('name', $lhpp->kontrak_pkm)
+            ->first();
+
+        if (! $section) {
+            Log::warning('[LHPP][Resolver] Section PKM tidak ditemukan untuk kontrak_pkm', [
+                'notif'       => $lhpp->notification_number,
+                'kontrak_pkm' => $lhpp->kontrak_pkm,
+            ]);
+            return null;
+        }
+
+        if (! $section->manager) {
+            Log::warning('[LHPP][Resolver] Manager PKM untuk kontrak_pkm belum di-set', [
+                'notif'       => $lhpp->notification_number,
+                'kontrak_pkm' => $lhpp->kontrak_pkm,
+            ]);
+            return null;
+        }
+
+        return $section->manager;
+    }
+
+    /**
+     * Cari HPP terkait notification_number di salah satu tabel HPP1–HPP4.
+     * Tidak mengubah flow approval LHPP, hanya untuk lampiran di view.
+     */
+    private function findHppForNotification(string $notificationNumber)
+    {
+        foreach ([Hpp1::class, Hpp2::class, Hpp3::class, Hpp4::class] as $modelClass) {
+            /** @var \Illuminate\Database\Eloquent\Model|null $found */
+            $found = $modelClass::find($notificationNumber);
+            if ($found) {
+                return $found;
             }
         }
-    }
-    /**
- * Cari HPP terkait notification_number di salah satu tabel HPP1–HPP4.
- * Tidak mengubah flow approval LHPP, hanya untuk lampiran di view.
- *
- */
-private function findHppForNotification(string $notificationNumber)
-{
-    foreach ([Hpp1::class, Hpp2::class, Hpp3::class, Hpp4::class] as $modelClass) {
-        /** @var \Illuminate\Database\Eloquent\Model|null $found */
-        $found = $modelClass::find($notificationNumber);
-        if ($found) {
-            return $found;
-        }
-    }
 
-    return null;
-}
-
+        return null;
+    }
 }

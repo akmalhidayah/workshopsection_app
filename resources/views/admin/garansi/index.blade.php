@@ -2,127 +2,152 @@
     <div class="py-6">
         <div class="w-full max-w-[98%] mx-auto">
 
-            <!-- Header -->
-            <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4 shadow-sm">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div>
-                        <h3 class="text-lg font-semibold text-gray-800">Garansi</h3>
-                        <p class="text-sm text-gray-500">Kelola masa garansi berdasarkan LHPP & Garansi</p>
-                    </div>
-
-                    <form method="GET" action="{{ route('admin.garansi.index') }}" class="flex gap-3 items-end">
+            <div class="admin-card p-5 mb-4">
+                <div class="admin-header">
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                            <i data-lucide="shield-check" class="w-5 h-5"></i>
+                        </span>
                         <div>
-                            <label class="text-xs text-gray-600 block mb-1">Pencarian (Nomor Order)</label>
-                            <input type="text" name="search" value="{{ request('search') }}" placeholder="Masukkan Nomor Order..."
-                                class="px-3 py-2 border border-gray-300 rounded-md w-56 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                            <h1 class="admin-title">Garansi</h1>
+                            <p class="admin-subtitle">Kelola masa garansi berdasarkan LHPP dan Garansi</p>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="GET" action="{{ route('admin.garansi.index') }}" class="admin-filter mt-4">
+                    <div class="w-full grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                        <div class="md:col-span-5">
+                            <label class="text-xs text-slate-600 block mb-1">Pencarian (Nomor Order)</label>
+                            <div class="relative">
+                                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                <input type="text" name="search" value="{{ request('search') }}" placeholder="Masukkan Nomor Order..."
+                                    class="admin-input w-full pl-9">
+                            </div>
                         </div>
 
-                        <div class="flex items-center gap-2">
-                            <button type="submit"
-                                class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm shadow-sm transition">
-                                <i class="fas fa-search"></i> Cari
+                        <div class="md:col-span-7 flex items-center gap-2 md:justify-end">
+                            <button type="submit" class="admin-btn admin-btn-primary">
+                                <i data-lucide="search" class="w-4 h-4"></i> Cari
                             </button>
 
-                            <a href="{{ route('admin.garansi.index') }}"
-                                class="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-2 rounded-md text-sm transition">
-                                <i class="fas fa-undo-alt"></i> Reset
+                            <a href="{{ route('admin.garansi.index') }}" class="admin-btn admin-btn-ghost">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset
                             </a>
                         </div>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
 
-            <!-- Desktop TABLE -->
-            <div class="hidden md:block bg-white shadow rounded-lg border border-gray-200 overflow-x-auto">
-                <table class="min-w-full text-sm">
-                    <thead class="bg-gray-50">
+<!-- Desktop TABLE -->
+            <div class="hidden md:block admin-card p-0 overflow-x-auto">
+                <table class="min-w-full text-[11px] text-slate-700">
+                    <thead class="bg-slate-50 text-slate-600 uppercase tracking-wide border-b border-slate-200">
                         <tr>
-                            <th class="px-5 py-3 text-left font-medium text-gray-700">Nomor Order</th>
-                            <th class="px-5 py-3 text-left font-medium text-gray-700">Mulai Garansi</th>
-                            <th class="px-5 py-3 text-left font-medium text-gray-700">Berakhir Garansi</th>
-                            <th class="px-5 py-3 text-left font-medium text-gray-700">Garansi</th>
-                            <th class="px-5 py-3 text-left font-medium text-gray-700">Status</th>
-                            <th class="px-5 py-3 text-left font-medium text-gray-700">Gambar</th>
+                            <th class="px-4 py-3 text-left font-semibold">Nomor Order</th>
+                            <th class="px-4 py-3 text-left font-semibold">Mulai Garansi</th>
+                            <th class="px-4 py-3 text-left font-semibold">Berakhir Garansi</th>
+                            <th class="px-4 py-3 text-left font-semibold">Garansi</th>
+                            <th class="px-4 py-3 text-left font-semibold">Status</th>
+                            <th class="px-4 py-3 text-left font-semibold">Gambar</th>
                         </tr>
                     </thead>
 
-                    <tbody class="bg-white divide-y divide-gray-100">
+                    <tbody class="bg-white divide-y divide-slate-100">
                         @forelse($garansiList as $g)
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-5 py-4">
-                                    <div class="font-medium text-gray-800">{{ $g['order_number'] }}</div>
-                                    <div class="text-xs text-gray-500 mt-1">
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-4 py-3">
+                                    <div class="font-semibold text-slate-900">{{ $g['order_number'] }}</div>
+                                    <div class="text-[10px] text-slate-500 mt-1">
                                         @if(! ($g['lpj_present'] ?? false))
-                                            <span class="px-2 py-1 bg-yellow-50 text-yellow-700 rounded text-xs">LPJ belum terisi</span>
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px]">
+                                                <i class="fas fa-exclamation-triangle text-[9px]"></i>
+                                                LPJ belum terisi
+                                            </span>
                                         @endif
                                     </div>
                                 </td>
 
-                                <td class="px-5 py-4 text-gray-700">
+                                <td class="px-4 py-3 text-slate-700">
                                     @if(isset($g['ttd_date']) && $g['ttd_date'] !== '-' && $g['ttd_date'] !== null)
-                                        {{ $g['ttd_date'] }}
+                                        <span class="inline-flex items-center gap-1">
+                                            <i class="fas fa-calendar-check text-[10px] text-emerald-600"></i>
+                                            {{ $g['ttd_date'] }}
+                                        </span>
                                     @else
-                                        <span class="text-gray-400">-</span>
+                                        <span class="text-slate-400">-</span>
                                     @endif
                                 </td>
 
-                                <td class="px-5 py-4 text-gray-700">
+                                <td class="px-4 py-3 text-slate-700">
                                     @if(array_key_exists('garansi_months', $g) && $g['garansi_months'] !== null)
                                         @if(isset($g['end_date']) && $g['end_date'] !== '-' && $g['end_date'] !== null)
                                             {{ $g['end_date'] }}
-                                            <span class="text-xs text-gray-500">({{ $g['garansi_months'] }} {{ \Illuminate\Support\Str::plural('Bln', (int)$g['garansi_months']) }})</span>
+                                            <span class="text-[10px] text-slate-500">({{ $g['garansi_months'] }} {{ \Illuminate\Support\Str::plural('Bln', (int)$g['garansi_months']) }})</span>
                                         @else
-                                            <span class="text-xs text-gray-500">
+                                            <span class="text-[10px] text-slate-500">
                                                 {{ $g['garansi_months'] }} {{ \Illuminate\Support\Str::plural('Bulan', (int)$g['garansi_months']) }}
-                                                <small class="text-gray-400"> (Belum ada tanggal akhir)</small>
+                                                <small class="text-slate-400"> (Belum ada tanggal akhir)</small>
                                             </span>
                                         @endif
                                     @else
-                                        <span class="text-gray-400">-</span>
+                                        <span class="text-slate-400">-</span>
                                     @endif
                                 </td>
 
-                                <td class="px-5 py-4 text-gray-700">
+                                <td class="px-4 py-3 text-slate-700">
                                     @if(array_key_exists('garansi_months', $g) && $g['garansi_months'] !== null)
                                         @if($g['garansi_months'] === 0)
-                                            <span class="text-xs inline-flex items-center px-2 py-1 rounded bg-gray-100 text-gray-700">0 Bulan (Tanpa Garansi)</span>
+                                            <span class="text-[10px] inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                                                <i class="fas fa-ban text-[9px]"></i> 0 Bulan (Tanpa Garansi)
+                                            </span>
                                         @else
-                                            <span class="text-xs inline-flex items-center px-2 py-1 rounded bg-indigo-50 text-indigo-700">{{ $g['garansi_months'] }} Bulan</span>
+                                            <span class="text-[10px] inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">
+                                                <i class="fas fa-clock text-[9px]"></i> {{ $g['garansi_months'] }} Bulan
+                                            </span>
                                         @endif
                                     @else
-                                        <span class="text-gray-400 text-xs">-</span>
+                                        <span class="text-slate-400 text-[10px]">-</span>
                                     @endif
                                 </td>
 
-                                <td class="px-5 py-4">
+                                <td class="px-4 py-3">
                                     @php
                                         $status = $g['status'] ?? null;
                                         $has3Ttd = $g['has_3_ttd'] ?? false;
                                     @endphp
 
                                     @if($status === 'Masih Berlaku')
-                                        <span class="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-xs rounded-full">Masih Berlaku</span>
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] rounded-full">
+                                            <i class="fas fa-check-circle text-[9px]"></i> Masih Berlaku
+                                        </span>
                                     @elseif($status === 'Habis')
-                                        <span class="inline-flex items-center px-3 py-1 bg-red-100 text-red-800 text-xs rounded-full">Habis</span>
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] rounded-full">
+                                            <i class="fas fa-times-circle text-[9px]"></i> Habis
+                                        </span>
                                     @else
                                         @if(! $has3Ttd)
-                                            <span class="inline-flex items-center px-3 py-1 bg-yellow-50 text-yellow-800 text-xs rounded-full">Belum ada TTD</span>
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 text-[10px] rounded-full">
+                                                <i class="fas fa-pen-nib text-[9px]"></i> LHPP Belum ada TTD
+                                            </span>
                                         @else
-                                            <span class="text-gray-400 text-xs">-</span>
+                                            <span class="text-slate-400 text-[10px]">-</span>
                                         @endif
                                     @endif
                                 </td>
 
-                                <td class="px-5 py-4">
+                                <td class="px-4 py-3">
                                     @if(!empty($g['gambar']) && is_array($g['gambar']) && count($g['gambar']) > 0)
                                         <button
                                             onclick="openModal({{ json_encode($g['gambar']) }})"
-                                            class="text-indigo-600 hover:underline text-sm inline-flex items-center gap-2"
+                                            class="inline-flex items-center gap-2 text-sky-600 hover:text-sky-700 text-[11px] font-medium"
                                             title="Lihat gambar pekerjaan">
-                                            <i class="fas fa-images"></i> Lihat ({{ count($g['gambar']) }})
+                                            <i class="fas fa-images text-[12px]"></i>
+                                            <span>Lihat</span>
+                                            <span class="text-[10px] text-slate-500">({{ count($g['gambar']) }})</span>
                                         </button>
                                     @else
-                                        <span class="text-gray-400 text-xs">Belum ada</span>
+                                        <span class="text-slate-400 text-[10px]">Belum ada</span>
                                     @endif
                                 </td>
                             </tr>
@@ -140,13 +165,16 @@
             <!-- Mobile LIST (cards) -->
             <div class="md:hidden space-y-3">
                 @forelse($garansiList as $g)
-                    <div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                    <div class="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
                         <div class="flex items-start justify-between gap-3">
                             <div>
-                                <div class="font-medium text-gray-800 text-sm">{{ $g['order_number'] }}</div>
-                                <div class="text-xs text-gray-500 mt-1">
+                                <div class="font-semibold text-slate-800 text-sm">{{ $g['order_number'] }}</div>
+                                <div class="text-[10px] text-slate-500 mt-1">
                                     @if(! ($g['lpj_present'] ?? false))
-                                        <span class="px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded text-xs">LPJ belum terisi</span>
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px]">
+                                            <i class="fas fa-exclamation-triangle text-[9px]"></i>
+                                            LPJ belum terisi
+                                        </span>
                                     @endif
                                 </div>
                             </div>
@@ -154,33 +182,39 @@
                             <div class="text-right">
                                 @php $status = $g['status'] ?? null; $has3Ttd = $g['has_3_ttd'] ?? false; @endphp
                                 @if($status === 'Masih Berlaku')
-                                    <span class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Masih</span>
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] rounded-full">
+                                        <i class="fas fa-check-circle text-[9px]"></i> Masih
+                                    </span>
                                 @elseif($status === 'Habis')
-                                    <span class="inline-flex items-center px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">Habis</span>
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] rounded-full">
+                                        <i class="fas fa-times-circle text-[9px]"></i> Habis
+                                    </span>
                                 @else
                                     @if(! $has3Ttd)
-                                        <span class="inline-flex items-center px-2 py-1 bg-yellow-50 text-yellow-800 text-xs rounded-full">Belum TTD</span>
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 text-[10px] rounded-full">
+                                            <i class="fas fa-pen-nib text-[9px]"></i> LHPP Belum ada TTD
+                                        </span>
                                     @else
-                                        <span class="text-gray-400 text-xs">-</span>
+                                        <span class="text-slate-400 text-[10px]">-</span>
                                     @endif
                                 @endif
                             </div>
                         </div>
 
-                        <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-700">
+                        <div class="mt-3 grid grid-cols-2 gap-2 text-[11px] text-slate-700">
                             <div>
-                                <div class="text-gray-500 text-[11px]">Mulai</div>
+                                <div class="text-slate-500 text-[10px]">Mulai</div>
                                 <div class="mt-1">{{ $g['ttd_date'] ?? '-' }}</div>
                             </div>
                             <div>
-                                <div class="text-gray-500 text-[11px]">Berakhir</div>
+                                <div class="text-slate-500 text-[10px]">Berakhir</div>
                                 @if(array_key_exists('garansi_months', $g) && $g['garansi_months'] !== null)
                                     <div class="mt-1">
                                         {{ $g['end_date'] ?? '-' }}
-                                        <div class="text-[11px] text-gray-500">({{ $g['garansi_months'] }} bln)</div>
+                                        <div class="text-[10px] text-slate-500">({{ $g['garansi_months'] }} bln)</div>
                                     </div>
                                 @else
-                                    <div class="mt-1 text-gray-400">-</div>
+                                    <div class="mt-1 text-slate-400">-</div>
                                 @endif
                             </div>
                         </div>
@@ -188,15 +222,15 @@
                         <div class="mt-3 flex items-center justify-between">
                             <div>
                                 @if(!empty($g['gambar']) && is_array($g['gambar']) && count($g['gambar']) > 0)
-                                    <button onclick="openModal({{ json_encode($g['gambar']) }})" class="text-indigo-600 text-xs hover:underline inline-flex items-center gap-2">
-                                        <i class="fas fa-images"></i> Lihat ({{ count($g['gambar']) }})
+                                    <button onclick="openModal({{ json_encode($g['gambar']) }})" class="inline-flex items-center gap-2 text-sky-600 text-[11px] hover:text-sky-700">
+                                        <i class="fas fa-images text-[12px]"></i> Lihat ({{ count($g['gambar']) }})
                                     </button>
                                 @else
-                                    <span class="text-gray-400 text-xs">Tidak ada gambar</span>
+                                    <span class="text-slate-400 text-[10px]">Tidak ada gambar</span>
                                 @endif
                             </div>
 
-                            <div class="text-xs text-gray-500">
+                            <div class="text-[10px] text-slate-500">
                                 {{ $g['garansi_label'] ?? '' }}
                             </div>
                         </div>

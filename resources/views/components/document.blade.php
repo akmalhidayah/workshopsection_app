@@ -12,9 +12,10 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <!-- @vite(['resources/css/app.css', 'resources/js/app.js']) -->
-    <link rel="stylesheet" href="{{ asset('build/assets/app-BD6FMr64.css') }}">
-    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script> 
+    <!-- Vite (Tailwind + app JS) -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+             <!-- <link rel="stylesheet" href="{{ asset('build/assets/app-CSwLQ2bl.css') }}">
+    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script>  -->
     
 </head>
 <body class="font-sans antialiased bg-gray-100">

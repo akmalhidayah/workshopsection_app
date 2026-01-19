@@ -1,13 +1,18 @@
 <x-admin-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Atur Cost Element') }}
-        </h2>
-    </x-slot>
-
     <div class="py-6">
         <div class="max-w-lg mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 shadow-lg sm:rounded-lg p-6">
+            <div class="admin-header mb-4">
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-slate-50 text-slate-600">
+                        <i data-lucide="settings" class="w-5 h-5"></i>
+                    </span>
+                    <div>
+                        <h1 class="admin-title">Atur Cost Element</h1>
+                        <p class="admin-subtitle">Kelola nilai cost element global.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="admin-card p-5">
 
                 @if(session('success'))
                     <div class="mb-4 p-3 bg-green-100 text-green-800 rounded">
@@ -32,16 +37,16 @@
                         <label class="block font-medium mb-1">Cost Element Global</label>
                         <input type="text" name="value" 
                                value="{{ old('value', $value) }}" 
-                               class="w-full border rounded p-2 text-sm"
+                               class="admin-input w-full"
                                required>
                     </div>
                     <div class="flex justify-end gap-2">
                         <a href="{{ route('admin.jenis-kawat-las.index') }}" 
-                           class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+                           class="admin-btn admin-btn-ghost">
                             Kembali
                         </a>
                         <button type="submit" 
-                                class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+                                class="admin-btn admin-btn-primary">
                             Simpan
                         </button>
                     </div>

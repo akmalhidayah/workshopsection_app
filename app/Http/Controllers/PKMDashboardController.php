@@ -169,8 +169,7 @@ $baseQuery = Notification::notApprovedWorkshop()
 
         $baseQuery->where(function ($q) use ($priority) {
             $q->whereHas('purchaseOrder', function ($qq) {
-                $qq->whereNotNull('approval_target')
-                   ->where('approve_manager', true);
+                $qq->where('approve_manager', true);
             });
 
             if (empty($priority)) {

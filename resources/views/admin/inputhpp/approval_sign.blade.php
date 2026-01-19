@@ -6,6 +6,8 @@
         'createhpp2' => route('approval.hpp.download_hpp2', $hpp->notification_number),
         'createhpp3' => route('approval.hpp.download_hpp3', $hpp->notification_number),
         'createhpp4' => route('approval.hpp.download_hpp4', $hpp->notification_number),
+        'createhpp5' => route('approval.hpp.download_hpp5', $hpp->notification_number),
+        'createhpp6' => route('approval.hpp.download_hpp6', $hpp->notification_number),
         default      => route('approval.hpp.download_hpp1', $hpp->notification_number),
     };
 

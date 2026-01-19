@@ -120,7 +120,7 @@
     <tr><td class="bold">PERIHAL</td><td>: {{ $spk->perihal }}</td></tr>
     <tr><td class="bold">NOMOR SPK</td><td>: {{ $spk->nomor_spk }}</td></tr>
     <tr><td class="bold">NOMOR ORDER</td><td>: {{ $spk->notification_number }}</td></tr>
-    <tr><td class="bold">UNIT KERJA PEMINTA</td><td>: {{ $spk->unit_work }}</td></tr>
+    <tr><td class="bold">UNIT KERJA PEMINTA</td><td>: {{ $spk->notification?->seksi ?? $spk->seksi ?? $spk->unit_work ?? '-' }}</td></tr>
 </table>
 
 <br>

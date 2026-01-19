@@ -52,6 +52,9 @@ class CreateLhppsTable extends Migration
             $table->text('manager_signature')->nullable();
             $table->text('manager_signature_requesting')->nullable();
             $table->text('manager_pkm_signature')->nullable();
+            $table->timestamp('manager_signature_at')->nullable();
+            $table->timestamp('manager_signature_requesting_at')->nullable();
+            $table->timestamp('manager_pkm_signature_at')->nullable();
 
             // Catatan
             $table->text('controlling_notes')->nullable();

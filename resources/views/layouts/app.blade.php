@@ -7,141 +7,143 @@
 
     <title>{{ config('app.name', 'Bengkel Mesin PT. Semen Tonasa') }}</title>
 
+    <!-- Prefetch theme (hindari kedip saat dark mode) -->
+    <script>
+        (function () {
+            try {
+                const theme = localStorage.getItem('theme');
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch (e) {
+                console.warn('Theme init gagal:', e);
+            }
+        })();
+    </script>
+
     <!-- Fonts / icons -->
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 
-    <!-- Select2 CSS (needs jQuery present before using Select2 JS) -->
+    <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
-    <!-- Optional: flatpickr CSS if you style it -->
+    <!-- Flatpickr CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
     <!-- Allow pages to push additional styles -->
     @stack('styles')
 
-    <!-- Vite (Tailwind + app JS). Keep this after global CSS links so app.css can override if needed -->
+    <!-- Vite (Tailwind + app JS) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
-<body 
-    class="font-sans antialiased bg-gray-100 dark:bg-gray-900"
-    x-data="{ 
-        darkMode: localStorage.getItem('theme') === 'dark',
-        toggleTheme() {
-            this.darkMode = !this.darkMode;
-            localStorage.setItem('theme', this.darkMode ? 'dark' : 'light');
-            document.documentElement.classList.toggle('dark', this.darkMode);
-        }
-    }"
-    x-init="document.documentElement.classList.toggle('dark', darkMode)"
->
-    <div class="min-h-screen">
+<body class="font-sans antialiased bg-gray-100 dark:bg-gray-900">
+    <div class="min-h-screen flex flex-col">
+        {{-- Top Navigation --}}
         @include('layouts.navigation')
 
-        <!-- Page Heading -->
+        {{-- Page Heading --}}
         @isset($header)
-            <header class="bg-white dark:bg-gray-800 shadow">
-                <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <header class="bg-white dark:bg-gray-800 shadow-sm">
+                <div class="max-w-7xl mx-auto py-5 px-4 sm:px-6 lg:px-8">
                     {{ $header }}
                 </div>
             </header>
         @endisset
 
-        <!-- Page Content -->
-        <main>
+        {{-- Page Content --}}
+        <main class="flex-1 pb-8">
             {{ $slot }}
         </main>
     </div>
 
     {{-- ============================
         Global JS libraries (CDN)
-        - jQuery MUST be loaded before any jQuery plugin (Select2)
-        - Put these here once — do NOT re-include them in partials
        ============================ --}}
+    {{-- jQuery (wajib sebelum Select2) --}}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-    <!-- Select2 JS (depends on jQuery) -->
+    {{-- Select2 JS --}}
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js" defer></script>
 
-    <!-- SignaturePad (no jQuery) -->
+    {{-- SignaturePad --}}
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js" defer></script>
 
-    <!-- Chart.js -->
+    {{-- Chart.js --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4" defer></script>
 
-    <!-- SweetAlert2 -->
+    {{-- SweetAlert2 (tanpa defer, karena dipakai langsung di script di bawah) --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- Flatpickr -->
+    {{-- Flatpickr --}}
     <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
 
-    <!-- Alpine (defer) - if app.js already imports Alpine, you can remove this -->
+    {{-- Alpine (hapus ini kalau Alpine sudah di-import di app.js) --}}
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js" defer></script>
-{{-- SweetAlert flash + open PDF if session has open_pdf --}}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  // helper: open pdf in new tab safely
-  function openPdf(url) {
-    try {
-      // try to open — best when called after a user gesture (we call it after Swal resolves)
-      window.open(url, '_blank');
-    } catch (e) {
-      console.error('Gagal membuka PDF:', e);
-    }
-  }
 
-  @if(session()->has('success'))
-    Swal.fire({
-      icon: 'success',
-      title: 'Sukses',
-      text: {!! json_encode(session('success')) !!},
-      confirmButtonText: 'OK'
-    }).then(() => {
-      @if(session()->has('open_pdf'))
-        openPdf({!! json_encode(session('open_pdf')) !!});
-      @endif
-    });
-  @endif
+    {{-- SweetAlert flash + open PDF jika session punya open_pdf --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            function openPdf(url) {
+                try {
+                    window.open(url, '_blank');
+                } catch (e) {
+                    console.error('Gagal membuka PDF:', e);
+                }
+            }
 
-  @if(session()->has('warning'))
-    Swal.fire({
-      icon: 'warning',
-      title: 'Peringatan',
-      text: {!! json_encode(session('warning')) !!},
-      confirmButtonText: 'OK'
-    }).then(() => {
-      @if(session()->has('open_pdf'))
-        openPdf({!! json_encode(session('open_pdf')) !!});
-      @endif
-    });
-  @endif
+            @if(session()->has('success'))
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sukses',
+                    text: {!! json_encode(session('success')) !!},
+                    confirmButtonText: 'OK'
+                }).then(() => {
+                    @if(session()->has('open_pdf'))
+                        openPdf({!! json_encode(session('open_pdf')) !!});
+                    @endif
+                });
+            @endif
 
-  @if(session()->has('error'))
-    Swal.fire({
-      icon: 'error',
-      title: 'Gagal',
-      text: {!! json_encode(session('error')) !!},
-      confirmButtonText: 'OK'
-    });
-  @endif
+            @if(session()->has('warning'))
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Peringatan',
+                    text: {!! json_encode(session('warning')) !!},
+                    confirmButtonText: 'OK'
+                }).then(() => {
+                    @if(session()->has('open_pdf'))
+                        openPdf({!! json_encode(session('open_pdf')) !!});
+                    @endif
+                });
+            @endif
 
-  @if($errors->any())
-    Swal.fire({
-      icon: 'error',
-      title: 'Validasi',
-      html: {!! json_encode(implode('<br>', $errors->all())) !!},
-      confirmButtonText: 'Tutup'
-    });
-  @endif
-});
-</script>
+               @if(session()->has('error'))
+        Swal.fire({
+            icon: 'error',
+            title: 'Gagal',
+            text: {!! json_encode(session('error')) !!},
+            confirmButtonText: 'OK'
+        });
+    @endif
 
-    {{-- allow pages/partials to push scripts (for custom-notification.js etc) --}}
+    @if(isset($errors) && $errors->any())
+        Swal.fire({
+            icon: 'error',
+            title: 'Validasi',
+            html: {!! json_encode(implode('<br>', $errors->all())) !!},
+            confirmButtonText: 'Tutup'
+        });
+    @endif
+
+        });
+    </script>
+
+    {{-- Allow pages/partials to push extra scripts --}}
     @stack('scripts')
-
-    {{-- Helpful note for development --}}
-    {{-- If you include same libraries in partials, remove those includes — they must be included only once here. --}}
 </body>
 </html>

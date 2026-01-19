@@ -207,6 +207,10 @@
                     @endif
                     <br>
                     <strong>{{ $userReq->name ?? 'Manager User' }}</strong>
+                    <br>
+                    <span style="font-size: 10px;">
+                        Tanggal: {{ $lhpp->manager_signature_requesting_at ? $lhpp->manager_signature_requesting_at->format('d-m-Y') : '-' }}
+                    </span>
                 </td>
 
                 <!-- Kolom Tanda Tangan Manager Workshop -->
@@ -226,6 +230,10 @@
                     @endif
                     <br>
                     <strong>{{ $userWs->name ?? 'Herwanto S' }}</strong>
+                    <br>
+                    <span style="font-size: 10px;">
+                        Tanggal: {{ $lhpp->manager_signature_at ? $lhpp->manager_signature_at->format('d-m-Y') : '-' }}
+                    </span>
                 </td>
 
                 <!-- Kolom Tanda Tangan Manager PKM -->
@@ -245,6 +253,10 @@
                     @endif
                     <br>
                     <strong>{{ $userPkm->name ?? 'MANAGER PKM' }}</strong>
+                    <br>
+                    <span style="font-size: 10px;">
+                        Tanggal: {{ $lhpp->manager_pkm_signature_at ? $lhpp->manager_pkm_signature_at->format('d-m-Y') : '-' }}
+                    </span>
                 </td>
             </tr>
         </tbody>

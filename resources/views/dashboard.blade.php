@@ -364,7 +364,7 @@
             <div class="flex flex-col gap-2">
                 <div class="flex flex-wrap items-center gap-2">
                     @if($notification->lhpp)
-                        <a href="{{ route('lhpp.show', $notification->notification_number) }}"
+                        <a href="{{ route('lhpp.download_pdf', $notification->notification_number) }}"
                            class="inline-flex items-center gap-1 bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs transition">
                             <i class="fas fa-file-alt"></i> LHPP
                         </a>

@@ -5,151 +5,228 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- Title -->
     <title>{{ config('app.name', 'Laravel') }}</title>
 
-    <!-- Fonts -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <!-- Flatpickr -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-
-    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <!-- Font Awesome (biar icon lama masih aman) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tailwind + Alpine (cukup dari Vite, jangan dobel CDN Alpine) -->
+    <!-- Vite (Tailwind + app JS) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <!-- <link rel="stylesheet" href="{{ asset('build/assets/app-BD6FMr64.css') }}">
+             <!-- <link rel="stylesheet" href="{{ asset('build/assets/app-CSwLQ2bl.css') }}">
     <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script>  -->
 
-    <!-- Alpine.js -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.12.0/dist/cdn.min.js" defer></script>
+    <!-- Lucide (modern icon) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Import Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        [x-cloak]{ display:none !important; }
+        /* hide scrollbar but keep scroll */
+        .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; }
+        .no-scrollbar::-webkit-scrollbar{ display:none; }
+    </style>
 </head>
-<body class="font-sans antialiased bg-gray-100">
 
-<!-- Sidebar -->
-<div x-data="{ open: true }" class="relative min-h-screen flex bg-gray-200">
-    <!-- Tombol Toggle Sidebar -->
-    <button @click="open = !open" class="fixed top-4 left-4 z-20 bg-orange-600 text-white p-2 rounded">
-        <i x-show="open" class="fas fa-times text-xl"></i>
-        <i x-show="!open" class="fas fa-bars text-xl"></i>
-    </button>
+<body class="font-sans antialiased bg-slate-50 text-slate-800">
+@php
+    // PKM routes (buat active state)
+    $pkmMenus = [
+        ['route'=>'pkm.dashboard',   'icon'=>'layout-dashboard', 'label'=>'Dashboard'],
+        ['route'=>'pkm.jobwaiting',  'icon'=>'bell',             'label'=>'List Pekerjaan'],
+        ['route'=>'pkm.items.index', 'icon'=>'boxes',            'label'=>'Item Kebutuhan'],
+        ['route'=>'pkm.lhpp.index',  'icon'=>'file-text',        'label'=>'Buat LHPP'],
+        ['route'=>'pkm.laporan',     'icon'=>'folder-open',      'label'=>'Dokumen'],
+    ];
+@endphp
 
-    <!-- Sidebar Section -->
-    <aside class="fixed top-0 left-0 h-full z-10 w-56 px-2 py-4 shadow-lg text-orange-100 bg-orange-500 text-sm"
-    x-show="open"
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="opacity-0 transform -translate-x-full"
-    x-transition:enter-end="opacity-100 transform translate-x-0"
-    x-transition:leave="transition ease-in duration-200"
-    x-transition:leave-start="opacity-100 transform translate-x-0"
-    x-transition:leave-end="opacity-0 transform -translate-x-full"
-    class="fixed top-0 left-0 h-full z-10 w-56 px-2 py-4 shadow-lg text-blue-100 bg-blue-900 text-sm">
+<div
+    x-data="{
+        sidebarOpen: true,  // desktop collapse
+        mobileOpen: false,  // mobile drawer
+        toggle() {
+            if (window.innerWidth >= 1024) this.sidebarOpen = !this.sidebarOpen;
+            else this.mobileOpen = !this.mobileOpen;
+        },
+        closeMobile(){ this.mobileOpen = false; }
+    }"
+    x-init="$watch('mobileOpen', v => document.body.classList.toggle('overflow-hidden', v))"
+    class="min-h-screen"
+>
 
-        
-        <!-- Sidebar Header -->
-        <div class="flex items-center space-x-2 px-2">
-            <a href="#">
-                <x-application-logo class="block h-9 w-auto fill-current text-gray-200" />
-            </a>
-            <div>
-                <span class="text-2xl font-extrabold text-gray-200 block">Vendor BMS</span>
-                <span class="text-xl font-extrabold text-white block">Dashboard</span>
+    <!-- MOBILE OVERLAY -->
+    <div
+        x-show="mobileOpen"
+        x-transition.opacity
+        class="fixed inset-0 bg-black/40 z-30 lg:hidden"
+        @click="closeMobile()"
+        x-cloak
+    ></div>
+
+    <!-- SIDEBAR (ORANGE THEME) -->
+    <aside
+        class="fixed inset-y-0 left-0 z-40 bg-orange-600 border-r border-orange-800/30 shadow-sm flex flex-col transition-all duration-300"
+        :class="[
+            (mobileOpen ? 'translate-x-0' : '-translate-x-full') + ' lg:translate-x-0',
+            (sidebarOpen ? 'lg:w-72' : 'lg:w-20'),
+            'w-72'
+        ]"
+    >
+        <!-- BRAND -->
+        <div class="sticky top-0 z-10 bg-orange-600 border-b border-orange-800/30">
+            <div class="flex items-center justify-between gap-3 px-4 py-4">
+                <div class="flex items-center gap-3 min-w-0">
+                    <img src="{{ asset('images/logo-st2.png') }}"
+                         alt="Semen Tonasa Logo"
+                         class="h-9 w-auto drop-shadow-sm">
+
+                    <div class="min-w-0" x-show="sidebarOpen" x-transition>
+                        <div class="font-extrabold tracking-tight text-white leading-none">Vendor BMS</div>
+                        <div class="text-xs text-white/70 truncate">Dashboard</div>
+                    </div>
+                </div>
+
+                <!-- collapse button -->
+                <button
+                    @click="toggle()"
+                    class="inline-flex items-center justify-center w-10 h-10 rounded-xl hover:bg-white/10 text-white active:scale-[0.98] transition"
+                    aria-label="Toggle Sidebar"
+                >
+                    <i data-lucide="panel-left" class="w-5 h-5"></i>
+                </button>
             </div>
-        </div>
-        <nav class="mt-5">
-                <!-- Navigation Links -->
-                <a href="{{ route('pkm.dashboard') }}" 
-                class="block px-4 py-2 mt-2 text-sm font-semibold rounded-lg flex items-center 
-                {{ request()->routeIs('pkm.dashboard') ? 'bg-white text-orange-600' : 'text-white hover:bg-orange-600' }}">
-                    <i class="fas fa-tachometer-alt icon mr-2"></i>
-                    <span class="nav-text">Dashboard</span>
-                </a>
-                <a href="{{ route('pkm.jobwaiting') }}" 
-                    class="block px-4 py-2 mt-2 text-sm font-semibold rounded-lg flex items-center 
-                    {{ request()->routeIs('pkm.jobwaiting') ? 'bg-white text-orange-600' : 'text-white hover:bg-orange-600' }}">
-                        <i class="fa fa-bell icon mr-2"></i>
-                        <span class="nav-text">List Pekerjaan</span>
-                    </a>
-                    <a href="{{ route('pkm.items.index') }}" 
-                    class="block px-4 py-2 mt-2 text-sm font-semibold rounded-lg flex items-center 
-                    {{ request()->routeIs('pkm.items.index') ? 'bg-white text-orange-600' : 'text-white hover:bg-orange-600' }}">
-                    <i class="fa fa-boxes icon mr-2"></i>
-                    <span class="nav-text">Item Kebutuhan Kerjaan</span>
-                </a>
-                    <a href="{{ route('pkm.lhpp.index') }}" 
-                    class="block px-4 py-2 mt-2 text-sm font-semibold rounded-lg flex items-center 
-                    {{ request()->routeIs('pkm.lhpp.index') ? 'bg-white text-orange-600' : 'text-white hover:bg-orange-600' }}">
-                        <i class="fas fa-file-alt icon mr-2"></i>
-                        <span class="nav-text">Buat LHPP</span>
-                    </a>
 
-                    <a href="{{ route('pkm.laporan') }}" 
-                    class="block px-4 py-2 mt-2 text-sm font-semibold rounded-lg flex items-center 
-                    {{ request()->routeIs('pkm.laporan') ? 'bg-white text-orange-600' : 'text-white hover:bg-orange-600' }}">
-                        <i class="fas fa-tasks icon mr-2"></i>
-                        <span class="nav-text">Dokumen</span>
-                    </a>
-                    </nav>
-</aside>
-<!-- Main content -->
-<div :class="open ? 'ml-56' : 'ml-0'" class="flex-1 flex flex-col transition-all duration-300 bg-gray-100 overflow-y-auto">
-  <!-- Top Navigation -->
-  <nav class="bg-orange-500 shadow-lg">
-                <div class="px-4 sm:px-6 lg:px-8">
-                    <div class="relative flex items-center justify-between h-16">
-                        <div class="flex items-center">
-                            <!-- Logo di sebelah kiri -->
-                            <img src="{{ asset('images/logo-st2.png') }}" alt="Logo" class="h-10 w-auto mr-2">
-                            <!-- Teks di sebelah kiri -->
-                            <div class="flex flex-col text-white">
-                                <span class="font-bold text-sm">Halaman Dashboard Vendor Workshop Section</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-4">
-                        <!-- Dropdown Profil -->
-                        <x-dropdown align="right" width="48">
-                                        <x-slot name="trigger">
-                                            <button class="flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md bg-white text-gray-600 hover:text-gray-800 focus:outline-none transition duration-150">
-                                                <i class="fas fa-user-circle text-sm mr-1"></i>
-                                                <span>Welcome {{ Auth::user()->name }}</span>
-                                                <svg class="fill-current h-3 w-3 ml-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                                </svg>
-                                            </button>
-                                        </x-slot>
-                                <x-slot name="content">
-                                <x-slot name="content">
-    <x-dropdown-link :href="route('profile.edit')">
-        {{ __('Profile') }}
-    </x-dropdown-link>
-
-    <!-- Authentication -->
-    <form method="POST" action="{{ route('logout') }}">
-        @csrf
-        <x-dropdown-link :href="route('logout')"
-                         onclick="event.preventDefault();
-                         this.closest('form').submit();">
-            {{ __('Log Out') }}
-        </x-dropdown-link>
-    </form>
-</x-slot>
-
-                    </x-dropdown>
+            <!-- Search -->
+            <div class="px-4 pb-4" x-show="sidebarOpen" x-transition>
+                <div class="relative">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/60"></i>
+                    <input
+                        type="text"
+                        placeholder="Cari menu..."
+                        class="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-white/15 bg-white/10 text-white placeholder:text-white/50
+                               focus:outline-none focus:ring-2 focus:ring-white/25 focus:border-white/25"
+                    >
                 </div>
             </div>
         </div>
-    </nav>
 
-    <!-- Main Content -->
-    <main class="flex-1 p-5 bg-gray-100 overflow-y-auto">
-        {{ $slot }}
-    </main>
+        <!-- NAV -->
+        <div class="flex-1 overflow-y-auto no-scrollbar px-3 py-4">
+            <nav class="space-y-1 text-sm">
+
+                @foreach($pkmMenus as $m)
+                    <a href="{{ route($m['route']) }}"
+                       class="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition
+                              {{ request()->routeIs($m['route'])
+                                    ? 'bg-white text-orange-700 ring-1 ring-white/30'
+                                    : 'text-white/90 hover:bg-white/10' }}">
+                        <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl transition
+                                     {{ request()->routeIs($m['route'])
+                                            ? 'bg-orange-100 text-orange-700'
+                                            : 'bg-white/10 text-white/90 group-hover:bg-white/15' }}">
+                            <i data-lucide="{{ $m['icon'] }}" class="w-5 h-5"></i>
+                        </span>
+                        <span x-show="sidebarOpen" x-transition class="font-medium">{{ $m['label'] }}</span>
+                    </a>
+                @endforeach
+
+            </nav>
+        </div>
+
+        <!-- Footer -->
+        <div class="border-t border-white/10 p-3">
+            <div class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white/70">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                <span x-show="sidebarOpen" x-transition>Vendor • PKM</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN WRAPPER -->
+    <div class="min-h-screen transition-all duration-300"
+         :class="sidebarOpen ? 'lg:pl-72' : 'lg:pl-20'">
+
+        <!-- TOPBAR (ORANGE THEME) -->
+        <header class="sticky top-0 z-20 bg-orange-600 backdrop-blur border-b border-orange-800/30">
+            <div class="px-4 lg:px-6 py-3 flex items-center justify-between">
+
+                <!-- LEFT -->
+                <div class="flex items-center gap-3">
+                    <button
+                        @click="toggle()"
+                        class="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded-xl hover:bg-white/10 text-white transition"
+                        aria-label="Open Menu"
+                    >
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+
+                    <div class="flex items-center gap-2">
+                        <img src="{{ asset('images/logo-st2.png') }}" alt="Semen Tonasa Logo" class="h-9 w-auto">
+                    </div>
+
+                    <div class="hidden md:flex flex-col text-white leading-tight">
+                        <span class="font-extrabold tracking-tight">Vendor Workshop Section</span>
+                        <span class="text-xs text-white/80">Halaman Dashboard Vendor</span>
+                    </div>
+                </div>
+
+                <!-- RIGHT -->
+                <div class="flex items-center gap-3">
+
+                    <!-- PROFILE -->
+                    <x-dropdown align="right" width="48">
+                        <x-slot name="trigger">
+                            <button class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white text-orange-700 hover:bg-orange-50 transition">
+                                <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-orange-50 text-orange-700">
+                                    <i data-lucide="user" class="w-5 h-5"></i>
+                                </span>
+                                <span class="hidden sm:block text-sm font-semibold">
+                                    {{ Auth::user()->name ?? 'Vendor' }}
+                                </span>
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-orange-300"></i>
+                            </button>
+                        </x-slot>
+
+                        <x-slot name="content">
+                            <a href="{{ route('profile.edit') }}"
+                               class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                                Profile
+                            </a>
+
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <x-dropdown-link :href="route('logout')"
+                                                 onclick="event.preventDefault(); this.closest('form').submit();">
+                                    {{ __('Log Out') }}
+                                </x-dropdown-link>
+                            </form>
+                        </x-slot>
+                    </x-dropdown>
+
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENT -->
+        <main class="p-4 lg:p-6">
+            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 lg:p-6">
+                {{ $slot }}
+            </div>
+        </main>
+    </div>
 </div>
+
+<script>
+    lucide.createIcons();
+</script>
 </body>
 </html>

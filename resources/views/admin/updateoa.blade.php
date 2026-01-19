@@ -1,16 +1,20 @@
 <x-admin-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Input Kuota Anggaran & Outline Agreement') }}
-        </h2>
-    </x-slot>
-
-    <div class="container mx-auto p-6 bg-white shadow-md rounded-lg">
-        <div class="flex items-center justify-between mb-6">
-            <h2 class="text-2xl font-semibold">Input Kuota Anggaran & OA</h2>
-            <div>
-                <button onclick="confirmNewOA()" class="px-4 py-2 bg-green-500 text-white rounded-lg shadow hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400">
-                    Buat OA Baru
+    <div class="py-6">
+    <div class="w-full max-w-[98%] mx-auto">
+        <div class="admin-card p-5">
+        <div class="admin-header mb-6">
+            <div class="flex items-center gap-3">
+                <span class="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                    <i data-lucide="file-text" class="w-5 h-5"></i>
+                </span>
+                <div>
+                    <h1 class="admin-title">Input Kuota Anggaran & OA</h1>
+                    <p class="admin-subtitle">Kelola Outline Agreement dan kuota anggaran per unit kerja.</p>
+                </div>
+            </div>
+            <div class="admin-actions">
+                <button onclick="confirmNewOA()" class="admin-btn admin-btn-primary">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i> Buat OA Baru
                 </button>
             </div>
         </div>
@@ -423,4 +427,6 @@
             });
         }
     </script>
+        </div>
+    </div>
 </x-admin-layout>

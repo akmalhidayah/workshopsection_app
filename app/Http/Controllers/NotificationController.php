@@ -71,7 +71,7 @@ class NotificationController extends Controller
 
             $notifications = $query->paginate($entries)->withQueryString();
 
-            $units = UnitWork::orderBy('name')->get();
+            $units = UnitWork::with('sections')->orderBy('name')->get();
 
             return view('notifications.index', compact('notifications', 'units'));
         } catch (\Exception $e) {
@@ -129,13 +129,18 @@ NotificationService::notifyAdmin([
                 return response()->json(['message' => 'Order berhasil dibuat.'], Response::HTTP_CREATED);
             }
              // validasi seksi vs unit
-    $unit = \App\Models\UnitWork::where('name', $request->unit_work)->first();
-    if ($request->filled('seksi')) {
-        $allowed = $unit? $unit->seksi_list : [];
-        if (!in_array($request->seksi, $allowed, true)) {
-            return back()->withErrors(['seksi' => 'Seksi tidak valid untuk Unit Kerja terpilih.'])->withInput();
-        }
-    }
+            $unit = \App\Models\UnitWork::with('sections')->where('name', $request->unit_work)->first();
+            if ($request->filled('seksi')) {
+                $allowed = $unit
+                    ? $unit->sections->pluck('name')->filter()->values()->all()
+                    : [];
+                if (empty($allowed) && method_exists($unit, 'getSeksiListAttribute')) {
+                    $allowed = $unit->seksi_list;
+                }
+                if (!in_array($request->seksi, $allowed, true)) {
+                    return back()->withErrors(['seksi' => 'Seksi tidak valid untuk Unit Kerja terpilih.'])->withInput();
+                }
+            }
 
             return redirect()->route('notifications.index')->with('success', 'Order berhasil dibuat.');
         } catch (QueryException $e) {

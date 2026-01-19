@@ -9,10 +9,7 @@ use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\Hpp1;
 use App\Models\Notification;
-use App\Models\User;
-use App\Jobs\SendWhatsAppMessage;
-use App\Services\WhatsAppCloudService;
-use Illuminate\Support\Facades\Http;
+use App\Services\HppApproverResolver;
 use App\Services\HppApprovalLinkService;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Config;
@@ -173,65 +170,17 @@ public function store(Request $request)
 }
 private function issueFirstToken(Hpp1 $hpp): void
 {
-    $roleLower   = 'manager';
-    $unitPattern = 'unit of workshop%';
-
-    $user = User::query()
-        ->whereRaw('LOWER(jabatan) = ?', [$roleLower])
-        ->whereRaw('LOWER(unit_work) LIKE ?', [$unitPattern])
-        ->first();
+    $user = app(HppApproverResolver::class)->resolveApprover($hpp, 'manager');
 
     if (!$user) {
-        Log::warning('[HPP] Approver awal tidak ditemukan', [
+        Log::warning('[HPP] Approver awal tidak ditemukan (struktur org)', [
             'notif' => $hpp->notification_number,
-            'filter' => ['jabatan' => $roleLower, 'unit_like' => $unitPattern],
         ]);
         return;
     }
 
     $linkSvc = app(\App\Services\HppApprovalLinkService::class);
-    $tok     = $linkSvc->issue($hpp->notification_number, 'manager', $user->id, 60*24);
-    $url     = $linkSvc->url($tok);
-
-    // sanitize nomor
-    $to = preg_replace('/[^0-9]/', '', (string)$user->whatsapp_number);
-
-    if (empty($to) || strlen($to) < 8) {
-        Log::warning('[HPP] Nomor WhatsApp approver invalid', [
-            'user' => $user->id, 'whatsapp_number' => $user->whatsapp_number
-        ]);
-        return;
-    }
-
-    $message = "✍️ *Permintaan Tanda Tangan HPP*\n".
-               "No: {$hpp->notification_number}\n".
-               "Role: Manager\n".
-               "Klik untuk menandatangani:\n{$url}\n\n".
-               "_Link berlaku 24 jam & hanya untuk Anda_";
-
-    // prepare WA payload (template or text)
-    $payload = [
-        'messaging_product' => 'whatsapp',
-        'to' => $to,
-        'type' => 'text',
-        'text' => ['body' => $message],
-    ];
-
-    try {
-        // dispatch job (non-blocking)
-        SendWhatsAppMessage::dispatch($payload);
-
-        Log::info('[HPP] WA job dispatched', [
-            'notif' => $hpp->notification_number,
-            'user' => $user->id,
-            'to' => $to,
-        ]);
-    } catch (\Throwable $e) {
-        Log::error('[HPP] Gagal dispatch WA job: ' . $e->getMessage(), [
-            'notif' => $hpp->notification_number,
-            'user' => $user->id,
-        ]);
-    }
+    $linkSvc->issue($hpp->notification_number, 'manager', $user->id, 60*24);
 }
     public function edit($notification_number)
     {

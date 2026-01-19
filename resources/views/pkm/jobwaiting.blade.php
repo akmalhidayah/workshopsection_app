@@ -281,16 +281,16 @@
                                                 </div>
 
                                                 <div>
-                                                    <label class="text-[11px] text-gray-600">Status Persetujuan</label>
+                                                    <label class="text-[11px] text-gray-600">Status Persetujuan Target Penyelesaian</label>
                                                     <div class="flex items-center gap-2 text-[12px]">
                                                         <i class="fas fa-check-circle {{ optional($notification->purchaseOrder)->approval_target === 'setuju' ? 'text-green-500' : 'text-gray-400' }}"></i>
                                                         <span class="font-medium">
                                                             @if(optional($notification->purchaseOrder)->approval_target === 'setuju')
-                                                                Disetujui oleh Admin Bengkel
+                                                                Disetujui oleh Bengkel
                                                             @elseif(optional($notification->purchaseOrder)->approval_target === 'tidak_setuju')
-                                                                Tidak Disetujui oleh Admin Bengkel
+                                                                Tidak Disetujui oleh Bengkel
                                                             @else
-                                                                Belum Ditentukan
+                                                                Tanggal Belum Disetujui 
                                                             @endif
                                                         </span>
                                                     </div>

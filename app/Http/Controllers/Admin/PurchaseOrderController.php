@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\PurchaseOrder;
 use App\Models\Notification;
+use App\Models\UnitWork;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 
@@ -68,37 +69,17 @@ class PurchaseOrderController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $rawNotifications = $query->orderBy('created_at', 'desc')->paginate($entries);
+        $query
+            ->whereHas('dokumenOrders', function ($q) {
+                $q->where('jenis_dokumen', 'abnormalitas');
+            })
+            ->whereHas('dokumenOrders', function ($q) {
+                $q->where('jenis_dokumen', 'gambar_teknik');
+            })
+            ->whereHas('scopeOfWork')
+            ->whereHas('hpp1');
 
-        // Ambil items halaman ini
-        $pageItems = collect($rawNotifications->items());
-
-        // Filter manual: dokumen harus lengkap & ada HPP
-        $filtered = $pageItems->filter(function ($n) {
-
-            $hasAbnormal = $n->dokumenOrders->where('jenis_dokumen', 'abnormalitas')->isNotEmpty();
-            $hasGambar   = $n->dokumenOrders->where('jenis_dokumen', 'gambar_teknik')->isNotEmpty();
-            $hasScope    = $n->scopeOfWork !== null;
-            $hasHpp      = $n->hpp1 !== null;
-
-            return $hasAbnormal && $hasGambar && $hasScope && $hasHpp;
-        })->values();
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | 3. Bungkus ulang hasil filter jadi paginator baru
-        |    agar pagination tetap berfungsi normal
-        |--------------------------------------------------------------------------
-        */
-
-        $notifications = new \Illuminate\Pagination\LengthAwarePaginator(
-            $filtered->forPage($rawNotifications->currentPage(), $rawNotifications->perPage()),
-            $filtered->count(),
-            $rawNotifications->perPage(),
-            $rawNotifications->currentPage(),
-            ['path' => $rawNotifications->path()]
-        );
+        $notifications = $query->orderBy('created_at', 'desc')->paginate($entries);
 
         /*
         |--------------------------------------------------------------------------
@@ -133,7 +114,7 @@ class PurchaseOrderController extends Controller
                 $po = $notification->purchaseOrder;
                 $allApproved = true;
 
-                $approvalStatuses = ($notification->source_form === 'createhpp1')
+                $approvalStatuses = (in_array($notification->source_form, ['createhpp1', 'createhpp3', 'createhpp5'], true))
                     ? [
                         $po->approve_manager,
                         $po->approve_senior_manager,
@@ -162,7 +143,7 @@ class PurchaseOrderController extends Controller
                     if (!$po->approve_manager) $approvalWaitList[] = 'Manager';
                     if (!$po->approve_senior_manager) $approvalWaitList[] = 'Senior Manager';
                     if (!$po->approve_general_manager) $approvalWaitList[] = 'General Manager';
-                    if ($notification->source_form === 'createhpp1' && !$po->approve_direktur_operasional) {
+                    if (in_array($notification->source_form, ['createhpp1', 'createhpp3', 'createhpp5'], true) && !$po->approve_direktur_operasional) {
                         $approvalWaitList[] = 'Direktur Operasional';
                     }
 
@@ -178,6 +159,8 @@ class PurchaseOrderController extends Controller
         | 5. Render ke View
         |--------------------------------------------------------------------------
         */
+        $units = UnitWork::orderBy('name')->pluck('name');
+
         return view('admin.purchaseorder', compact(
             'notifications',
             'search',
@@ -185,7 +168,8 @@ class PurchaseOrderController extends Controller
             'status',
             'unit',
             'from',
-            'to'
+            'to',
+            'units'
         ));
 
     } catch (\Throwable $e) {
@@ -205,7 +189,7 @@ class PurchaseOrderController extends Controller
             $request->validate([
                 'purchase_order_number' => 'required|string|max:255',
                 'po_document' => 'nullable|file|mimes:pdf,doc,docx,xlsx,jpg,png|max:10240',
-                'approval_target' => 'required|string|in:setuju,tidak_setuju',
+                'approval_target' => 'nullable|string|in:setuju,tidak_setuju',
                 'approval_note'   => 'nullable|string|max:1000',
                 'catatan_pkm'     => 'nullable|string|max:1000',
                 'target_penyelesaian' => 'nullable|date',

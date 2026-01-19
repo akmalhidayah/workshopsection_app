@@ -14,8 +14,9 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- Vite (Tailwind + app JS) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <!-- <link rel="stylesheet" href="{{ asset('build/assets/app-BD6FMr64.css') }}">
+             <!-- <link rel="stylesheet" href="{{ asset('build/assets/app-CSwLQ2bl.css') }}">
     <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script>  -->
     
     </head>

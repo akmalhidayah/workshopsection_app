@@ -5,11 +5,12 @@ namespace App\Http\Controllers;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\SystemNotification;
 use App\Models\LHPP;
 use App\Models\Notification;
 use App\Models\User;
-use App\Models\LhppApprovalToken;
-use App\Services\LhppApprovalLinkService;
+use App\Models\LHPPApprovalToken;
+use App\Services\LHPPApprovalLinkService;
 use Illuminate\Support\Facades\Log;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Facades\Http;
@@ -29,7 +30,8 @@ class LHPPController extends Controller
         // Build query: ambil LHPP + left join ke LPJ untuk status termin
         $query = DB::table('lhpp as l')
             ->leftJoin('lpjs as p', 'l.notification_number', '=', 'p.notification_number')
-            ->select('l.*', 'p.termin1', 'p.termin2');
+            ->leftJoin('notifications as n', 'l.notification_number', '=', 'n.notification_number')
+            ->select('l.*', 'p.termin1', 'p.termin2', 'n.seksi');
 
         // Search (search di notification_number, purchase_order_number, unit_kerja)
         if ($search) {
@@ -86,7 +88,7 @@ class LHPPController extends Controller
                 $notifNumbers = $lhppRows->pluck('notification_number')->filter()->unique()->values()->all();
 
                 if (!empty($notifNumbers)) {
-                    $activeTokens = LhppApprovalToken::whereIn('notification_number', $notifNumbers)
+                    $activeTokens = LHPPApprovalToken::whereIn('notification_number', $notifNumbers)
                         ->whereNull('used_at')
                         ->where(function ($q) {
                             $q->whereNull('expires_at')
@@ -135,8 +137,7 @@ class LHPPController extends Controller
 
         return view('pkm.lhpp.create', compact('notifications'));
     }
-
-  public function store(Request $request)
+public function store(Request $request)
 {
     $validated = $request->validate([
         'notification_number'   => 'required|string|max:255',
@@ -217,67 +218,16 @@ class LHPPController extends Controller
             'images'                   => count($imageData) > 0 ? $imageData : null,
         ]);
 
-        // === ISSUE TOKEN PERTAMA UNTUK MANAGER USER (Unit Kerja Peminta) ===
+        // 🔔 === BUAT NOTIFIKASI ADMIN ===
+        $this->notifyAdminNewLhpp($lhpp);
+
+        // === ISSUE TOKEN PERTAMA UNTUK MANAGER USER (via Struktur Organisasi) ===
         try {
             $this->issueFirstTokenForLHPP($lhpp);
         } catch (\Throwable $e) {
-            Log::error('[LHPP] Gagal issue first token: ' . $e->getMessage(), [
+            Log::error('[LHPP] Gagal issue first token: '.$e->getMessage(), [
                 'notif' => $lhpp->notification_number,
             ]);
-            // tidak digagalkan, hanya dicatat
-        }
-
-        // === Kirim notifikasi WhatsApp ke Manager User (pakai URL token kalau ada) ===
-        $managers = User::query()
-            ->where('unit_work', $validated['unit_kerja'])   // Manager User di unit kerja peminta
-            ->whereRaw('LOWER(jabatan) = ?', ['manager'])
-            ->get();
-
-        foreach ($managers as $manager) {
-            try {
-                // Cari token aktif manager_user untuk manager ini (jika ada)
-                $token = LhppApprovalToken::where('notification_number', $lhpp->notification_number)
-                    ->where('user_id', $manager->id)
-                    ->where('sign_type', 'manager_user')
-                    ->whereNull('used_at')
-                    ->where(function ($q) {
-                        $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-                    })
-                    ->orderBy('created_at', 'desc')
-                    ->first();
-
-                $url = $token
-                    ? app(LhppApprovalLinkService::class)->url($token->id)
-                    : url('/approval/lhpp'); // fallback umum
-
-                $message =
-                    "Permintaan Approval Pembuatan LHPP:\n" .
-                    "Nomor Notifikasi: {$validated['notification_number']}\n" .
-                    "Deskripsi: {$validated['description_notifikasi']}\n" .
-                    "Unit Kerja: {$validated['unit_kerja']}\n\n" .
-                    "Silakan buka link berikut untuk melihat & menyetujui LHPP:\n{$url}";
-
-                Http::withHeaders([
-                    'Authorization' => env('FONNTE_TOKEN', 'KBTe2RszCgc6aWhYapcv'),
-                ])->post('https://api.fonnte.com/send', [
-                    'target'  => $manager->whatsapp_number,
-                    'message' => $message,
-                ]);
-
-                Log::info("[LHPP] WhatsApp notification sent to Manager User", [
-                    'notif'   => $lhpp->notification_number,
-                    'manager' => $manager->whatsapp_number,
-                ]);
-            } catch (\Throwable $e) {
-                Log::error("[LHPP] Gagal mengirim WhatsApp ke {$manager->whatsapp_number}: " . $e->getMessage());
-            }
-        }
-
-        // Logic lama: kalau sudah ada tanda tangan Manager PKM → kirim WA ke admin
-        $lhppFresh = LHPP::where('notification_number', $validated['notification_number'])->first();
-
-        if (!empty($lhppFresh) && !empty($lhppFresh->manager_pkm_signature)) {
-            $this->sendWhatsAppToAdmin($lhppFresh);
         }
 
         return redirect()
@@ -285,7 +235,7 @@ class LHPPController extends Controller
             ->with('success', 'Data LHPP berhasil disimpan.');
 
     } catch (\Throwable $e) {
-        Log::error("[LHPP] Error saving LHPP: " . $e->getMessage(), [
+        Log::error("[LHPP] Error saving LHPP: ".$e->getMessage(), [
             'trace' => $e->getTraceAsString(),
         ]);
 
@@ -295,43 +245,54 @@ class LHPPController extends Controller
             ->withInput();
     }
 }
-
-   /**
- * Issue token pertama untuk LHPP → Manager User (unit kerja peminta).
- */
-/**
- * Issue token pertama untuk LHPP → Manager User (unit kerja peminta).
- */
 private function issueFirstTokenForLHPP(LHPP $lhpp): void
 {
-    // Manager User berdasarkan unit_kerja LHPP
-    $unitUser = $lhpp->unit_kerja;
-
-    if (empty($unitUser)) {
-        Log::warning('[LHPP] Tidak bisa issue token: unit_kerja kosong', [
-            'notif' => $lhpp->notification_number,
+    if (! $lhpp->notification_number) {
+        Log::warning('[LHPP] Tidak bisa issue token: notification_number kosong', [
+            'lhpp_id' => $lhpp->id,
         ]);
         return;
     }
 
-    // Cari user dengan jabatan Manager di unit_kerja tsb
-    $manager = User::query()
-        ->where('unit_work', $unitUser)
-        ->whereRaw('LOWER(jabatan) = ?', ['manager'])
+    $notification = \App\Models\Notification::where(
+        'notification_number',
+        $lhpp->notification_number
+    )->first();
+
+    if (! $notification || ! $notification->unit_work || ! $notification->seksi) {
+        Log::warning('[LHPP] Data notification/unit_work/seksi tidak lengkap saat issue token pertama', [
+            'notif'     => $lhpp->notification_number,
+            'unit_work' => $notification->unit_work ?? null,
+            'seksi'     => $notification->seksi ?? null,
+        ]);
+        return;
+    }
+
+    $unitWork = \App\Models\UnitWork::where('name', $notification->unit_work)->first();
+    if (! $unitWork) {
+        Log::warning('[LHPP] UnitWork tidak ditemukan saat issue token pertama', [
+            'notif'     => $lhpp->notification_number,
+            'unit_work' => $notification->unit_work,
+        ]);
+        return;
+    }
+
+    $section = $unitWork->sections()
+        ->where('name', $notification->seksi)
         ->first();
 
-    if (! $manager) {
-        Log::warning('[LHPP] Manager User tidak ditemukan untuk issue token', [
-            'notif' => $lhpp->notification_number,
-            'unit'  => $unitUser,
+    if (! $section || ! $section->manager) {
+        Log::warning('[LHPP] Section/Manager tidak ditemukan saat issue token pertama', [
+            'notif'     => $lhpp->notification_number,
+            'seksi'     => $notification->seksi,
         ]);
         return;
     }
 
+    $manager  = $section->manager;
     $signType = 'manager_user';
 
-    // Cek kalau sudah ada token aktif untuk kombinasi ini
-    $exists = LhppApprovalToken::where('notification_number', $lhpp->notification_number)
+    $exists = \App\Models\LHPPApprovalToken::where('notification_number', $lhpp->notification_number)
         ->where('user_id', $manager->id)
         ->where('sign_type', $signType)
         ->whereNull('used_at')
@@ -349,56 +310,58 @@ private function issueFirstTokenForLHPP(LHPP $lhpp): void
         return;
     }
 
-    $linkSvc = app(LhppApprovalLinkService::class);
+    $linkSvc = app(\App\Services\LHPPApprovalLinkService::class);
 
-    // Token pertama: Manager User
     $tokenId = $linkSvc->issue(
         $lhpp->notification_number,
         $signType,
         $manager->id,
-        60 * 24 // 24 jam / sesukamu
+        60 * 24 // misal 24 jam
     );
 
-    $url = $linkSvc->url($tokenId);
-
-    Log::info('[LHPP] First token issued for Manager User', [
-        'notif'     => $lhpp->notification_number,
-        'user'      => $manager->id,
-        'sign_type' => $signType,
-        'url'       => $url,
+    Log::info('[LHPP] First token issued for Manager User (Struktur Org)', [
+        'notif' => $lhpp->notification_number,
+        'user'  => $manager->id,
+        'token' => $tokenId,
     ]);
 }
+private function notifyAdminNewLhpp(LHPP $lhpp): void
+{
+    try {
+        // Ambil primary key LHPP (bisa id, bisa notification_number tergantung model)
+        $entityId = $lhpp->getKey();
 
-    private function sendWhatsAppToAdmin($lhpp)
-    {
-        $admins = User::where('usertype', 'admin')->get();
-
-        foreach ($admins as $admin) {
-            try {
-                $message =
-                    "Review LHPP Diperlukan:\n" .
-                    "Nomor Notifikasi: {$lhpp->notification_number}\n" .
-                    "Deskripsi: {$lhpp->description_notifikasi}\n" .
-                    "Unit Kerja: {$lhpp->unit_kerja}\n\n" .
-                    "Silakan login untuk melakukan review:\n" .
-                    "https://sectionofworkshop.com/admin/lhpp";
-
-                Http::withHeaders([
-                    'Authorization' => env('FONNTE_TOKEN', 'KBTe2RszCgc6aWhYapcv'),
-                ])->post('https://api.fonnte.com/send', [
-                    'target'  => $admin->whatsapp_number,
-                    'message' => $message,
-                ]);
-
-                Log::info("[LHPP] WhatsApp notification sent to Admin", [
-                    'admin' => $admin->whatsapp_number,
-                    'notif' => $lhpp->notification_number,
-                ]);
-            } catch (\Throwable $e) {
-                Log::error("[LHPP] Gagal mengirim WhatsApp ke Admin {$admin->whatsapp_number}: " . $e->getMessage());
-            }
+        // Kalau masih kosong/null, fallback ke notification_number
+        if (empty($entityId)) {
+            $entityId = is_numeric($lhpp->notification_number)
+                ? (int) $lhpp->notification_number
+                : 0;
         }
+
+        SystemNotification::create([
+            'title'       => 'LHPP baru dibuat',
+            'description' => sprintf(
+                'LHPP %s untuk Unit Kerja %s telah dibuat dan menunggu proses approval.',
+                $lhpp->notification_number,
+                $lhpp->unit_kerja ?? '-'
+            ),
+          'url'         => route('admin.lhpp.index'),
+            'target_role' => 'admin',
+
+            'entity_type' => 'lhpp',
+            'entity_id'   => $entityId,
+            'action'      => 'created',   // ✅ WAJIB: isi kolom action
+            'priority'    => 'high',
+            'is_read'     => false,
+        ]);
+    } catch (\Throwable $e) {
+        Log::error('[LHPP] Gagal membuat SystemNotification admin', [
+            'notif' => $lhpp->notification_number,
+            'err'   => $e->getMessage(),
+        ]);
     }
+}
+
 
     public function getPurchaseOrder($notificationNumber)
     {
@@ -527,7 +490,7 @@ private function issueFirstTokenForLHPP(LHPP $lhpp): void
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
-            'nomor_order'           => 'required|string|max:255',
+            'nomor_order'           => 'nullable|string|max:255',
             'description_notifikasi'=> 'nullable|string',
             'purchase_order_number' => 'required|string|max:255',
             'unit_kerja'            => 'required|string|max:255',
@@ -549,6 +512,8 @@ private function issueFirstTokenForLHPP(LHPP $lhpp): void
             'material_subtotal'     => 'nullable|numeric',
             'upah_subtotal'         => 'nullable|numeric',
             'total_biaya'           => 'nullable|numeric',
+
+            'kontrak_pkm'           => 'required|string|in:Fabrikasi,Konstruksi,Pengerjaan Mesin',
 
             'new_images.*'          => 'image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);

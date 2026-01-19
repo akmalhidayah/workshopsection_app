@@ -27,7 +27,7 @@
                         <select name="unit_work" id="unitKerjaCreate" class="w-full border rounded p-2" required>
                             <option value="">Pilih Unit</option>
                             @foreach ($units as $unit)
-                                <option value="{{ $unit->name }}" data-seksi='@json($unit->seksi_list)'>
+                                <option value="{{ $unit->name }}" data-seksi='@json($unit->sections->pluck("name"))'>
                                     {{ $unit->name }}
                                 </option>
                             @endforeach

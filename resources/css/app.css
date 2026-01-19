@@ -1,3 +1,56 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* Hide scrollbar but keep scroll */
+.no-scrollbar {
+  -ms-overflow-style: none;     /* IE & Edge */
+  scrollbar-width: none;        /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;                /* Chrome, Safari */
+}
+
+@layer components {
+  .admin-card {
+    @apply bg-white border border-slate-200 rounded-2xl shadow-sm;
+  }
+  .admin-header {
+    @apply flex flex-wrap items-start justify-between gap-4;
+  }
+  .admin-title {
+    @apply text-2xl font-extrabold text-slate-900 tracking-tight;
+  }
+  .admin-subtitle {
+    @apply text-sm text-slate-500;
+  }
+  .admin-actions {
+    @apply flex flex-wrap items-center gap-2;
+  }
+  .admin-filter {
+    @apply flex flex-wrap items-end gap-3;
+  }
+  .admin-input {
+    @apply h-10 w-full md:w-64 rounded-xl border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-1 focus:ring-blue-500/30;
+  }
+  .admin-select {
+    @apply h-10 w-full md:w-48 rounded-xl border-slate-300 bg-white text-sm text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-500/30;
+  }
+  .admin-btn {
+    @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30;
+  }
+  .admin-btn-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800;
+  }
+  .admin-btn-ghost {
+    @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-100;
+  }
+  .admin-btn-soft {
+    @apply bg-blue-600 text-white hover:bg-blue-700;
+  }
+  .admin-badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold;
+  }
+  .admin-badge-soft {
+    @apply bg-white text-slate-700 border border-slate-300;
+  }
+}

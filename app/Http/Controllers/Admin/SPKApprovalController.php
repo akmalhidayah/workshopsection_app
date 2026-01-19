@@ -7,6 +7,8 @@ use App\Models\SPK;
 use App\Models\User;
 use App\Models\DokumenOrder;
 use App\Models\SPKApprovalToken;
+use App\Models\Notification;
+use App\Models\UnitWork;
 use App\Services\SPKApprovalLinkService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -35,30 +37,32 @@ class SPKApprovalController extends Controller
         $link = $svc->validate($token);
         $user = auth()->user();
 
-        if ((int) $link->user_id !== (int) $user->id) {
+        if (! $user || (int) $link->user_id !== (int) $user->id) {
             abort(Response::HTTP_FORBIDDEN, 'Token bukan milik Anda.');
         }
 
         $spk = SPK::findOrFail($link->nomor_spk);
 
-        if (! $this->canSignForType($user, $link->sign_type)) {
+        // cek hak sign berdasarkan struktur Workshop (fixed Unit of Workshop & Design)
+        if (! $this->canSignForType($user, $link->sign_type, $spk)) {
             abort(Response::HTTP_FORBIDDEN, 'Anda tidak berhak sign SPK ini.');
         }
 
+        // cek urutan approval (manager -> senior_manager)
         if (! $this->canProceed($spk, $link->sign_type)) {
             abort(Response::HTTP_FORBIDDEN, 'Urutan approval belum sesuai.');
         }
-        $dokumenAbnormalitas = DokumenOrder::where('notification_number', $spk->notification_number)
-    ->where('jenis_dokumen', 'abnormalitas')
-    ->first();
 
+        $dokumenAbnormalitas = DokumenOrder::where('notification_number', $spk->notification_number)
+            ->where('jenis_dokumen', 'abnormalitas')
+            ->first();
 
         return view('admin.inputspk.approval', [
-            'spk'       => $spk,
-            'token'     => $token,
-            'sign_type' => $link->sign_type,
-            'signTypeLabel' => $this->label($link->sign_type),
-                'dokumenAbnormalitas' => $dokumenAbnormalitas,
+            'spk'                 => $spk,
+            'token'               => $token,
+            'sign_type'           => $link->sign_type,
+            'signTypeLabel'       => $this->label($link->sign_type),
+            'dokumenAbnormalitas' => $dokumenAbnormalitas,
         ]);
     }
 
@@ -74,18 +78,20 @@ class SPKApprovalController extends Controller
         $link = $svc->validate($token);
         $user = auth()->user();
 
-        if ((int) $link->user_id !== (int) $user->id) {
+        if (! $user || (int) $link->user_id !== (int) $user->id) {
             abort(Response::HTTP_FORBIDDEN, 'Token bukan milik Anda.');
         }
 
         $spk = SPK::findOrFail($link->nomor_spk);
 
-        if (! $this->canSignForType($user, $link->sign_type)) {
-            abort(Response::HTTP_FORBIDDEN);
+        // cek hak sign berdasarkan struktur Workshop
+        if (! $this->canSignForType($user, $link->sign_type, $spk)) {
+            abort(Response::HTTP_FORBIDDEN, 'Anda tidak berhak sign SPK ini.');
         }
 
+        // cek urutan
         if (! $this->canProceed($spk, $link->sign_type)) {
-            abort(Response::HTTP_FORBIDDEN);
+            abort(Response::HTTP_FORBIDDEN, 'Urutan approval belum sesuai.');
         }
 
         /* ===============================
@@ -104,7 +110,7 @@ class SPKApprovalController extends Controller
                 'manager_signed_at'         => now(),
             ]);
 
-            // ISSUE TOKEN SENIOR MANAGER
+            // ISSUE TOKEN SENIOR MANAGER (berdasarkan struktur Unit of Workshop & Design)
             $this->issueNextToken($spk, 'senior_manager');
         }
 
@@ -118,10 +124,9 @@ class SPKApprovalController extends Controller
 
         $svc->markUsed($link);
 
-       return redirect()
-    ->route('spk.show', $spk->notification_number)
-    ->with('success', 'SPK berhasil ditandatangani.');
-
+        return redirect()
+            ->route('spk.show', $spk->notification_number)
+            ->with('success', 'SPK berhasil ditandatangani.');
     }
 
     /* =====================================================
@@ -145,17 +150,17 @@ class SPKApprovalController extends Controller
     }
 
     /* =====================================================
-     * ISSUE NEXT TOKEN
+     * ISSUE NEXT TOKEN (SENIOR MANAGER)
      * ===================================================== */
     private function issueNextToken(SPK $spk, string $type): void
     {
-        $user = User::query()
-            ->whereRaw('LOWER(jabatan) LIKE ?', ['%senior%'])
-            ->whereRaw('LOWER(unit_work) LIKE ?', ['%workshop%'])
-            ->first();
+        // ambil Senior Manager dari struktur Unit of Workshop & Design
+        $user = $this->getSpkSeniorManagerUser($spk);
 
         if (! $user) {
-            Log::warning('[SPK] Senior Manager tidak ditemukan');
+            Log::warning('[SPK] Senior Manager Workshop tidak ditemukan (struktur org)', [
+                'nomor_spk' => $spk->nomor_spk,
+            ]);
             return;
         }
 
@@ -166,27 +171,45 @@ class SPKApprovalController extends Controller
             userId: $user->id,
             minutes: 60 * 24
         );
+
+        Log::info('[SPK] Token untuk Senior Manager Workshop issued', [
+            'nomor_spk' => $spk->nomor_spk,
+            'user_id'   => $user->id,
+        ]);
     }
 
     /* =====================================================
-     * HELPERS
+     * HELPERS: APPROVAL FLOW
      * ===================================================== */
-    private function canSignForType(User $user, string $type): bool
+
+    /**
+     * Cek apakah user ini boleh sign SPK untuk sign_type tertentu
+     * berdasarkan struktur Workshop (Unit of Workshop & Design).
+     */
+    private function canSignForType(User $user, string $type, SPK $spk): bool
     {
-        $jabatan = strtolower($user->jabatan ?? '');
-        $unit    = strtolower($user->unit_work ?? '');
-
-        return match ($type) {
-            'manager' =>
-                str_contains($jabatan, 'manager') && str_contains($unit, 'workshop'),
-
-            'senior_manager' =>
-                str_contains($jabatan, 'senior') && str_contains($unit, 'workshop'),
-
-            default => false,
+        $expected = match ($type) {
+            'manager'        => $this->getSpkManagerUser($spk),
+            'senior_manager' => $this->getSpkSeniorManagerUser($spk),
+            default          => null,
         };
+
+        if (! $expected) {
+            Log::warning('[SPK] Expected approver tidak ditemukan (struktur org belum lengkap)', [
+                'nomor_spk' => $spk->nomor_spk,
+                'sign_type' => $type,
+            ]);
+            return false;
+        }
+
+        return (int) $expected->id === (int) $user->id;
     }
 
+    /**
+     * Cek urutan approval:
+     * - manager        : boleh kalau manager belum sign
+     * - senior_manager : boleh kalau manager sudah sign dan senior_manager belum sign
+     */
     private function canProceed(SPK $spk, string $type): bool
     {
         return match ($type) {
@@ -207,5 +230,88 @@ class SPKApprovalController extends Controller
             'senior_manager' => 'Senior Manager Workshop',
             default          => ucfirst($type),
         };
+    }
+
+    /* =====================================================
+     * RESOLVER APPROVER BERDASAR STRUKTUR WORKSHOP
+     * ===================================================== */
+
+    /**
+     * Manager Workshop untuk SPK:
+     * Selalu Manager dari:
+     *  - UnitWork.name  = 'Unit of Workshop & Design'
+     *  - Section.name   = 'Section of Machine Workshop'
+     */
+    private function getSpkManagerUser(SPK $spk): ?User
+    {
+        // notification hanya dipakai untuk logging bila perlu
+        $notification = Notification::where('notification_number', $spk->notification_number)->first();
+
+        $unitWork = UnitWork::where('name', 'Unit of Workshop & Design')->first();
+
+        if (! $unitWork) {
+            Log::warning('[SPK][Resolver] UnitWork Workshop (Unit of Workshop & Design) tidak ditemukan', [
+                'nomor_spk' => $spk->nomor_spk,
+                'notif'     => $spk->notification_number,
+                'notif_unit_work' => $notification?->unit_work,
+            ]);
+            return null;
+        }
+
+        $section = $unitWork->sections()
+            ->where('name', 'Section of Machine Workshop')
+            ->first();
+
+        if (! $section) {
+            Log::warning('[SPK][Resolver] Section of Machine Workshop tidak ditemukan', [
+                'nomor_spk' => $spk->nomor_spk,
+                'notif'     => $spk->notification_number,
+                'unit_work' => $unitWork->name,
+            ]);
+            return null;
+        }
+
+        if (! $section->manager) {
+            Log::warning('[SPK][Resolver] Manager Section of Machine Workshop belum di-set', [
+                'nomor_spk' => $spk->nomor_spk,
+                'notif'     => $spk->notification_number,
+                'seksi'     => $section->name,
+            ]);
+            return null;
+        }
+
+        return $section->manager;
+    }
+
+    /**
+     * Senior Manager Workshop untuk SPK:
+     * UnitWork 'Unit of Workshop & Design' -> relasi seniorManager
+     */
+    private function getSpkSeniorManagerUser(SPK $spk): ?User
+    {
+        // notification lagi-lagi cuma buat logging
+        $notification = Notification::where('notification_number', $spk->notification_number)->first();
+
+        $unitWork = UnitWork::where('name', 'Unit of Workshop & Design')->first();
+
+        if (! $unitWork) {
+            Log::warning('[SPK][Resolver] UnitWork Workshop (Unit of Workshop & Design) tidak ditemukan untuk Senior Manager', [
+                'nomor_spk' => $spk->nomor_spk,
+                'notif'     => $spk->notification_number,
+                'notif_unit_work' => $notification?->unit_work,
+            ]);
+            return null;
+        }
+
+        if (! $unitWork->seniorManager) {
+            Log::warning('[SPK][Resolver] Senior Manager untuk Unit of Workshop & Design belum di-set', [
+                'nomor_spk'  => $spk->nomor_spk,
+                'notif'      => $spk->notification_number,
+                'unit_work'  => $unitWork->name,
+            ]);
+            return null;
+        }
+
+        return $unitWork->seniorManager;
     }
 }

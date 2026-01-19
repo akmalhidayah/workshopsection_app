@@ -1,30 +1,28 @@
 <x-admin-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Stock Kawat Las') }}
-        </h2>
-    </x-slot>
-
     <div class="py-6">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 shadow-lg sm:rounded-lg p-6">
-                <div class="flex justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Daftar Jenis Kawat Las</h3>
-                    <div class="flex gap-2">
-                        <!-- Tombol Cost Element Global -->
-                        <a href="{{ route('admin.cost-element.edit') }}"
-                           class="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
-                            <i class="fas fa-cogs mr-1"></i> Atur Cost Element
+            <div class="admin-card p-5">
+                <div class="admin-header mb-4">
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-slate-50 text-slate-600">
+                            <i data-lucide="layers" class="w-5 h-5"></i>
+                        </span>
+                        <div>
+                            <h1 class="admin-title">Stock Kawat Las</h1>
+                            <p class="admin-subtitle">Daftar jenis kawat las dan cost element.</p>
+                        </div>
+                    </div>
+                    <div class="admin-actions">
+                        <a href="{{ route('admin.cost-element.edit') }}" class="admin-btn admin-btn-ghost">
+                            <i data-lucide="settings" class="w-4 h-4"></i> Atur Cost Element
                         </a>
-                        <!-- Tombol Tambah Jenis -->
-                        <button onclick="openCreateModal()" 
-                                class="px-3 py-2 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700">
-                            + Tambah Jenis
+                        <button onclick="openCreateModal()" class="admin-btn admin-btn-primary">
+                            <i data-lucide="plus-circle" class="w-4 h-4"></i> Tambah Jenis
                         </button>
                     </div>
                 </div>
 
-                <!-- Table -->
+<!-- Table -->
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                         <thead class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">

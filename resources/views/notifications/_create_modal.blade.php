@@ -31,14 +31,9 @@
   <select name="unit_work" id="unitKerjaCreate" data-role="unit" class="w-full px-3 py-2 rounded border" required>
       <option value="">Pilih Unit Kerja</option>
       @foreach($units as $unit)
-          <option value="{{ $unit->name }}" data-seksi='@json($unit->seksi_list)'>
+          <option value="{{ $unit->name }}" data-seksi='@json($unit->sections->pluck("name"))'>
               {{ $unit->name }}
           </option>
-          {{-- Debug sementara --}}
-@if($units->isEmpty())
-  <div class="text-red-600 text-xs">Unit kerja belum ada di DB.</div>
-@endif
-
       @endforeach
   </select>
 </div>

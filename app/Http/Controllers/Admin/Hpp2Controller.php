@@ -9,9 +9,8 @@ use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\Hpp1;
 use App\Models\Notification;
-use App\Models\User;
-use Illuminate\Support\Facades\Http;
 use App\Services\HppApprovalLinkService;
+use App\Services\HppApproverResolver;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Config;
 
@@ -170,50 +169,20 @@ public function store(Request $request)
 // di dalam class Hpp1Controller
 private function issueFirstToken(Hpp1 $hpp): void
 {
-    // tahap pertama: Manager Unit of Workshop (toleran variasi penamaan)
-    $roleLower   = 'manager';
-    $unitPattern = 'unit of workshop%'; // contoh: "Unit of Workshop", "Unit of Workshop & Design", dst.
-
-    // cari user approver pertama (lebih toleran & jelas saat gagal)
-    $user = User::query()
-        ->whereRaw('LOWER(jabatan) = ?', [$roleLower])
-        ->whereRaw('LOWER(unit_work) LIKE ?', [$unitPattern])
-        ->first();
+    $user = app(HppApproverResolver::class)->resolveApprover($hpp, 'manager');
 
     if (!$user) {
-        \Log::warning('[HPP] Approver awal tidak ditemukan', [
+        Log::warning('[HPP] Approver awal tidak ditemukan (struktur org)', [
             'notif' => $hpp->notification_number,
-            'filter' => ['jabatan' => $roleLower, 'unit_like' => $unitPattern],
         ]);
         return;
     }
 
-    // terbitkan token + buat URL
     $linkSvc = app(HppApprovalLinkService::class);
-    $tok     = $linkSvc->issue($hpp->notification_number, 'manager', $user->id, 60*24);
+    $tok     = $linkSvc->issue($hpp->notification_number, 'manager', $user->id, 60 * 24);
     $url     = $linkSvc->url($tok);
 
-    // kirim WA (opsional; error tidak memblokir proses)
-    try {
-        Http::withHeaders(['Authorization' => 'KBTe2RszCgc6aWhYapcv'])
-            ->post('https://api.fonnte.com/send', [
-                'target'  => $user->whatsapp_number,
-                'message' =>
-                    "✍️ *Permintaan Tanda Tangan HPP*\n".
-                    "No: {$hpp->notification_number}\n".
-                    "Role: Manager\n".
-                    "Klik untuk menandatangani:\n{$url}\n\n".
-                    "_Link berlaku 24 jam & hanya untuk Anda_",
-            ]);
-    } catch (\Throwable $e) {
-        \Log::error('[HPP] Gagal kirim WA first token', [
-            'notif' => $hpp->notification_number,
-            'user'  => $user->id,
-            'error' => $e->getMessage(),
-        ]);
-    }
-
-    \Log::info('[HPP] First token issued', [
+    Log::info('[HPP] First token issued', [
         'notif'     => $hpp->notification_number,
         'sign_type' => 'manager',
         'user'      => $user->id,

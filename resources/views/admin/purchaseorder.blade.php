@@ -1,84 +1,83 @@
-<x-admin-layout> 
-    <x-slot name="header">
-        <h2 class="font-semibold text-[11px] text-gray-800 leading-tight flex items-center gap-2">
-            <i class="fas fa-file-invoice text-blue-600"></i>
-            <span>Purchase Order (PO) Dashboard</span>
-        </h2>
-    </x-slot>
-
-    @php
-        /* ==== MINI PRESET (konsisten dgn Verifikasi Anggaran) ==== */
-        $baseSel = 'min-h-[26px] text-[10px] leading-[1.3] px-2 pr-9 rounded-[6px] appearance-none focus:ring-1 truncate';
-        $baseInp = 'min-h-[26px] text-[10px] leading-[1.3] px-2 rounded-[6px] focus:ring-1';
-        $baseBtn = 'min-h-[26px] text-[10px] leading-[1.3] px-3 rounded-[6px]';
-
-        $selIndigo = $baseSel.' bg-indigo-100 text-indigo-800 border border-indigo-600 focus:ring-indigo-500 focus:border-indigo-600';
-        $selGreen  = $baseSel.' bg-emerald-100 text-emerald-800 border border-emerald-600 focus:ring-emerald-500 focus:border-emerald-600';
-        $selSlate  = $baseSel.' bg-slate-100 text-slate-800 border border-slate-600 focus:ring-slate-500 focus:border-slate-600';
-
-        $btnPrimary = $baseBtn.' bg-indigo-600 text-white hover:bg-indigo-700';
-        $btnGhost   = $baseBtn.' border border-slate-600 text-slate-700 hover:bg-slate-50';
-    @endphp
-
-    <div class="p-4 space-y-4">
-        <!-- 🔹 Filter & Pencarian (mini & konsisten) -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3">
-            <div class="mb-2">
-                <h3 class="font-semibold text-[11px] text-slate-900 leading-tight">Purchase Order</h3>
-                <p class="text-[9px] text-slate-500 leading-tight">Cari berdasarkan nomor order/nama pekerjaan dan status persetujuan.</p>
+<x-admin-layout>
+    <div class="space-y-4">
+        <div class="mb-4">
+            <div class="admin-header">
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                        <i data-lucide="file-check" class="w-5 h-5"></i>
+                    </span>
+                    <div>
+                        <h1 class="admin-title">Purchase Order</h1>
+                        <p class="admin-subtitle">Pantau PO, target, approval, dan dokumen vendor.</p>
+                    </div>
+                </div>
             </div>
 
             <form method="GET" action="{{ route('admin.purchaseorder') }}"
-                  class="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
+                  class="admin-filter mt-4 grid grid-cols-1 md:grid-cols-12 gap-3">
 
-                {{-- Search (Indigo) --}}
-                <div class="relative">
-                    <svg class="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-indigo-500" fill="none"
-                         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                              d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"/>
-                    </svg>
-                    <input type="text" name="search" value="{{ request('search') }}"
-                           placeholder="Cari Nomor Order atau Nama Pekerjaan..."
-                           class="{{ $selIndigo }} pl-6 w-72" />
-                    <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-indigo-600 text-[10px]">⌕</span>
+                <div class="md:col-span-4">
+                    <label class="text-[11px] font-semibold text-slate-600 mb-1 block">Cari Order</label>
+                    <div class="relative">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" name="search" value="{{ request('search') }}"
+                               placeholder="Nomor order atau nama pekerjaan"
+                               class="admin-input pl-9 w-full" />
+                    </div>
                 </div>
 
-                {{-- Status (Green) --}}
-                <div class="relative">
-                    <select name="status" class="{{ $selGreen }} w-44">
-                        <option value="">Status Approval</option>
-                        <option value="setuju"       {{ request('status')==='setuju'?'selected':'' }}>✅ Disetujui</option>
-                        <option value="tidak_setuju" {{ request('status')==='tidak_setuju'?'selected':'' }}>❌ Tidak Disetujui</option>
+                <div class="md:col-span-2">
+                    <label class="text-[11px] font-semibold text-slate-600 mb-1 block">Status Target</label>
+                    <select name="status" class="admin-select w-full">
+                        <option value="">Semua Status</option>
+                        <option value="setuju" {{ request('status')==='setuju'?'selected':'' }}>Disetujui</option>
+                        <option value="tidak_setuju" {{ request('status')==='tidak_setuju'?'selected':'' }}>Ditolak</option>
                     </select>
-                    <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-emerald-700 text-[10px]">▾</span>
                 </div>
 
-                {{-- (Opsional) Entries – aktifkan kalau controllermu support --}}
-                {{-- 
-                <div class="relative">
-                    <select name="entries" class="{{ $selSlate }} w-20">
-                        <option value="10" {{ request('entries',10)==10?'selected':'' }}>10</option>
-                        <option value="25" {{ request('entries')==25?'selected':'' }}>25</option>
-                        <option value="50" {{ request('entries')==50?'selected':'' }}>50</option>
+                <div class="md:col-span-3">
+                    <label class="text-[11px] font-semibold text-slate-600 mb-1 block">Unit Kerja</label>
+                    <select name="unit" class="admin-select w-full">
+                        <option value="">Semua Unit</option>
+                        @foreach($units as $u)
+                            <option value="{{ $u }}" {{ request('unit')===$u?'selected':'' }}>{{ $u }}</option>
+                        @endforeach
                     </select>
-                    <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-700 text-[10px]">▾</span>
                 </div>
-                --}}
 
-                <button class="{{ $btnPrimary }} ml-auto inline-flex items-center">
-                    <i class="fas fa-filter mr-1 text-[10px]"></i> Terapkan
-                </button>
-                <a href="{{ route('admin.purchaseorder') }}" class="{{ $btnGhost }} inline-flex items-center">
-                    <i class="fas fa-undo mr-1 text-[10px]"></i> Reset
-                </a>
+                <div class="md:col-span-1">
+                    <label class="text-[11px] font-semibold text-slate-600 mb-1 block">Tanggal Dari</label>
+                    <input type="date" name="from" value="{{ request('from') }}" class="admin-input w-full">
+                </div>
+                <div class="md:col-span-1">
+                    <label class="text-[11px] font-semibold text-slate-600 mb-1 block">Tanggal Sampai</label>
+                    <input type="date" name="to" value="{{ request('to') }}" class="admin-input w-full">
+                </div>
+
+                <div class="md:col-span-1">
+                    <label class="text-[11px] font-semibold text-slate-600 mb-1 block">Per Halaman</label>
+                    <select name="entries" class="admin-select w-full">
+                        @foreach([10,25,50,100] as $n)
+                            <option value="{{ $n }}" {{ (int) request('entries', $entries ?? 10) === $n ? 'selected' : '' }}>{{ $n }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="md:col-span-12 flex items-center gap-2">
+                    <button class="admin-btn admin-btn-primary" type="submit">
+                        <i data-lucide="filter" class="w-4 h-4"></i> Terapkan
+                    </button>
+                    <a href="{{ route('admin.purchaseorder') }}" class="admin-btn admin-btn-ghost">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset
+                    </a>
+                </div>
             </form>
         </div>
 
-        <!-- 🔹 Tabel Notifikasi (TIDAK DIUBAH) -->
-        <div class="bg-white border border-gray-200 rounded-xl shadow-md overflow-x-auto">
+        <!-- Tabel PO -->
+        <div class="overflow-x-auto">
             <table class="min-w-full text-[11px] text-gray-700">
-              <thead class="bg-gradient-to-r from-blue-700 to-blue-500 text-white uppercase">
+              <thead class="bg-blue-700 text-white uppercase">
                 <tr>
                     <th class="px-3 py-3 text-center font-semibold">
                         <i class="fas fa-hashtag"></i> Order
@@ -89,13 +88,13 @@
                     <th class="px-3 py-3 text-center font-semibold relative">
                         <i class="fas fa-clipboard-check"></i> Target &amp; Approval
                         <div class="text-[10px] font-normal text-blue-100 italic mt-1">
-                            Tanggal diisi oleh Vendor
+                            Tanggal diisi oleh vendor
                         </div>
                     </th>
                     <th class="px-3 py-3 text-center font-semibold">
                         <i class="fas fa-chart-line"></i> Progress
                         <div class="text-[10px] font-normal text-blue-100 italic mt-1">
-                            Progress diperbarui Vendor
+                            Progress diperbarui vendor
                         </div>
                     </th>
                     <th class="px-3 py-3 text-center font-semibold">
@@ -119,7 +118,6 @@
                             <!-- Nomor Order -->
                             <td class="px-3 py-3 font-semibold text-gray-900 text-center">
                                 <span class="flex flex-col items-center">
-                                    <i class="fas fa-hashtag text-blue-600 mb-1"></i>
                                     {{ $notification->notification_number }}
                                 </span>
                             </td>
@@ -152,12 +150,12 @@
                                     class="w-full mb-2 px-2 py-1 text-xs border rounded text-center focus:ring focus:ring-blue-200 transition"
                                     onchange="updateSelectColor(this)" 
                                     style="background-color: {{ optional($notification->purchaseOrder)->approval_target === 'setuju' ? '#d4edda' : (optional($notification->purchaseOrder)->approval_target === 'tidak_setuju' ? '#f8d7da' : '#ffffff') }};">
-                                    <option value="">-- Pilih Status --</option>
+                                    <option value="">Status Ajuan Penyelesaian PKM</option>
                                     <option value="setuju" {{ old('approval_target', optional($notification->purchaseOrder)->approval_target) === 'setuju' ? 'selected' : '' }}>
-                                        ✅ Disetujui
+                                        Setujui Tanggal
                                     </option>
                                     <option value="tidak_setuju" {{ old('approval_target', optional($notification->purchaseOrder)->approval_target) === 'tidak_setuju' ? 'selected' : '' }}>
-                                        ❌ Tidak Disetujui
+                                        Tolak Tanggal
                                     </option>
                                 </select>
 
@@ -178,11 +176,11 @@
                                             {{ optional($notification->purchaseOrder)->approve_general_manager ? 'checked' : '' }}
                                             class="form-checkbox h-3 w-3 text-green-500"> <span>General Manager</span>
                                     </label>
-                                    @if($notification->source_form === 'createhpp1')
+                                    @if(in_array($notification->source_form, ['createhpp1','createhpp3','createhpp5'], true))
                                         <label class="flex items-center space-x-1">
                                             <input type="checkbox" name="approve_direktur_operasional" value="1" 
                                                 {{ optional($notification->purchaseOrder)->approve_direktur_operasional ? 'checked' : '' }}
-                                                class="form-checkbox h-3 w-3 text-green-500"> <span>Direktur Operation</span>
+                                                class="form-checkbox h-3 w-3 text-green-500"> <span>Direktur Operasional</span>
                                         </label>
                                     @endif
                                 </div>
@@ -207,7 +205,10 @@
                                     class="cursor-pointer bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded shadow-sm text-xs inline-flex items-center space-x-1">
                                     <i class="fas fa-upload"></i><span>Upload</span>
                                 </label>
-                                <input id="po_document_{{ $notification->notification_number }}" type="file" name="po_document" class="hidden">
+                                <input id="po_document_{{ $notification->notification_number }}" type="file" name="po_document" class="hidden" data-file-label="po_file_label_{{ $notification->notification_number }}">
+                                <div id="po_file_label_{{ $notification->notification_number }}" class="text-[10px] text-slate-600 mt-1 truncate w-28 mx-auto">
+                                    Belum ada file dipilih
+                                </div>
                                 
                                 @if($notification->purchaseOrder && $notification->purchaseOrder->po_document_path)
                                     <a href="{{ asset('storage/' . $notification->purchaseOrder->po_document_path) }}" 
@@ -222,7 +223,7 @@
                                 @if(!empty($notification->purchaseOrder->catatan))
                                     <div class="mb-2 p-2 bg-orange-50 border border-orange-200 rounded">
                                         <p class="font-semibold text-orange-700 mb-1">
-                                            🧾 Catatan dari Vendor:
+                                            Catatan dari Vendor:
                                         </p>
                                         <p class="text-gray-800 whitespace-pre-line">
                                             {{ $notification->purchaseOrder->catatan }}
@@ -231,7 +232,7 @@
                                 @endif
 
                                 <label class="block text-gray-700 font-semibold mb-1">
-                                    ✏️ Catatan Admin:
+                                    Catatan Admin:
                                 </label>
                                 <textarea name="catatan_pkm" 
                                     placeholder="Tambahkan catatan untuk Vendor..."
@@ -259,7 +260,7 @@
             </table>
         </div>
 
-        <!-- 🔹 Pagination -->
+                <!-- Pagination -->
         <div class="mt-3">
             {{ $notifications->appends(request()->query())->links() }}
         </div>
@@ -290,5 +291,20 @@
             }
         }
         document.querySelectorAll('select[name="approval_target"]').forEach(updateSelectColor);
+
+        document.querySelectorAll('input[type="file"][data-file-label]').forEach((input) => {
+            const labelId = input.getAttribute('data-file-label');
+            const labelEl = document.getElementById(labelId);
+            if (!labelEl) return;
+
+            input.addEventListener('change', () => {
+                const fileName = input.files && input.files.length > 0 ? input.files[0].name : 'Belum ada file dipilih';
+                labelEl.textContent = fileName;
+            });
+        });
     </script>
 </x-admin-layout>
+
+
+
+

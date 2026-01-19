@@ -5,247 +5,389 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- Title -->
     <title>{{ config('app.name', 'Laravel') }}</title>
 
-    <!-- Fonts -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    
-    <!-- Flatpickr CSS tetap -->
+    <!-- Flatpickr -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<!-- TomSelect CSS -->
-<link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
-<!-- TomSelect JS -->
-<script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
-  <!-- <link rel="stylesheet" href="{{ asset('build/assets/app-DJspGMRf.css') }}">
-    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script>  -->
-    <!-- Vite -->
+
+    <!-- TomSelect -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+
+    <!-- Font Awesome (optional, kalau masih dipakai di beberapa halaman) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+
+    <!-- Tailwind + Alpine -->
+    <!-- Vite (Tailwind + app JS) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+             <!-- <link rel="stylesheet" href="{{ asset('build/assets/app-CSwLQ2bl.css') }}">
+    <script src="{{ asset('build/assets/app-CH09qwMe.js') }}"></script>  -->
+    
+
+    <!-- Lucide Icons (modern) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>[x-cloak]{ display:none !important; }</style>
 </head>
 
-<body class="font-sans antialiased bg-gray-100">
+<body class="font-sans antialiased bg-slate-50 text-slate-800">
+@php
+    $tab = request('tab');
 
-<!-- Sidebar -->
-<div x-data="{ open: true }" class="relative min-h-screen flex bg-gray-200">
+    $isOrder =
+        in_array($tab, ['notif','kawatlas'])
+        || request()->routeIs('admin.orderbengkel.*');
 
-    <!-- TOGGLE BUTTON (SELALU TERLIHAT) -->
-    <button
-        @click="open = !open"
-        :class="open ? 'left-60' : 'left-4'"
-        class="fixed top-4 z-50 bg-blue-600 text-white p-2 rounded shadow-lg
-               transition-all duration-300"
-    >
-        <i :class="open ? 'fas fa-times' : 'fas fa-bars'" class="text-lg"></i>
-    </button>
+    $isLainnya =
+        request()->routeIs('admin.updateoa')
+        || request()->routeIs('admin.jenis-kawat-las.*')
+        || request()->routeIs('admin.users.*')
+        || request()->routeIs('admin.uploadinfo')
+        || request()->routeIs('admin.unit_work.*');
 
-    <!-- SIDEBAR -->
-    <aside
-        :class="open ? 'w-56' : 'w-16'"
-        class="fixed top-0 left-0 h-full z-40
-               bg-blue-900 text-blue-100 text-sm
-               transition-all duration-300
-               overflow-hidden shadow-lg"
-    >
+    $user = Auth::user();
+    $can = function ($key) use ($user) {
+        return $user && $user->hasAdminPermission($key);
+    };
 
-        <!-- HEADER -->
-        <div class="flex items-center justify-center h-16 border-b border-blue-800">
+    $canOrderJasa = $can('admin.order.jasa');
+    $canOrderKawatLas = $can('admin.order.kawatlas');
+    $canOrderBengkel = $can('admin.order.bengkel');
+    $canAnyOrder = $canOrderJasa || $canOrderKawatLas || $canOrderBengkel;
 
-            <!-- MODE EXPANDED -->
-            <template x-if="open">
-                <div class="flex items-center space-x-2 px-2">
-                    <x-application-logo class="h-9 w-auto fill-current text-gray-200" />
-                    <div class="leading-tight">
-                        <span class="block text-lg font-extrabold text-white">Workshop Machine</span>
-                        <span class="block text-xs text-blue-200">Dashboard</span>
-                    </div>
+    $canAccessControl = $user && $user->isSuperAdmin();
+    $canAnyLainnya = $canAccessControl
+        || $can('admin.updateoa')
+        || $can('admin.jenis_kawat_las')
+        || $can('admin.users')
+        || $can('admin.uploadinfo')
+        || $can('admin.unit_work');
+
+    $menus = [
+        ['route'=>'admin.inputhpp.index','icon'=>'pencil','label'=>'Create HPP','perm'=>'admin.inputhpp'],
+        ['route'=>'admin.verifikasianggaran.index','icon'=>'wallet','label'=>'Verifikasi Anggaran','perm'=>'admin.verifikasianggaran'],
+        ['route'=>'admin.purchaseorder','icon'=>'list-checks','label'=>'Purchase Order','perm'=>'admin.purchaseorder'],
+        ['route'=>'admin.lhpp.index','icon'=>'file-text','label'=>'LHPP','perm'=>'admin.lhpp'],
+        ['route'=>'admin.lpj','icon'=>'folder-open','label'=>'LPJ/PPL','perm'=>'admin.lpj'],
+        ['route'=>'admin.garansi.index','icon'=>'shield-check','label'=>'Garansi','perm'=>'admin.garansi'],
+    ];
+@endphp
+
+<div
+    x-data="{
+        sidebarOpen: true,   // desktop collapse
+        mobileOpen: false,   // mobile drawer
+        toggle() {
+            if (window.innerWidth >= 1024) this.sidebarOpen = !this.sidebarOpen;
+            else this.mobileOpen = !this.mobileOpen;
+        },
+        closeMobile(){ this.mobileOpen = false; }
+    }"
+    x-init="$watch('mobileOpen', v => document.body.classList.toggle('overflow-hidden', v))"
+    class="min-h-screen"
+>
+
+    <!-- MOBILE OVERLAY -->
+    <div
+        x-show="mobileOpen"
+        x-transition.opacity
+        class="fixed inset-0 bg-black/40 z-30 lg:hidden"
+        @click="closeMobile()"
+        x-cloak
+    ></div>
+
+<!-- SIDEBAR -->
+<aside
+    class="fixed inset-y-0 left-0 z-40 bg-blue-900 border-r border-blue-950/30 shadow-sm flex flex-col transition-all duration-300"
+    :class="[
+        (mobileOpen ? 'translate-x-0' : '-translate-x-full') + ' lg:translate-x-0',
+        (sidebarOpen ? 'lg:w-72' : 'lg:w-20'),
+        'w-72'
+    ]"
+>
+    <!-- BRAND -->
+    <div class="sticky top-0 z-10 bg-blue-900 border-b border-blue-950/30">
+        <div class="flex items-center justify-between gap-3 px-4 py-4">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="min-w-0" x-show="sidebarOpen" x-transition>
+                    <div class="font-extrabold tracking-tight text-white leading-none">Workshop Machine</div>
+                    <div class="text-xs text-white/70 truncate">Admin Dashboard</div>
                 </div>
-            </template>
+            </div>
 
-            <!-- MODE COLLAPSED -->
-            <template x-if="!open">
-                <x-application-logo class="h-8 w-auto fill-current text-gray-200" />
-            </template>
-
+            <!-- collapse button -->
+            <button
+                @click="toggle()"
+                class="inline-flex items-center justify-center w-10 h-10 rounded-xl hover:bg-white/10 text-white active:scale-[0.98] transition"
+                aria-label="Toggle Sidebar"
+            >
+                <i data-lucide="panel-left" class="w-5 h-5"></i>
+            </button>
         </div>
 
-    <!-- NAVIGATION -->
-<nav class="mt-3 px-2 space-y-1">
-
-    <!-- DASHBOARD -->
-    <a href="{{ route('admin.dashboard') }}"
-       class="flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg
-              hover:bg-blue-700
-              {{ request()->routeIs('admin.dashboard') ? 'bg-blue-800' : '' }}"
-       @click="open = false"
-    >
-        <i class="fas fa-chart-pie w-4 text-center"></i>
-        <span x-show="open" class="font-semibold">Dashboard</span>
-    </a>
-
-    <!-- ORDER GROUP -->
-    <div x-data="{ orderOpen: {{ in_array(request('tab'), ['notif','kawatlas']) ? 'true' : 'false' }} }">
-
-        <button
-            @click="open ? orderOpen = !orderOpen : open = true"
-            class="w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg hover:bg-blue-700"
-        >
-            <i class="fas fa-envelope-open-text w-4 text-center"></i>
-            <span x-show="open">Order</span>
-
-            <template x-if="open">
-                <i :class="orderOpen ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"
-                   class="ml-auto text-[10px]"></i>
-            </template>
-        </button>
-
-        <!-- SUBMENU ORDER -->
-        <div x-show="orderOpen && open" x-collapse class="ml-6 mt-1 space-y-1">
-
-            <a href="{{ route('notifikasi.index', ['tab' => 'notif']) }}"
-               class="flex items-center justify-between px-3 py-2 text-xs rounded-lg
-                      hover:bg-blue-700 {{ request('tab') === 'notif' ? 'bg-blue-800' : '' }}">
-                <span class="font-medium">Order Pekerjaan Jasa</span>
-                @if(!empty($jumlahOrderPekerjaan))
-                    <span class="bg-red-500 text-[10px] px-2 rounded-full">
-                        {{ $jumlahOrderPekerjaan }}
-                    </span>
-                @endif
-            </a>
-
-            <a href="{{ route('notifikasi.index', ['tab' => 'kawatlas']) }}"
-               class="flex items-center justify-between px-3 py-2 text-xs rounded-lg
-                      hover:bg-blue-700 {{ request('tab') === 'kawatlas' ? 'bg-blue-800' : '' }}">
-                <span class="font-medium">Order Kawat Las</span>
-                @if(!empty($jumlahOrderKawatLas))
-                    <span class="bg-yellow-400 text-black text-[10px] px-2 rounded-full">
-                        {{ $jumlahOrderKawatLas }}
-                    </span>
-                @endif
-            </a>
-
-            <a href="{{ route('admin.orderbengkel.index') }}"
-               class="px-3 py-2 text-xs font-medium rounded-lg hover:bg-blue-700
-                      {{ request()->routeIs('admin.orderbengkel.*') ? 'bg-blue-800' : '' }}">
-                Order Pekerjaan Bengkel
-            </a>
-
+        <!-- Search -->
+        <div class="px-4 pb-4" x-show="sidebarOpen" x-transition>
+            <div class="relative">
+                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/60"></i>
+                <input
+                    type="text"
+                    placeholder="Cari menu..."
+                    class="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-white/15 bg-white/10 text-white placeholder:text-white/50
+                           focus:outline-none focus:ring-2 focus:ring-white/25 focus:border-white/25"
+                >
+            </div>
         </div>
     </div>
 
-    <!-- MENU UTAMA -->
-    @php
-        $menus = [
-            ['route'=>'admin.inputhpp.index','icon'=>'fa-pencil-alt','label'=>'Create HPP'],
-            ['route'=>'admin.verifikasianggaran.index','icon'=>'fa-money-check-alt','label'=>'Verifikasi Anggaran'],
-            ['route'=>'admin.purchaseorder','icon'=>'fa-tasks','label'=>'Purchase Order'],
-            ['route'=>'admin.lhpp.index','icon'=>'fa-file-alt','label'=>'LHPP'],
-            ['route'=>'admin.lpj','icon'=>'fa-folder-open','label'=>'LPJ/PPL'],
-            ['route'=>'admin.garansi.index','icon'=>'fa-shield-alt','label'=>'Garansi'],
-        ];
-    @endphp
+    <!-- NAV -->
+    <div class="flex-1 overflow-y-auto no-scrollbar px-3 py-4">
 
-    @foreach($menus as $m)
-        <a href="{{ route($m['route']) }}"
-           class="flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg hover:bg-blue-700
-                  {{ request()->routeIs($m['route']) ? 'bg-blue-800' : '' }}"
-           @click="open = false"
-        >
-            <i class="fas {{ $m['icon'] }} w-4 text-center"></i>
-            <span x-show="open">{{ $m['label'] }}</span>
-        </a>
-    @endforeach
+        <nav class="space-y-1 text-sm">
 
-    <!-- LAINNYA -->
-    <div x-data="{ openSub: false }">
+            <!-- Dashboard -->
+            @if ($can('admin.dashboard'))
+                <a href="{{ route('admin.dashboard') }}"
+                   class="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition
+                          {{ request()->routeIs('admin.dashboard')
+                                ? 'bg-white text-blue-900 ring-1 ring-white/30'
+                                : 'text-white/90 hover:bg-white/10' }}">
+                    <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl transition
+                                 {{ request()->routeIs('admin.dashboard')
+                                        ? 'bg-blue-100 text-blue-900'
+                                        : 'bg-white/10 text-white/90 group-hover:bg-white/15' }}">
+                        <i data-lucide="pie-chart" class="w-5 h-5"></i>
+                    </span>
+                    <span x-show="sidebarOpen" x-transition class="font-medium">Dashboard</span>
+                </a>
+            @endif
 
-        <button
-            @click="open ? openSub = !openSub : open = true"
-            class="w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg hover:bg-blue-700"
-        >
-            <i class="fas fa-layer-group w-4 text-center"></i>
-            <span x-show="open">Lainnya</span>
+            <!-- Order Dropdown -->
+            @if ($canAnyOrder)
+            <div x-data="{ open: {{ $isOrder ? 'true' : 'false' }} }" class="rounded-xl">
+                <button
+                    @click="open = !open"
+                    class="w-full group flex items-center gap-3 rounded-xl px-3 py-2.5 transition
+                           {{ $isOrder ? 'bg-white text-blue-900 ring-1 ring-white/30' : 'text-white/90 hover:bg-white/10' }}"
+                >
+                    <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl transition
+                                 {{ $isOrder ? 'bg-blue-100 text-blue-900' : 'bg-white/10 text-white/90 group-hover:bg-white/15' }}">
+                        <i data-lucide="inbox" class="w-5 h-5"></i>
+                    </span>
+                    <span x-show="sidebarOpen" x-transition class="flex-1 text-left font-medium">Order</span>
+                    <i data-lucide="chevron-down"
+                       class="w-4 h-4 transition"
+                       :class="open ? 'rotate-180 text-blue-900' : 'text-white/70'"
+                       x-show="sidebarOpen" x-transition></i>
+                </button>
 
-            <template x-if="open">
-                <i :class="openSub ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"
-                   class="ml-auto text-[10px]"></i>
-            </template>
-        </button>
+                <div x-show="open" x-collapse x-cloak class="mt-1 pl-12 space-y-1">
+                    @if ($canOrderJasa)
+                        <a href="{{ route('notifikasi.index', ['tab' => 'notif']) }}"
+                           class="flex items-center justify-between rounded-lg px-3 py-2 transition
+                                  {{ $tab === 'notif'
+                                        ? 'bg-white text-blue-900'
+                                        : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                            <span>Order Pekerjaan Jasa</span>
+                            @if(!empty($jumlahOrderPekerjaan))
+                                <span class="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">
+                                    {{ $jumlahOrderPekerjaan }}
+                                </span>
+                            @endif
+                        </a>
+                    @endif
 
-        <!-- SUBMENU LAINNYA -->
-        <div x-show="openSub && open" x-collapse class="ml-6 mt-1 space-y-1">
+                    @if ($canOrderKawatLas)
+                        <a href="{{ route('notifikasi.index', ['tab' => 'kawatlas']) }}"
+                           class="flex items-center justify-between rounded-lg px-3 py-2 transition
+                                  {{ $tab === 'kawatlas'
+                                        ? 'bg-white text-blue-900'
+                                        : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                            <span>Order Kawat Las</span>
+                            @if(!empty($jumlahOrderKawatLas))
+                                <span class="bg-amber-400 text-black text-[10px] px-2 py-0.5 rounded-full">
+                                    {{ $jumlahOrderKawatLas }}
+                                </span>
+                            @endif
+                        </a>
+                    @endif
 
-            <a href="{{ route('admin.updateoa') }}"
-               class="block px-3 py-2 text-xs font-medium rounded-lg hover:bg-blue-700
-                      {{ request()->routeIs('admin.updateoa') ? 'bg-blue-800' : '' }}">
-                Kuota Anggaran & OA
-            </a>
+                    @if ($canOrderBengkel)
+                        <a href="{{ route('admin.orderbengkel.index') }}"
+                           class="block rounded-lg px-3 py-2 transition
+                                  {{ request()->routeIs('admin.orderbengkel.*')
+                                        ? 'bg-white text-blue-900'
+                                        : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                            Order Pekerjaan Bengkel
+                        </a>
+                    @endif
+                </div>
+            </div>
+            @endif
 
-            <a href="{{ route('admin.jenis-kawat-las.index') }}"
-               class="block px-3 py-2 text-xs font-medium rounded-lg hover:bg-blue-700
-                      {{ request()->routeIs('admin.jenis-kawat-las.*') ? 'bg-blue-800' : '' }}">
-                Stock Kawat Las
-            </a>
+            <!-- Divider -->
+            <div class="pt-2 pb-1" x-show="sidebarOpen" x-transition>
+                <div class="text-[11px] uppercase tracking-wider text-white/60 px-3">Menu Utama</div>
+            </div>
 
-            <a href="{{ route('admin.users.index') }}"
-               class="block px-3 py-2 text-xs font-medium rounded-lg hover:bg-blue-700
-                      {{ request()->routeIs('admin.users.index') ? 'bg-blue-800' : '' }}">
-                User Panel
-            </a>
+            <!-- Main Menus -->
+            @foreach($menus as $m)
+                @if ($can($m['perm']))
+                    <a href="{{ route($m['route']) }}"
+                       class="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition
+                              {{ request()->routeIs($m['route'])
+                                    ? 'bg-white text-blue-900 ring-1 ring-white/30'
+                                    : 'text-white/90 hover:bg-white/10' }}">
+                        <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl transition
+                                     {{ request()->routeIs($m['route'])
+                                            ? 'bg-blue-100 text-blue-900'
+                                            : 'bg-white/10 text-white/90 group-hover:bg-white/15' }}">
+                            <i data-lucide="{{ $m['icon'] }}" class="w-5 h-5"></i>
+                        </span>
+                        <span x-show="sidebarOpen" x-transition class="font-medium">{{ $m['label'] }}</span>
+                    </a>
+                @endif
+            @endforeach
 
-            <a href="{{ route('admin.uploadinfo') }}"
-               class="block px-3 py-2 text-xs font-medium rounded-lg hover:bg-blue-700
-                      {{ request()->routeIs('admin.uploadinfo') ? 'bg-blue-800' : '' }}">
-                Upload Informasi
-            </a>
+            <!-- Lainnya -->
+            @if ($canAnyLainnya)
+            <div x-data="{ open: {{ $isLainnya ? 'true' : 'false' }} }" class="rounded-xl">
+                <button
+                    @click="open = !open"
+                    class="w-full group flex items-center gap-3 rounded-xl px-3 py-2.5 transition
+                           {{ $isLainnya ? 'bg-white text-blue-900 ring-1 ring-white/30' : 'text-white/90 hover:bg-white/10' }}"
+                >
+                    <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl transition
+                                 {{ $isLainnya ? 'bg-blue-100 text-blue-900' : 'bg-white/10 text-white/90 group-hover:bg-white/15' }}">
+                        <i data-lucide="layers" class="w-5 h-5"></i>
+                    </span>
+                    <span x-show="sidebarOpen" x-transition class="flex-1 text-left font-medium">Lainnya</span>
+                    <i data-lucide="chevron-down"
+                       class="w-4 h-4 transition"
+                       :class="open ? 'rotate-180 text-blue-900' : 'text-white/70'"
+                       x-show="sidebarOpen" x-transition></i>
+                </button>
 
-            <a href="{{ route('admin.unit_work.index') }}"
-               class="block px-3 py-2 text-xs font-medium rounded-lg hover:bg-blue-700
-                      {{ request()->routeIs('admin.unit_work.index') ? 'bg-blue-800' : '' }}">
-                Unit Kerja
-            </a>
+                <div x-show="open" x-collapse x-cloak class="mt-1 pl-12 space-y-1">
+                    @if ($canAccessControl)
+                        <a href="{{ route('admin.access-control.index') }}"
+                           class="block rounded-lg px-3 py-2 transition
+                                  {{ request()->routeIs('admin.access-control.*')
+                                        ? 'bg-white text-blue-900'
+                                        : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                            Access Control
+                        </a>
+                    @endif
 
-        </div>
+                    @if ($can('admin.updateoa'))
+                        <a href="{{ route('admin.updateoa') }}"
+                           class="block rounded-lg px-3 py-2 transition
+                                  {{ request()->routeIs('admin.updateoa')
+                                        ? 'bg-white text-blue-900'
+                                        : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                            Kuota Anggaran & OA
+                        </a>
+                    @endif
+
+                    @if ($can('admin.jenis_kawat_las'))
+                        <a href="{{ route('admin.jenis-kawat-las.index') }}"
+                           class="block rounded-lg px-3 py-2 transition
+                                  {{ request()->routeIs('admin.jenis-kawat-las.*')
+                                        ? 'bg-white text-blue-900'
+                                        : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                            Stock Kawat Las
+                        </a>
+                    @endif
+
+                    @if ($can('admin.users'))
+                        <a href="{{ route('admin.users.index') }}"
+                           class="block rounded-lg px-3 py-2 transition
+                                  {{ request()->routeIs('admin.users.*')
+                                        ? 'bg-white text-blue-900'
+                                        : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                            User Panel
+                        </a>
+                    @endif
+
+                    @if ($can('admin.uploadinfo'))
+                        <a href="{{ route('admin.uploadinfo') }}"
+                           class="block rounded-lg px-3 py-2 transition
+                                  {{ request()->routeIs('admin.uploadinfo')
+                                        ? 'bg-white text-blue-900'
+                                        : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                            Upload Informasi
+                        </a>
+                    @endif
+
+                    @if ($can('admin.unit_work'))
+                        <a href="{{ route('admin.unit_work.index') }}"
+                           class="block rounded-lg px-3 py-2 transition
+                                  {{ request()->routeIs('admin.unit_work.*')
+                                        ? 'bg-white text-blue-900'
+                                        : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                            Unit Kerja
+                        </a>
+                    @endif
+                </div>
+            </div>
+            @endif
+
+        </nav>
     </div>
 
-</nav>
+    <!-- Footer -->
+    <div class="border-t border-white/10 p-3">
+        <div class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white/70">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span x-show="sidebarOpen" x-transition>Workshop • Admin</span>
+        </div>
+    </div>
+</aside>
 
-    </aside>
 
-<!-- Main content -->
-<div :class="open ? 'ml-56' : 'ml-16'"
-     class="flex-1 flex flex-col transition-all duration-300 bg-gray-100">
+    <!-- MAIN WRAPPER -->
+    <div class="min-h-screen transition-all duration-300"
+         :class="sidebarOpen ? 'lg:pl-72' : 'lg:pl-20'">
 
+        <!-- TOPBAR -->
+        <header class="sticky top-0 z-20 bg-blue-900 backdrop-blur border-b border-blue-950/30">
+            <div class="px-4 lg:px-6 py-3 flex items-center justify-between">
 
-    <!-- Top Navigation (STICKY) -->
-    <nav class="sticky top-0 z-40 shadow-lg bg-blue-900">
-        <div class="px-4 sm:px-6 lg:px-8">
-            <div class="relative flex items-center justify-between h-16">
+                <!-- LEFT: Mobile Button + Brand -->
+                <div class="flex items-center gap-3">
+                    <button
+                        @click="toggle()"
+                        class="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded-xl hover:bg-white/10 text-white transition"
+                        aria-label="Open Menu"
+                    >
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
 
-                <!-- LEFT -->
-                <div class="flex items-center">
-                    <img src="{{ asset('images/logo-sig.png') }}" alt="SIG Logo" class="h-10 w-auto mr-2">
-                    <img src="{{ asset('images/logo-st2.png') }}" alt="Semen Tonasa Logo" class="h-10 w-auto mr-2">
+                    <div class="flex items-center gap-2">
+                        <img src="{{ asset('images/logo-sig.png') }}" alt="SIG Logo" class="h-9 w-auto">
+                        <img src="{{ asset('images/logo-st2.png') }}" alt="Semen Tonasa Logo" class="h-9 w-auto">
+                    </div>
 
-                    <div class="hidden sm:flex flex-col text-white">
-                        <span class="font-bold text-lg">SECTION OF WORKSHOP</span>
-                        <span class="text-sm">Dept. Of Project Management & Main Support</span>
+                    <div class="hidden md:flex flex-col text-white leading-tight">
+                        <span class="font-extrabold tracking-tight">SECTION OF WORKSHOP</span>
+                        <span class="text-xs text-white/80">Dept. Of Project Management & Main Support</span>
                     </div>
                 </div>
 
                 <!-- RIGHT -->
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center gap-3">
 
-                    <!-- 🔔 NOTIFICATION -->
-                    <div x-data="{ open: false }" class="relative">
+                    <!-- NOTIFICATION -->
+                    <div x-data="{ open:false }" class="relative">
                         <button
-                            @click="open = !open"
-                            @click.outside="open = false"
-                            class="relative text-white focus:outline-none"
+                            @click="open=!open"
+                            @click.outside="open=false"
+                            class="relative inline-flex items-center justify-center w-10 h-10 rounded-xl hover:bg-white/10 text-white transition"
+                            aria-label="Notifications"
                         >
-                            <i class="fas fa-bell text-xl"></i>
+                            <i data-lucide="bell" class="w-5 h-5"></i>
 
                             @if($adminUnreadCount > 0)
-                                <span class="absolute -top-1 -right-1 w-4 h-4 text-[10px]
+                                <span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 text-[10px]
                                              bg-red-600 text-white rounded-full
                                              flex items-center justify-center">
                                     {{ $adminUnreadCount > 9 ? '9+' : $adminUnreadCount }}
@@ -253,53 +395,61 @@
                             @endif
                         </button>
 
-                        <!-- DROPDOWN (DIBATASI + SCROLL) -->
                         <div
                             x-show="open"
-                            x-transition
-                            class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl
-                                   border border-gray-200 z-50
-                                   max-h-[420px] overflow-y-auto"
+                            x-transition.origin.top.right
+                            x-cloak
+                            class="absolute right-0 mt-2 w-[360px] max-w-[90vw] bg-white rounded-2xl shadow-xl
+                                   border border-slate-200 z-50 max-h-[420px] overflow-y-auto"
                         >
                             @include('admin.partials.notification-dropdown')
                         </div>
                     </div>
 
-                    <!-- Dropdown Profil di Sebelah Kanan -->
+                    <!-- PROFILE (pakai komponen x-dropdown kamu) -->
                     <x-dropdown align="right" width="48">
                         <x-slot name="trigger">
-                            <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-500 bg-white hover:text-gray-700 focus:outline-none transition duration-150 ease-in-out">
-                                <!-- Icon Profile -->
-                                <i class="fas fa-user-circle text-xl mr-2 text-blue-500"></i>
-                                <div class="hidden sm:block">Welcome {{ Auth::user()->name }}</div>
-                                <div class="ml-1">
-                                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                    </svg>
-                                </div>
+                            <button class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white text-blue-700 hover:bg-blue-50 transition">
+                                <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+                                    <i data-lucide="user" class="w-5 h-5"></i>
+                                </span>
+                                <span class="hidden sm:block text-sm font-semibold">
+                                    {{ Auth::user()->name ?? 'Admin' }}
+                                </span>
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-blue-400"></i>
                             </button>
                         </x-slot>
+
                         <x-slot name="content">
-                            <!-- Authentication -->
+                            <a href="{{ route('profile.edit') }}"
+                               class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                                Edit Profile
+                            </a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <x-dropdown-link :href="route('logout')"
-                                                 onclick="event.preventDefault();
-                                                 this.closest('form').submit();">
+                                                 onclick="event.preventDefault(); this.closest('form').submit();">
                                     {{ __('Log Out') }}
                                 </x-dropdown-link>
                             </form>
                         </x-slot>
                     </x-dropdown>
+
                 </div>
             </div>
-        </div>
-    </nav>
+        </header>
 
-    <!-- Main Content -->
-    <main class="flex-1 p-5 bg-gray-100 overflow-y-auto">
-        {{ $slot }}
-    </main>
+        <!-- CONTENT -->
+        <main class="p-4 lg:p-6">
+            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 lg:p-6">
+                {{ $slot }}
+            </div>
+        </main>
+    </div>
 </div>
+
+<script>
+    lucide.createIcons();
+</script>
 </body>
 </html>

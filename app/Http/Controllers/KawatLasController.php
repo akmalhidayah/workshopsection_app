@@ -45,7 +45,7 @@ class KawatLasController extends Controller
         $kawatlas = $query->paginate($entries)->withQueryString();
 
         // Data master
-        $units = UnitWork::orderBy('name')->get();
+        $units = UnitWork::with('sections')->orderBy('name')->get();
         $jenisList = JenisKawatLas::orderBy('kode')->get();
 
         return view('kawatlas.index', compact('kawatlas', 'units', 'jenisList'));
@@ -68,8 +68,10 @@ class KawatLasController extends Controller
 
         // 🔍 Validasi seksi harus sesuai unit_work
         if ($request->filled('seksi')) {
-            $unit = UnitWork::where('name', $request->unit_work)->first();
-            $validSeksiList = $unit ? ($unit->seksi_list ?? []) : [];
+            $unit = UnitWork::with('sections')->where('name', $request->unit_work)->first();
+            $validSeksiList = $unit
+                ? ($unit->sections->pluck('name')->all() ?: ($unit->seksi_list ?? []))
+                : [];
 
             if (!in_array($request->seksi, $validSeksiList, true)) {
                 return back()->withErrors([
@@ -147,8 +149,10 @@ return redirect()->route('kawatlas.index')
 
         // 🔍 Validasi seksi harus sesuai unit_work
         if ($request->filled('seksi')) {
-            $unit = UnitWork::where('name', $request->unit_work)->first();
-            $validSeksiList = $unit ? ($unit->seksi_list ?? []) : [];
+            $unit = UnitWork::with('sections')->where('name', $request->unit_work)->first();
+            $validSeksiList = $unit
+                ? ($unit->sections->pluck('name')->all() ?: ($unit->seksi_list ?? []))
+                : [];
 
             if (!in_array($request->seksi, $validSeksiList, true)) {
                 return back()->withErrors([

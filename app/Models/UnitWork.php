@@ -11,12 +11,56 @@ class UnitWork extends Model
 
     protected $table = 'unit_work';
 
-    protected $fillable = ['name', 'seksi'];
+    /**
+     * =========================
+     * MASS ASSIGNMENT
+     * =========================
+     */
+    protected $fillable = [
+        'department_id',
+        'senior_manager_id', // user yang menjabat sebagai Senior Manager unit ini
+        'name',
+        'seksi',
+    ];
 
-    // penting: otomatis cast JSON <-> array
+    /**
+     * =========================
+     * CASTS
+     * =========================
+     * Otomatis JSON <-> array
+     */
     protected $casts = [
         'seksi' => 'array',
     ];
+
+    /**
+     * =========================
+     * RELATIONS
+     * =========================
+     */
+
+    // UnitWork belongs to Department
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    /**
+     * User yang menjabat sebagai Senior Manager untuk unit kerja ini.
+     */
+    public function seniorManager()
+    {
+        return $this->belongsTo(User::class, 'senior_manager_id');
+    }
+
+    /**
+     * Daftar seksi (section) formal yang terkait dengan unit ini,
+     * masing-masing bisa punya Manager (User).
+     */
+    public function sections()
+    {
+        return $this->hasMany(UnitWorkSection::class, 'unit_work_id');
+    }
 
     // Relasi bantu: cocokkan Notification.unit_work (string) ke UnitWork.name
     public function notifications()
@@ -24,33 +68,81 @@ class UnitWork extends Model
         return $this->hasMany(Notification::class, 'unit_work', 'name');
     }
 
-    // Scope pencarian: name + item di dalam JSON 'seksi' (MySQL)
+    /**
+     * =========================
+     * SCOPES
+     * =========================
+     */
+
+    /**
+     * Scope pencarian:
+     * - name
+     * - isi JSON seksi
+     */
     public function scopeSearch($query, ?string $q)
     {
         if (!$q) return $query;
 
-        // Cari di name
-        $query->where('name', 'like', "%{$q}%");
-
-        // Tambahkan OR: cari elemen seksi yang mengandung keyword (JSON_SEARCH mendukung wildcard %)
-        // Catatan: butuh MySQL/MariaDB. Untuk SQLite/PostgreSQL, butuh penyesuaian.
-        return $query->orWhereRaw("JSON_SEARCH(seksi, 'one', ?) IS NOT NULL", ["%{$q}%"]);
+        return $query->where(function ($sub) use ($q) {
+            $sub->where('name', 'like', "%{$q}%")
+                ->orWhereRaw(
+                    "JSON_SEARCH(seksi, 'one', ?) IS NOT NULL",
+                    ["%{$q}%"]
+                );
+        });
     }
 
-    // Helper: daftar seksi yang sudah dirapikan (trim & buang kosong)
+    /**
+     * =========================
+     * ACCESSORS / HELPERS
+     * =========================
+     */
+
+    /**
+     * Daftar seksi yang sudah dirapikan:
+     * - trim
+     * - buang kosong
+     * - reset index
+     */
     public function getSeksiListAttribute(): array
     {
         $arr = is_array($this->seksi) ? $this->seksi : [];
-        return array_values(array_filter(array_map('trim', $arr), fn ($v) => $v !== ''));
+
+        return array_values(
+            array_filter(
+                array_map('trim', $arr),
+                fn ($v) => $v !== ''
+            )
+        );
     }
 
-    // Helper: cek apakah suatu seksi ada pada unit ini (case-insensitive)
+    /**
+     * Cek apakah suatu seksi ada (case-insensitive)
+     */
     public function hasSeksi(string $name): bool
     {
         $needle = mb_strtolower(trim($name));
+
         foreach ($this->seksi_list as $s) {
-            if (mb_strtolower($s) === $needle) return true;
+            if (mb_strtolower($s) === $needle) {
+                return true;
+            }
         }
+
         return false;
+    }
+
+    /**
+     * (Opsional) Helper: ambil Manager (User) untuk nama seksi tertentu
+     * jika sudah di-mapping ke UnitWorkSection.
+     */
+    public function managerForSeksi(string $seksiName): ?User
+    {
+        $seksiName = trim($seksiName);
+
+        $section = $this->sections
+            ->firstWhere('name', $seksiName);
+
+        return $section?->manager;
     }
 }

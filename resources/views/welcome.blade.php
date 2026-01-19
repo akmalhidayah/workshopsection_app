@@ -372,27 +372,6 @@
                     </svg>
                 </a>
             </div>
-
-            {{-- right: small compact map --}}
-            <div class="flex items-center">
-                <div class="bg-slate-800 rounded-md overflow-hidden shadow-sm w-[200px]">
-                    <div class="w-full aspect-[4/3]">
-                        <iframe
-                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15948.880983040097!2d119.5676982!3d-4.9169619!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dbee273f5a54d77%3A0xef2d0e91c7f24f33!2sPT%20Semen%20Tonasa!5e0!3m2!1sen!2sid!4v1702380000000!5m2!1sen!2sid"
-                            width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
-                    </div>
-
-                    <div class="px-2 py-1 flex items-center justify-between">
-                        <div class="text-[11px]">
-                            <div class="font-medium">Bengkel Mesin</div>
-                            <div class="text-[10px] text-gray-400">Semen Tonasa</div>
-                        </div>
-                        <a href="https://maps.app.goo.gl/D8VR4rd2UW1TNBJh8" target="_blank" rel="noopener noreferrer"
-                           class="px-2 py-1 text-[11px] bg-white text-slate-900 rounded hover:bg-gray-100">Maps</a>
-                    </div>
-                </div>
-            </div>
-
         </div>
 
         {{-- thin divider --}}
@@ -405,7 +384,6 @@
     </div>
 </footer>
 
-{{-- Inline Alpine component for slideshow --}}
 <script>
     function slideshow() {
         return {

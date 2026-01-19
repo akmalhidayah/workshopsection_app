@@ -1,120 +1,107 @@
 <x-admin-layout>
-    @php
-        /* ==== MINI PRESET GLOBAL (konsisten) ==== */
-        $baseSel = 'min-h-[26px] text-[10px] leading-[1.3] px-2 pr-9 rounded-[6px] appearance-none focus:ring-1 truncate';
-        $baseInp = 'min-h-[26px] text-[10px] leading-[1.3] px-2 rounded-[6px] focus:ring-1';
-        $baseBtn = 'min-h-[26px] text-[10px] leading-[1.3] px-3 rounded-[6px]';
-
-        // Palet warna
-        $selIndigo = $baseSel.' bg-indigo-100 text-indigo-800 border border-indigo-600 focus:ring-indigo-500 focus:border-indigo-600';
-        $selBlue   = $baseSel.' bg-sky-100    text-sky-800    border border-sky-600    focus:ring-sky-500    focus:border-sky-600';
-        $selGreen  = $baseSel.' bg-emerald-100 text-emerald-800 border border-emerald-600 focus:ring-emerald-500 focus:border-emerald-600';
-        $selSlate  = $baseSel.' bg-slate-100  text-slate-800  border border-slate-600  focus:ring-slate-500  focus:border-slate-600';
-
-        $inpSlate  = $baseInp.' bg-white border border-slate-600 focus:ring-indigo-500 focus:border-indigo-600';
-
-        // Utility chip tombol menu
-        $btnPrimary = $baseBtn.' bg-indigo-600 text-white hover:bg-indigo-700';
-        $btnGhost   = $baseBtn.' border border-slate-600 text-slate-700 hover:bg-slate-50';
-    @endphp
-
     <div class="py-6">
-        <!-- WRAPPER UTAMA -->
         <div class="w-full max-w-[98%] mx-auto">
 
             <!-- HEADER + ACTION -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-3 p-4">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h2 class="font-semibold text-[11px] text-slate-900 leading-tight">
-                            📄 Form Harga Perkiraan Perancangan (HPP)
-                        </h2>
-                        <p class="text-[9px] text-slate-500 leading-tight">Kelola dan monitoring semua dokumen HPP</p>
+            <div class="admin-card p-5 mb-4">
+                <div class="admin-header">
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                            <i data-lucide="file-text" class="w-5 h-5"></i>
+                        </span>
+                        <div>
+                            <h1 class="admin-title">Form Harga Perkiraan Perancangan (HPP)</h1>
+                            <p class="admin-subtitle">Kelola dan monitoring semua dokumen HPP</p>
+                        </div>
                     </div>
 
-                    <!-- Dropdown Buat HPP Baru — versi modern & rapi -->
-                    <div class="relative" x-data="{}">
+                    <div class="relative admin-actions" x-data="{}">
                         <button id="dropdownButton"
                                 aria-haspopup="true"
                                 aria-expanded="false"
-                                class="{{ $btnPrimary }} inline-flex items-center gap-2 text-[12px] px-3 py-2 rounded-md shadow-sm transition"
+                                class="admin-btn admin-btn-primary"
                                 type="button">
-                            <i class="fas fa-plus-circle text-[12px]"></i>
+                            <i data-lucide="plus-circle" class="w-4 h-4"></i>
                             Buat HPP Baru
-                            <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                            </svg>
+                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
                         </button>
 
                         <!-- Menu Dropdown -->
                         <div id="dropdownMenu"
-                             class="hidden absolute right-0 mt-2 w-60 bg-white border border-slate-200 rounded-lg shadow-xl z-20 overflow-hidden"
+                             class="hidden absolute right-0 mt-2 w-60 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden"
                              role="menu" aria-label="Buat HPP Baru Menu">
                             <a href="{{ route('admin.inputhpp.create_hpp1') }}"
                                role="menuitem"
-                               class="flex items-center px-3 py-2 text-[12px] text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition">
-                                <i class="fas fa-file-contract text-emerald-500 w-4 mr-2"></i>
+                               class="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition">
+                                <i data-lucide="file-text" class="w-4 h-4 text-emerald-600"></i>
                                 HPP di Atas 250 Juta
                             </a>
 
                             <a href="{{ route('admin.inputhpp.create_hpp2') }}"
-                               role="menuitem"
-                               class="flex items-center px-3 py-2 text-[12px] text-slate-700 hover:bg-sky-50 hover:text-sky-700 transition">
-                                <i class="fas fa-file-invoice-dollar text-sky-500 w-4 mr-2"></i>
+                               role="menuitem"  
+                               class="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-sky-50 hover:text-sky-700 transition">
+                                <i data-lucide="file-down" class="w-4 h-4 text-sky-600"></i>
                                 HPP di Bawah 250 Juta
                             </a>
 
                             <a href="{{ route('admin.inputhpp.create_hpp3') }}"
                                role="menuitem"
-                               class="flex items-center px-3 py-2 text-[12px] text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition">
-                                <i class="fas fa-tools text-indigo-500 w-4 mr-2"></i>
+                               class="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition">
+                                <i data-lucide="settings" class="w-4 h-4 text-blue-600"></i>
                                 HPP Bengkel Mesin > 250 Juta
                             </a>
 
                             <a href="{{ route('admin.inputhpp.create_hpp4') }}"
                                role="menuitem"
-                               class="flex items-center px-3 py-2 text-[12px] text-slate-700 hover:bg-amber-50 hover:text-amber-700 transition">
-                                <i class="fas fa-cogs text-amber-500 w-4 mr-2"></i>
+                               class="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-amber-50 hover:text-amber-700 transition">
+                                <i data-lucide="settings" class="w-4 h-4 text-amber-600"></i>
                                 HPP Bengkel Mesin < 250 Juta
                             </a>
+                            <a href="{{ route('admin.inputhpp.create_hpp5') }}"
+                               role="menuitem"
+                               class="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition">
+                                <i data-lucide="file-text" class="w-4 h-4 text-emerald-600"></i>
+                                HPP Khusus di atas 250 Juta
+                            </a>
+                            <a href="{{ route('admin.inputhpp.create_hpp6') }}"
+                               role="menuitem"
+                               class="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition">
+                                <i data-lucide="file-text" class="w-4 h-4 text-indigo-600"></i>
+                                HPP Khusus di bawah 250 Juta
+                            </a>
+                           
                         </div>
                     </div>
-
                 </div>
 
-                <!-- FILTER (konsisten mini + warna) -->
+                <!-- FILTER -->
                 <form method="GET" action="{{ route('admin.inputhpp.index') }}"
-                      class="mt-3 flex items-center gap-2 overflow-x-auto whitespace-nowrap">
+                      class="admin-filter mt-4 overflow-x-auto whitespace-nowrap">
 
-                    <!-- Search (Indigo) -->
+                    <!-- Search -->
                     <div class="relative">
-                        <svg class="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-indigo-500" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                  d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"/>
-                        </svg>
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                         <input type="text" name="search" value="{{ request('search') }}"
                                placeholder="Cari Nomor Order / Unit..."
-                               class="{{ $selIndigo }} pl-6 w-64" />
-                        <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-indigo-600 text-[10px]">⌕</span>
+                               class="admin-input pl-9 w-64" />
                     </div>
 
-                    <!-- Jenis HPP (Green) -->
+                    <!-- Jenis HPP -->
                     <div class="relative">
-                        <select name="jenis_hpp" class="{{ $selGreen }} w-40">
+                        <select name="jenis_hpp" class="admin-select w-52">
                             <option value="">Semua Jenis HPP</option>
                             <option value="createhpp1" {{ request('jenis_hpp')=='createhpp1'?'selected':'' }}>Atas 250 Juta</option>
                             <option value="createhpp2" {{ request('jenis_hpp')=='createhpp2'?'selected':'' }}>Bawah 250 Juta</option>
                             <option value="createhpp3" {{ request('jenis_hpp')=='createhpp3'?'selected':'' }}>Bengkel Mesin Atas 250 Juta</option>
-                             <option value="createhpp4" {{ request('jenis_hpp')=='createhpp4'?'selected':'' }}>Bengkel Mesin Bawah 250 Juta</option>
+                            <option value="createhpp4" {{ request('jenis_hpp')=='createhpp4'?'selected':'' }}>Bengkel Mesin Bawah 250 Juta</option>
+                            <option value="createhpp5" {{ request('jenis_hpp')=='createhpp5'?'selected':'' }}>HPP Khusus di atas 250 Juta</option>
+                            <option value="createhpp6" {{ request('jenis_hpp')=='createhpp6'?'selected':'' }}>HPP Khusus di bawah 250 Juta</option>
                         </select>
-                        <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-emerald-700 text-[10px]">▾</span>
                     </div>
 
-                    <!-- Unit Kerja (Sky) -->
+                    <!-- Unit Kerja -->
                     <div class="relative">
-                        <select name="unit_kerja" class="{{ $selBlue }} w-56">
+                        <select name="unit_kerja" class="admin-select w-60">
                             <option value="">Semua Unit Kerja</option>
                             @foreach($unitKerjaOptions as $unit)
                                 <option value="{{ $unit }}" {{ request('unit_kerja')==$unit?'selected':'' }}>
@@ -122,21 +109,20 @@
                                 </option>
                             @endforeach
                         </select>
-                        <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sky-700 text-[10px]">▾</span>
                     </div>
 
                     <!-- Tombol -->
-                    <button type="submit" class="{{ $btnPrimary }} ml-auto inline-flex items-center">
-                        <i class="fas fa-filter mr-1 text-[10px]"></i> Terapkan
+                    <button type="submit" class="admin-btn admin-btn-primary ml-auto">
+                        <i data-lucide="filter" class="w-4 h-4"></i> Terapkan
                     </button>
-                    <a href="{{ route('admin.inputhpp.index') }}" class="{{ $btnGhost }} inline-flex items-center">
-                        <i class="fas fa-undo mr-1 text-[10px]"></i> Reset
+                    <a href="{{ route('admin.inputhpp.index') }}" class="admin-btn admin-btn-ghost">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset
                     </a>
                 </form>
             </div>
 
-            <!-- TABEL (tetap) -->
-            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
+<!-- TABEL (tetap) -->
+            <div class="admin-card p-4">
                 <div class="overflow-x-auto">
                     <table class="min-w-full border border-slate-200 text-[11px] text-slate-800">
                         <thead class="bg-slate-50 border-b border-slate-200 text-slate-600">
@@ -179,6 +165,10 @@
         @include('admin.inputhpp.partials._status_hpp3')
     @elseif ($data->source_form === 'createhpp4')
         @include('admin.inputhpp.partials._status_hpp4')
+    @elseif ($data->source_form === 'createhpp5')
+        @include('admin.inputhpp.partials._status_hpp5')
+    @elseif ($data->source_form === 'createhpp6')
+        @include('admin.inputhpp.partials._status_hpp6')
     @else
         <span class="text-slate-400">Tidak Diketahui</span>
     @endif
@@ -189,43 +179,46 @@
         $tok      = isset($activeTokens) ? $activeTokens->get($key) : null;
         $hasTok   = (bool) $tok;
         $isExpired = $hasTok && $tok->expires_at && $tok->expires_at->isPast();
+        $showTokenActions = true;
     @endphp
 
-    @if ($hasTok)
-        @if (!$isExpired)
-            <div class="mt-1 flex items-center gap-2 text-[10px]">
+    @if ($showTokenActions)
+        @if ($hasTok)
+            @if (!$isExpired)
+                <div class="mt-1 flex items-center gap-2 text-[10px]">
 
-                {{-- Tombol SALIN hanya muncul jika BELUM ada file direktur --}}
-                @if (empty($data->director_uploaded_file))
-                    <button type="button"
-                            class="copy-next-link inline-flex items-center gap-1 px-2 py-0.5 rounded-md
-                                   bg-slate-100 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200"
-                            data-link="{{ route('approval.hpp.sign', $tok->id) }}">
-                        <i class="fas fa-copy text-[9px]"></i> Salin
-                    </button>
-                @endif
-                <form action="{{ route('admin.inputhpp.reissue_token', $data->notification_number) }}" method="POST" class="inline-block reissue-form">
-    @csrf
-    <button type="button" class="reissue-btn action-btn bg-indigo-500 hover:bg-indigo-600" data-notif="{{ $data->notification_number }}" title="Generate Ulang Token">
-        <i class="fas fa-redo"></i>
-    </button>
-</form>
+                    {{-- Tombol SALIN hanya muncul jika BELUM ada file direktur --}}
+                    @if (empty($data->director_uploaded_file))
+                        <button type="button"
+                                class="copy-next-link inline-flex items-center gap-1 px-2 py-0.5 rounded-md
+                                       bg-slate-100 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200"
+                                data-link="{{ route('approval.hpp.sign', $tok->id) }}">
+                            <i class="fas fa-copy text-[9px]"></i> Salin
+                        </button>
+                    @endif
+                    <form action="{{ route('admin.inputhpp.reissue_token', $data->notification_number) }}" method="POST" class="inline-block reissue-form">
+                        @csrf
+                        <button type="button" class="reissue-btn action-btn bg-indigo-500 hover:bg-indigo-600" data-notif="{{ $data->notification_number }}" title="Generate Ulang Token">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                    </form>
 
 
-                <span class="text-slate-500">
-                    kadaluarsa: {{ $tok->expires_at->format('d/m H:i') }}
-                </span>
-            </div>
-        @else
-            <div class="mt-1 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md
-                        bg-amber-100 text-amber-800 ring-1 ring-amber-200">
-                <i class="fas fa-clock text-[9px]"></i> Token kedaluwarsa — perlu re-issue
+                    <span class="text-slate-500">
+                        kadaluarsa: {{ $tok->expires_at->format('d/m H:i') }}
+                    </span>
+                </div>
+            @else
+                <div class="mt-1 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md
+                            bg-amber-100 text-amber-800 ring-1 ring-amber-200">
+                    <i class="fas fa-clock text-[9px]"></i> Token kedaluwarsa – perlu re-issue
+                </div>
+            @endif
+        @elseif ($data->status === 'submitted')
+            <div class="mt-1 text-[10px] text-slate-400">
+                Menunggu token (belum tersedia atau sudah kedaluwarsa).
             </div>
         @endif
-    @elseif ($data->status === 'submitted')
-        <div class="mt-1 text-[10px] text-slate-400">
-            Menunggu token (belum tersedia atau sudah kedaluwarsa).
-        </div>
     @endif
 </td>
 
@@ -269,10 +262,28 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ============================================
      COPY LINK TOKEN
   ============================================ */
+  function copyTextToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    const temp = document.createElement('textarea');
+    temp.value = text;
+    temp.setAttribute('readonly', '');
+    temp.style.position = 'absolute';
+    temp.style.left = '-9999px';
+    document.body.appendChild(temp);
+    temp.select();
+    temp.setSelectionRange(0, temp.value.length);
+    const ok = document.execCommand('copy');
+    document.body.removeChild(temp);
+    return ok ? Promise.resolve() : Promise.reject();
+  }
+
   document.querySelectorAll('.copy-next-link').forEach(btn=>{
     btn.addEventListener('click', (ev)=>{
       const link = ev.currentTarget.getAttribute('data-link');
-      navigator.clipboard.writeText(link).then(()=>{
+      if (!link) return;
+      copyTextToClipboard(link).then(()=>{
         Swal.fire({icon:'success', title:'Tersalin', text:'Link approval disalin', timer:1500, showConfirmButton:false});
       }).catch(()=>{
         Swal.fire({icon:'error', title:'Gagal', text:'Tidak dapat menyalin link'});
